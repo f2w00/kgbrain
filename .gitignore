@@ -1,0 +1,19 @@
+/prompts
+
+# Build
+/kgbrain
+/kgbrain.exe
+/tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/

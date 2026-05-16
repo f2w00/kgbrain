@@ -1,0 +1,20 @@
+[server]
+address      = ":8848"
+read_timeout  = "30s"
+write_timeout = "60s"
+
+# ---------- 日志 ----------
+[log]
+level       = "info"
+format      = "json"
+output      = "stdout"
+time_format = "2006-01-02T15:04:05Z0700"
+
+# ---------- 存储 ----------
+[store]
+path = "data/kgbrain.db"
+pragmas = [
+    "PRAGMA journal_mode = WAL",
+    "PRAGMA synchronous = NORMAL",
+    "PRAGMA busy_timeout = 5000",
+]

@@ -1,0 +1,40 @@
+# TODO
+
+## 安全
+
+- [ ] **API key 加密存储** — `internal/profile/repo.go`
+  LLMConfig 中的 api_key 当前以明文写入 SQLite。
+  需增加 AES-256 加密，密钥从环境变量读取。
+
+## 容量
+
+- [ ] **Profile 数量上限** — `internal/profile/repo.go`
+  Profile 永不过期且无上限。需增加硬上限 (如 10000 条)，
+  超限时拒绝新创建或淘汰最旧，防磁盘撑爆。
+
+## 编排
+
+- [ ] **Handler 改用 Engine 调用** — `internal/rpc/mapping_handler.go`
+  当前 mapping handler 直接调 Mapper.Execute()。
+  后续应通过 orchestrator.Engine 走标准编排流程，
+  以获得重试、Hook、任务追踪等能力。
+
+## 通知
+
+- [ ] **通知 Sender 接口** — `internal/notify/sender.go`
+  当前 notify.Service 硬编码处理 feishu_webhook 渠道。
+  需定义 Sender 接口，支持订阅系统内部消息，
+  各渠道 (feishu_webhook / email / sms) 实现该接口，
+  Service 遍历 channels 按 type 分发到不同 Sender。
+
+- [ ] **SQLite 备份策略** — `internal/store/db.go`
+  profiles.db 无备份，单文件故障即丢失。
+  需增加定时备份到 data/profiles.bak.db。
+
+- [x] **结果去重** — `internal/operation/mapping/mapper.go`
+  cacheKey 基于 sorted(source+target)，但如果用户
+  多次请求相同字段组合，mapping 结果可能不同 (LLM 不一致)。
+  已通过 `refresh` 参数支持强制重新生成并覆盖缓存。
+
+- [ ] **profile.clear_cache RPC** — 目前只能通过 profile.delete 级联清空缓存,
+  缺少独立的清缓存接口。profile.set 更新 LLM 配置时也建议自动清空缓存。

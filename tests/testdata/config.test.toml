@@ -1,0 +1,16 @@
+[server]
+address = ":18080"
+
+[log]
+level       = "error"
+format      = "console"
+output      = "stdout"
+time_format = "2006-01-02T15:04:05Z0700"
+
+[store]
+path = "/tmp/kgbrain-test.db"
+pragmas = [
+    "PRAGMA journal_mode = WAL",
+    "PRAGMA synchronous = NORMAL",
+    "PRAGMA busy_timeout = 5000",
+]
