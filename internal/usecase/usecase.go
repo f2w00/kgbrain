@@ -10,20 +10,17 @@ import (
 
 type UseCase struct {
 	profileRepo profile.ProfileRepository
-	cacheRepo   mapping.CacheRepository
 	mappingSvc  *mapping.MappingService
 	llmFactory  mapping.LLMClientFactory
 }
 
 func New(
 	profileRepo profile.ProfileRepository,
-	cacheRepo mapping.CacheRepository,
 	mappingSvc *mapping.MappingService,
 	llmFactory mapping.LLMClientFactory,
 ) *UseCase {
 	return &UseCase{
 		profileRepo: profileRepo,
-		cacheRepo:   cacheRepo,
 		mappingSvc:  mappingSvc,
 		llmFactory:  llmFactory,
 	}
@@ -49,14 +46,7 @@ func (u *UseCase) GetProfile(id string) (*profile.Profile, error) {
 }
 
 func (u *UseCase) DeleteProfile(id string) (deleted bool, err error) {
-	deleted, err = u.profileRepo.Delete(id)
-	if err != nil {
-		return false, err
-	}
-	if err := u.cacheRepo.ClearByProfile(id); err != nil {
-		return deleted, err
-	}
-	return deleted, nil
+	return u.profileRepo.Delete(id)
 }
 
 func (u *UseCase) GenerateMapping(
@@ -85,7 +75,6 @@ func (u *UseCase) GenerateMapping(
 	}
 
 	return u.mappingSvc.Execute(ctx, llmClient, &mapping.ExecuteRequest{
-		ProfileID:    prof.ID,
 		Example:      example,
 		TargetFields: targetFields,
 		Refresh:      refresh,

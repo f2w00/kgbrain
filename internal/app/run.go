@@ -65,7 +65,7 @@ func runWithConfig(cfgFile string) error {
 		return llm.NewClient(baseURL, apiKey, model)
 	}
 
-	uc := usecase.New(profileRepo, cacheRepo, mappingService, llmFactory)
+	uc := usecase.New(profileRepo, mappingService, llmFactory)
 
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
 	if err != nil {

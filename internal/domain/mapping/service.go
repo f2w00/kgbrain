@@ -21,7 +21,6 @@ type LLMClient interface {
 type LLMClientFactory func(baseURL, apiKey, model string) (LLMClient, error)
 
 type ExecuteRequest struct {
-	ProfileID    string
 	Example      map[string]any
 	TargetFields []string
 	Refresh      bool
@@ -51,7 +50,7 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 	h := cacheKey(source, req.TargetFields)
 
 	if !req.Refresh {
-		cached, err := s.cacheRepo.Get(req.ProfileID, h)
+		cached, err := s.cacheRepo.Get(h)
 		if err != nil {
 			return nil, fmt.Errorf("get cache: %w", err)
 		}
@@ -80,7 +79,7 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 		return nil, fmt.Errorf("mapping validation: %w", err)
 	}
 
-	if err := s.cacheRepo.Save(req.ProfileID, h, &mapping, source, req.TargetFields); err != nil {
+	if err := s.cacheRepo.Save(h, &mapping, source, req.TargetFields); err != nil {
 		logger.L().Warn("save mapping cache failed", zap.Error(err))
 	}
 
