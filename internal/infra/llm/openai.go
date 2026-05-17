@@ -9,13 +9,15 @@ import (
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 
-	"kgbrain/internal/domain/mapping"
 	"kgbrain/internal/logger"
 	"kgbrain/pkg/hash"
 
 	"go.uber.org/zap"
 )
 
+// openaiClient 封装 OpenAI 兼容的 LLM 客户端
+// 同时实现 mapping.LLMClient 和 kgc.LLMClient 两个接口
+// ChatModel 实例按 (baseURL, apiKey, model) 组合缓存, 避免重复创建
 type openaiClient struct {
 	baseURL   string
 	apiKey    string
@@ -24,7 +26,8 @@ type openaiClient struct {
 	mu        sync.RWMutex
 }
 
-func NewClient(baseURL, apiKey, modelName string) (mapping.LLMClient, error) {
+// NewClient 创建 LLM 客户端实例
+func NewClient(baseURL, apiKey, modelName string) (*openaiClient, error) {
 	return &openaiClient{
 		baseURL:   baseURL,
 		apiKey:    apiKey,
@@ -33,16 +36,34 @@ func NewClient(baseURL, apiKey, modelName string) (mapping.LLMClient, error) {
 	}, nil
 }
 
+// Generate 实现 mapping.LLMClient 接口
+// 内部使用 json_object 约束, 确保 LLM 返回合法 JSON 对象
 func (c *openaiClient) Generate(ctx context.Context, prompt string) (string, error) {
+	msgs := []*schema.Message{
+		schema.SystemMessage(prompt),
+		schema.UserMessage("请根据字段语义生成映射关系。"),
+	}
+	return c.generateWithOpts(ctx, msgs,
+		openai.WithExtraFields(map[string]any{
+			"response_format": map[string]string{"type": "json_object"},
+		}),
+	)
+}
+
+// GenerateMessages 实现 kgc.LLMClient 接口
+// 接收完整的消息列表 (支持多模态), 无 response_format 约束, 可返回 JSON 数组
+func (c *openaiClient) GenerateMessages(ctx context.Context, msgs []*schema.Message) (string, error) {
+	return c.generateWithOpts(ctx, msgs)
+}
+
+// generateWithOpts 底层调用方法, 共享 ChatModel 缓存
+func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Message, opts ...model.Option) (string, error) {
 	cm, err := c.getOrCreateCM(c.baseURL, c.apiKey, c.modelName)
 	if err != nil {
 		return "", fmt.Errorf("get chat model: %w", err)
 	}
 
-	resp, err := cm.Generate(ctx, []*schema.Message{
-		schema.SystemMessage(prompt),
-		schema.UserMessage("请根据字段语义生成映射关系。"),
-	})
+	resp, err := cm.Generate(ctx, msgs, opts...)
 	if err != nil {
 		return "", fmt.Errorf("llm generate: %w", err)
 	}
@@ -50,6 +71,8 @@ func (c *openaiClient) Generate(ctx context.Context, prompt string) (string, err
 	return resp.Content, nil
 }
 
+// getOrCreateCM 获取或创建 ChatModel 实例 (双重检查锁)
+// 不在模型级设置 response_format, 改为按请求传入 option
 func (c *openaiClient) getOrCreateCM(baseURL, apiKey, modelName string) (model.BaseChatModel, error) {
 	key := llmCacheKey(baseURL, apiKey, modelName)
 
@@ -68,15 +91,11 @@ func (c *openaiClient) getOrCreateCM(baseURL, apiKey, modelName string) (model.B
 	}
 
 	temp := float32(0)
-	respFmt := openai.ChatCompletionResponseFormat{
-		Type: openai.ChatCompletionResponseFormatTypeJSONObject,
-	}
 	cm, err := openai.NewChatModel(context.Background(), &openai.ChatModelConfig{
-		BaseURL:        baseURL,
-		APIKey:         apiKey,
-		Model:          modelName,
-		Temperature:    &temp,
-		ResponseFormat: &respFmt,
+		BaseURL:     baseURL,
+		APIKey:      apiKey,
+		Model:       modelName,
+		Temperature: &temp,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create chat model: %w", err)
@@ -87,6 +106,7 @@ func (c *openaiClient) getOrCreateCM(baseURL, apiKey, modelName string) (model.B
 	return cm, nil
 }
 
+// llmCacheKey 生成缓存键
 func llmCacheKey(baseURL, apiKey, modelName string) string {
 	return hash.Key(baseURL, apiKey, modelName)
 }

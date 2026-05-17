@@ -25,4 +25,15 @@
   需增加定时备份到 data/profiles.bak.db。
 
 - [ ] **profile.clear_cache RPC** — 目前只能通过 profile.delete 级联清空缓存,
-  缺少独立的清缓存接口。profile.set 更新 LLM 配置时也建议自动清空缓存。
+   缺少独立的清缓存接口。profile.set 更新 LLM 配置时也建议自动清空缓存。
+
+## 优化
+
+- [ ] **TOON 输出格式** — `kgc.enrich` 让 LLM 输出 TOON 格式替代 JSON, 节省 40-60% token。
+   LLM 输出解析需基于 TOON 的 Go SDK (github.com/toon-format/toon)。
+   先跑通 JSON 版本, 后续再优化此条目。
+  ```text
+  对比: JSON 26 tokens → TOON 11 tokens
+  JSON: {"name":"Luna","age":3}
+  TOON: name:Luna;age:3
+  ```

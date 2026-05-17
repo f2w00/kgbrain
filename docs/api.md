@@ -210,6 +210,81 @@ curl -s -X POST http://localhost:8848/rpc \
 
 ---
 
+---
+
+## kgc.enrich
+
+数据补全。一次 LLM 调用完成所有行的数据补全，支持 text 任务（从源字段推断目标字段）和 image 任务（描述图片内容）。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| data | array | ✅ | 待补全数据行 (≤100 行) |
+| examples | array | ❌ | 示例数据，指导 LLM 输出格式 |
+| tasks | array | ✅ | 补全任务列表 |
+
+#### tasks 元素
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| source_type | string | ✅ | `"text"` 或 `"image"` |
+| source_fields | string[] | ❌ | text 任务的源字段列表 |
+| source_field | string | ❌ | image 任务的图片字段名 |
+| targets | array | ✅ | 目标字段定义 |
+
+#### targets 元素
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| field | string | ✅ | 目标字段名 |
+| prompt | string | ❌ | 字段说明，用于指导 LLM 填充 |
+
+### 响应
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| data | array | 补全后的数据（与原 data 同结构，目标字段已填充） |
+| enriched_count | int | 实际填充的字段总数 |
+
+### 示例
+
+```bash
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"kgc.enrich","params":{
+    "profile_id":"demo",
+    "data":[
+      {"title":"青花瓷瓶","dynasty":"","material":"","image_url":"data:image/jpeg;base64,/9j...","image_desc":"","color":""}
+    ],
+    "examples":[
+      {"title":"明代青花山水纹瓶","dynasty":"明代","material":"陶瓷","image_url":"","image_desc":"青花瓷瓶，瓶身绘有山水图案","color":"蓝色、白色"}
+    ],
+    "tasks":[
+      {"source_type":"text","source_fields":["title"],"targets":[{"field":"dynasty","prompt":"从标题推断朝代"},{"field":"material","prompt":"从标题推断材质"}]},
+      {"source_type":"image","source_field":"image_url","targets":[{"field":"image_desc","prompt":"描述图片内容"},{"field":"color","prompt":"描述图片中的主要颜色"}]}
+    ]
+  },"id":"req_005"}'
+```
+
+### 响应示例
+
+```json
+{
+  "data": [
+    {"title":"青花瓷瓶","dynasty":"明代","material":"陶瓷","image_url":"data:image/jpeg;base64,/9j...","image_desc":"青花瓷瓶，瓶身绘有山水图案","color":"蓝色、白色"}
+  ],
+  "enriched_count": 4
+}
+```
+
+### 错误
+
+- `-32602`: profile 不存在 / 参数校验失败
+- `-32603`: LLM 调用失败或响应解析失败
+
+---
+
 ## Python 客户端示例
 
 ```python

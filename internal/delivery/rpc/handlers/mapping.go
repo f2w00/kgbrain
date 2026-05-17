@@ -1,14 +1,15 @@
-package rpc
+package handlers
 
 import (
 	"context"
 	"encoding/json"
 
+	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/usecase"
 	"kgbrain/pkg/jsonrpc"
 )
 
-func RegisterMappingMethods(s *Server, uc *usecase.UseCase) {
+func RegisterMappingMethods(s *rpc.Server, uc *usecase.UseCase) {
 	s.Register("mapping.generate", func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID    string         `json:"profile_id"`

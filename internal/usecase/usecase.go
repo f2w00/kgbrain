@@ -4,25 +4,32 @@ import (
 	"context"
 	"encoding/json"
 
+	"kgbrain/internal/domain/kgc"
 	"kgbrain/internal/domain/mapping"
 	"kgbrain/internal/domain/profile"
 )
 
 type UseCase struct {
-	profileRepo profile.ProfileRepository
-	mappingSvc  *mapping.MappingService
-	llmFactory  mapping.LLMClientFactory
+	profileRepo     profile.ProfileRepository
+	mappingSvc      *mapping.MappingService
+	mappingLLMFactory mapping.LLMClientFactory
+	enrichSvc       *kgc.EnrichService
+	enrichLLMFactory kgc.LLMClientFactory
 }
 
 func New(
 	profileRepo profile.ProfileRepository,
 	mappingSvc *mapping.MappingService,
-	llmFactory mapping.LLMClientFactory,
+	mappingLLMFactory mapping.LLMClientFactory,
+	enrichSvc *kgc.EnrichService,
+	enrichLLMFactory kgc.LLMClientFactory,
 ) *UseCase {
 	return &UseCase{
-		profileRepo: profileRepo,
-		mappingSvc:  mappingSvc,
-		llmFactory:  llmFactory,
+		profileRepo:       profileRepo,
+		mappingSvc:        mappingSvc,
+		mappingLLMFactory: mappingLLMFactory,
+		enrichSvc:         enrichSvc,
+		enrichLLMFactory:  enrichLLMFactory,
 	}
 }
 
@@ -69,7 +76,7 @@ func (u *UseCase) GenerateMapping(
 		return nil, err
 	}
 
-	llmClient, err := u.llmFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
+	llmClient, err := u.mappingLLMFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +86,30 @@ func (u *UseCase) GenerateMapping(
 		TargetFields: targetFields,
 		Refresh:      refresh,
 	})
+}
+
+// Enrich 执行数据补全
+// 流程: 获取 profile → 解析 LLM 配置 → 创建 LLM 客户端 → 调用领域层执行补全
+func (u *UseCase) Enrich(ctx context.Context, profileID string, req *kgc.Request) (*kgc.Result, error) {
+	prof, err := u.profileRepo.Get(profileID)
+	if err != nil {
+		return nil, err
+	}
+	if prof == nil {
+		return nil, errProfileNotFound
+	}
+
+	llmCfg, err := prof.ParseLLMConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	llmClient, err := u.enrichLLMFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.enrichSvc.Execute(ctx, llmClient, req)
 }
 
 var errProfileNotFound = &profileNotFoundError{id: ""}

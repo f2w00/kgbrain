@@ -119,6 +119,75 @@ methods:
       - code: -32603
         message: Internal error
 
+  - name: kgc.enrich
+    summary: 数据补全 (KGC Enrich)
+    description: |
+      一次 LLM 调用完成所有行的数据补全。支持 text 任务（从源字段推断目标字段）和 image 任务（描述图片内容）。
+      多模态模型自动处理文本和图片输入。按 profile_id 中的 LLM 配置调用。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: data
+        schema:
+          type: array
+          items:
+            type: object
+          maxItems: 100
+          minItems: 1
+        required: true
+        description: 待补全的数据行, 每条数据包含源字段和空的目标字段
+      - name: examples
+        schema:
+          type: array
+          items:
+            type: object
+        required: false
+        description: 示例数据（可选）, 用于指导 LLM 输出格式
+      - name: tasks
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              source_type:
+                type: string
+                enum: ["text", "image"]
+              source_fields:
+                type: array
+                items:
+                  type: string
+                description: "text 任务: 作为源的字段名列表"
+              source_field:
+                type: string
+                description: "image 任务: 图片字段名 (值为 data:image/...;base64,...)"
+              targets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    prompt:
+                      type: string
+                  required: [field]
+            required: [source_type, targets]
+          minItems: 1
+        required: true
+        description: 补全任务列表, 可同时包含 text 和 image 任务
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/KGCEnrichResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
 components:
   schemas:
     ProfileSetResult:
@@ -167,7 +236,7 @@ components:
             type: array
             items:
               type: string
-          description: "{目标字段: [源字段1, 源字段2]}"
+          description: 目标字段到源字段的映射
         unmapped_source:
           type: array
           items:
@@ -182,3 +251,16 @@ components:
           type: boolean
           description: 是否来自缓存
       required: [mapping, unmapped_source, unfilled_target, cached]
+
+    KGCEnrichResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+          description: 补全后的数据（与原 data 同结构, 目标字段已填充）
+        enriched_count:
+          type: integer
+          description: 实际填充的字段总数
+      required: [data, enriched_count]

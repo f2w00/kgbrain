@@ -1,13 +1,14 @@
-package rpc
+package handlers
 
 import (
 	"encoding/json"
 
+	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/usecase"
 	"kgbrain/pkg/jsonrpc"
 )
 
-func RegisterProfileMethods(s *Server, uc *usecase.UseCase) {
+func RegisterProfileMethods(s *rpc.Server, uc *usecase.UseCase) {
 	hSet := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string          `json:"profile_id"`
