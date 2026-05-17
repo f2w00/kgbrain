@@ -13,11 +13,11 @@ import (
 	"kgbrain/internal/infra/store"
 	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/logger"
+	"kgbrain/internal/usecase"
 
 	"go.uber.org/zap"
 )
 
-// Run 启动 kgbrain 服务. 入口流程: 加载配置 → 初始化日志 → 打开数据库 → 创建 Repos → 注册 RPC 方法 → 启动 HTTP server.
 func Run(args []string) error {
 	cfgFile := "configs/config.toml"
 
@@ -33,7 +33,6 @@ func Run(args []string) error {
 	return rootCmd.Execute()
 }
 
-// runWithConfig 加载配置并启动 server. 依赖注入链: store → profileRepo → cacheRepo → mappingService → server.
 func runWithConfig(cfgFile string) error {
 	var cfg config.Config
 	if err := config.Load(&cfg, cfgFile); err != nil {
@@ -66,12 +65,23 @@ func runWithConfig(cfgFile string) error {
 		return llm.NewClient(baseURL, apiKey, model)
 	}
 
-	var _ profile.ProfileRepository = profileRepo
+	uc := usecase.New(profileRepo, cacheRepo, mappingService, llmFactory)
+
+	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
+	if err != nil {
+		logger.L().Warn("schema validator unavailable", zap.Error(err))
+	}
 
 	server := rpc.New(cfg.Server)
-	rpc.RegisterProfileMethods(server, profileRepo, cacheRepo)
-	rpc.RegisterMappingMethods(server, mappingService, profileRepo, llmFactory)
+	server.SetValidator(validator)
+	if validator != nil {
+		rpc.RegisterRpcDiscover(server, validator.OpenRPCDoc())
+	}
+	rpc.RegisterProfileMethods(server, uc)
+	rpc.RegisterMappingMethods(server, uc)
 
 	logger.L().Info("server ready", zap.String("address", cfg.Server.Address))
 	return server.Start()
 }
+
+var _ profile.ProfileRepository = (*repo.ProfileRepo)(nil)

@@ -1,5 +1,7 @@
 # JSON-RPC API 文档
 
+> 权威接口定义见 `docs/openrpc.yaml` (OpenRPC 1.4.x 规范)
+
 协议: **JSON-RPC 2.0**  
 端点: `POST /rpc`  
 Content-Type: `application/json`  

@@ -3,15 +3,11 @@ package rpc
 import (
 	"encoding/json"
 
-	"kgbrain/internal/domain/mapping"
-	"kgbrain/internal/domain/profile"
-	"kgbrain/internal/logger"
+	"kgbrain/internal/usecase"
 	"kgbrain/pkg/jsonrpc"
-
-	"go.uber.org/zap"
 )
 
-func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, cacheRepo mapping.CacheRepository) {
+func RegisterProfileMethods(s *Server, uc *usecase.UseCase) {
 	hSet := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string          `json:"profile_id"`
@@ -21,26 +17,15 @@ func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, ca
 		if err := json.Unmarshal(params, &req); err != nil {
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
 		}
-		if req.ProfileID == "" {
-			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile_id is required", nil)
+		if err := uc.SetProfile(req.ProfileID, req.LLM, req.Notify); err != nil {
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "set profile failed", err.Error())
 		}
-
-		p := &profile.Profile{
-			ID:        req.ProfileID,
-			LLMConfig: string(req.LLM),
-		}
-		if len(req.Notify) > 0 {
-			p.NotifyConfig = string(req.Notify)
-		}
-		if err := profileRepo.Save(p); err != nil {
-			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "db write failed", err.Error())
-		}
-
 		return jsonrpc.NewResponse(id, map[string]any{
 			"status":     "ok",
 			"profile_id": req.ProfileID,
 		})
 	}
+
 	hGet := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string `json:"profile_id"`
@@ -48,15 +33,13 @@ func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, ca
 		if err := json.Unmarshal(params, &req); err != nil {
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
 		}
-
-		p, err := profileRepo.Get(req.ProfileID)
+		p, err := uc.GetProfile(req.ProfileID)
 		if err != nil {
+			if err.Error() == "profile not found" {
+				return jsonrpc.NewErrorResponse(id, jsonrpc.CodeTaskNotFound, "profile not found", nil)
+			}
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "db error", err.Error())
 		}
-		if p == nil {
-			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeTaskNotFound, "profile not found", nil)
-		}
-
 		return jsonrpc.NewResponse(id, map[string]any{
 			"profile_id":    p.ID,
 			"llm_config":    p.LLMConfig,
@@ -65,6 +48,7 @@ func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, ca
 			"updated_at":    p.UpdatedAt,
 		})
 	}
+
 	hDel := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string `json:"profile_id"`
@@ -72,18 +56,12 @@ func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, ca
 		if err := json.Unmarshal(params, &req); err != nil {
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
 		}
-
-		ok, err := profileRepo.Delete(req.ProfileID)
+		deleted, err := uc.DeleteProfile(req.ProfileID)
 		if err != nil {
-			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "db delete failed", err.Error())
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "delete profile failed", err.Error())
 		}
-
-		if err := cacheRepo.ClearByProfile(req.ProfileID); err != nil {
-			logger.L().Warn("profile delete: clear mapping cache", zap.Error(err))
-		}
-
 		status := "deleted"
-		if !ok {
+		if !deleted {
 			status = "not_found"
 		}
 		return jsonrpc.NewResponse(id, map[string]any{

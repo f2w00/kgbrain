@@ -29,7 +29,7 @@ func (m Mapping) Validate(source, target []string) error {
 	return nil
 }
 
-func CalcUnmappedSource(m Mapping, source []string) []string {
+func (m Mapping) UnmappedSource(source []string) []string {
 	mapped := make(map[string]bool)
 	for _, srcs := range m {
 		for _, s := range srcs {
@@ -45,7 +45,7 @@ func CalcUnmappedSource(m Mapping, source []string) []string {
 	return out
 }
 
-func CalcUnfilledTarget(m Mapping, target []string) []string {
+func (m Mapping) UnfilledTarget(target []string) []string {
 	used := make(map[string]bool)
 	for tgt := range m {
 		used[tgt] = true

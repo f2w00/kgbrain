@@ -48,7 +48,7 @@ func TestMappingValidateEmptyList(t *testing.T) {
 
 func TestCalcUnmappedSource(t *testing.T) {
 	m := mapping.Mapping{"a": {"x", "y"}}
-	u := mapping.CalcUnmappedSource(m, []string{"x", "y", "z"})
+	u := m.UnmappedSource([]string{"x", "y", "z"})
 	if len(u) != 1 || u[0] != "z" {
 		t.Errorf("unmapped = %v, want [z]", u)
 	}
@@ -56,7 +56,7 @@ func TestCalcUnmappedSource(t *testing.T) {
 
 func TestCalcUnfilledTarget(t *testing.T) {
 	m := mapping.Mapping{"a": {"x"}}
-	u := mapping.CalcUnfilledTarget(m, []string{"a", "b", "c"})
+	u := m.UnfilledTarget([]string{"a", "b", "c"})
 	if len(u) != 2 || u[0] != "b" || u[1] != "c" {
 		t.Errorf("unfilled = %v, want [b c]", u)
 	}

@@ -58,8 +58,8 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 		if cached != nil {
 			return &Result{
 				Mapping:        *cached,
-				UnmappedSource: CalcUnmappedSource(*cached, source),
-				UnfilledTarget: CalcUnfilledTarget(*cached, req.TargetFields),
+				UnmappedSource: cached.UnmappedSource(source),
+				UnfilledTarget: cached.UnfilledTarget(req.TargetFields),
 				Cached:         true,
 			}, nil
 		}
@@ -87,8 +87,8 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 	logger.L().Info("mapping generated", zap.Int("mappings", len(mapping)))
 	return &Result{
 		Mapping:        mapping,
-		UnmappedSource: CalcUnmappedSource(mapping, source),
-		UnfilledTarget: CalcUnfilledTarget(mapping, req.TargetFields),
+		UnmappedSource: mapping.UnmappedSource(source),
+		UnfilledTarget: mapping.UnfilledTarget(req.TargetFields),
 		Cached:         false,
 	}, nil
 }

@@ -14,8 +14,9 @@ import (
 )
 
 type Server struct {
-	cfg     config.ServerConfig
-	methods map[string]MethodHandler
+	cfg       config.ServerConfig
+	methods   map[string]MethodHandler
+	validator *ParamsValidator
 }
 
 func New(cfg config.ServerConfig) *Server {
@@ -23,6 +24,10 @@ func New(cfg config.ServerConfig) *Server {
 		cfg:     cfg,
 		methods: make(map[string]MethodHandler),
 	}
+}
+
+func (s *Server) SetValidator(v *ParamsValidator) {
+	s.validator = v
 }
 
 func (s *Server) Register(method string, h MethodHandler) error {
@@ -73,6 +78,13 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		s.writeError(w, nil, jsonrpc.CodeInvalidRequest, "id must be a string", nil)
 		return
+	}
+
+	if s.validator != nil {
+		if err := s.validator.Validate(req.Method, req.Params); err != nil {
+			s.writeError(w, idStr, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
+			return
+		}
 	}
 
 	resp := s.dispatch(idStr, req.Method, req.Params)

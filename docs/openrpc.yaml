@@ -1,0 +1,184 @@
+openrpc: "1.3.2"
+info:
+  title: kgbrain
+  version: "1.0.0"
+  description: |
+    字段映射生成服务。通过一次 LLM 调用推导源字段到目标字段的映射关系, 结果缓存后零成本复用。
+
+servers:
+  - name: default
+    url: http://localhost:8848/rpc
+    description: JSON-RPC 2.0 endpoint
+
+methods:
+  - name: profile.set
+    summary: 创建或更新用户配置
+    description: |
+      创建或更新指定 profile_id 的配置。llm 和 notify 为自由格式 JSON, 服务端直接存储不校验内部结构。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 唯一标识
+      - name: llm
+        schema:
+          type: object
+        required: true
+        description: LLM 连接配置 (任意 JSON)
+      - name: notify
+        schema:
+          type: object
+        required: false
+        description: 通知渠道配置 (任意 JSON)
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ProfileSetResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+  - name: profile.get
+    summary: 查询用户配置
+    description: 根据 profile_id 获取已保存的配置。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 唯一标识
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ProfileGetResult"
+    errors:
+      - code: -32004
+        message: Profile not found
+
+  - name: profile.delete
+    summary: 删除用户配置
+    description: 删除指定 profile_id 的配置, 并级联清空关联的映射缓存。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 唯一标识
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ProfileDeleteResult"
+    errors:
+      - code: -32603
+        message: Internal error
+
+  - name: mapping.generate
+    summary: 生成字段映射关系
+    description: |
+      根据示例数据推导源字段到目标字段的映射关系。一次 LLM 调用后缓存结果 (按 profile_id + 字段组合), 相同字段组合再次请求直接从缓存返回。设置 refresh: true 可跳过缓存, 强制重新生成并覆盖旧缓存。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: example
+        schema:
+          type: object
+          minProperties: 1
+        required: true
+        description: 一条示例数据, key 自动作为源字段
+      - name: target_fields
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        required: true
+        description: 目标字段列表
+      - name: refresh
+        schema:
+          type: boolean
+          default: false
+        required: false
+        description: 设为 true 时忽略缓存, 强制重新生成
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/MappingResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+components:
+  schemas:
+    ProfileSetResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["ok"]
+        profile_id:
+          type: string
+      required: [status, profile_id]
+
+    ProfileGetResult:
+      type: object
+      properties:
+        profile_id:
+          type: string
+        llm_config:
+          type: string
+        notify_config:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [profile_id, llm_config, created_at, updated_at]
+
+    ProfileDeleteResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: ["deleted", "not_found"]
+        profile_id:
+          type: string
+      required: [status, profile_id]
+
+    MappingResult:
+      type: object
+      properties:
+        mapping:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: "{目标字段: [源字段1, 源字段2]}"
+        unmapped_source:
+          type: array
+          items:
+            type: string
+          description: 未映射的源字段
+        unfilled_target:
+          type: array
+          items:
+            type: string
+          description: 未填充的目标字段
+        cached:
+          type: boolean
+          description: 是否来自缓存
+      required: [mapping, unmapped_source, unfilled_target, cached]
