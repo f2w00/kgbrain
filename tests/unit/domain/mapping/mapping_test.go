@@ -3,7 +3,7 @@ package mapping_test
 import (
 	"testing"
 
-	"kgbrain/internal/operation/mapping"
+	"kgbrain/internal/domain/mapping"
 )
 
 func TestMappingValidate(t *testing.T) {

@@ -4,16 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"github.com/cloudwego/eino/schema"
 )
 
-// BuildMappingPrompt 构建 LLM 提示, 要求模型输出目标字段到源字段的映射.
-// example 是示例数据, 帮助 LLM 理解字段语义.
-func BuildMappingPrompt(source, target []string, example map[string]any) []*schema.Message {
+func BuildMappingPrompt(source, target []string, example map[string]any) string {
 	exampleJSON, _ := json.Marshal(example)
 
-	sys := fmt.Sprintf(`你是一个字段映射助手。
+	return fmt.Sprintf(`你是一个字段映射助手。
 将源字段映射到目标字段, 输出 JSON 格式的映射关系。
 
 规则:
@@ -27,16 +23,11 @@ func BuildMappingPrompt(source, target []string, example map[string]any) []*sche
 目标字段: %s
 示例数据: %s
 
-	输出格式: {"目标字段名": ["源字段名1", "源字段名2"]}
-	示例输出: {"product_name": ["name", "title"]}
+输出格式: {"目标字段名": ["源字段名1", "源字段名2"]}
+示例输出: {"product_name": ["name", "title"]}
 
 /nothink`,
 		strings.Join(source, ", "),
 		strings.Join(target, ", "),
 		string(exampleJSON))
-
-	return []*schema.Message{
-		schema.SystemMessage(sys),
-		schema.UserMessage("请根据字段语义生成映射关系。"),
-	}
 }

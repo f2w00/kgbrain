@@ -1,18 +1,18 @@
-package profile
+package repo
 
 import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"kgbrain/internal/domain/profile"
 )
 
-// Repo 管理 profiles 表的持久化.
-type Repo struct {
+type ProfileRepo struct {
 	db *sql.DB
 }
 
-// NewRepo 创建 profile repository, 同时确保 profiles 表存在.
-func NewRepo(db *sql.DB) (*Repo, error) {
+func NewProfileRepo(db *sql.DB) (*ProfileRepo, error) {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS profiles (
 		id            TEXT PRIMARY KEY,
 		llm_config    TEXT NOT NULL,
@@ -23,12 +23,11 @@ func NewRepo(db *sql.DB) (*Repo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create profiles table: %w", err)
 	}
-	return &Repo{db: db}, nil
+	return &ProfileRepo{db: db}, nil
 }
 
-// Get 查询 profile. 不存在时返回 (nil, nil).
-func (r *Repo) Get(id string) (*Profile, error) {
-	p := &Profile{}
+func (r *ProfileRepo) Get(id string) (*profile.Profile, error) {
+	p := &profile.Profile{}
 	err := r.db.QueryRow(
 		`SELECT id, llm_config, COALESCE(notify_config,''), created_at, updated_at FROM profiles WHERE id = ?`, id).
 		Scan(&p.ID, &p.LLMConfig, &p.NotifyConfig, &p.CreatedAt, &p.UpdatedAt)
@@ -41,8 +40,7 @@ func (r *Repo) Get(id string) (*Profile, error) {
 	return p, nil
 }
 
-// Set 创建或更新 profile. 使用 INSERT OR REPLACE, 已存在时覆盖.
-func (r *Repo) Set(p *Profile) error {
+func (r *ProfileRepo) Save(p *profile.Profile) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 	if p.CreatedAt == "" {
 		p.CreatedAt = now
@@ -54,8 +52,7 @@ func (r *Repo) Set(p *Profile) error {
 	return err
 }
 
-// Delete 删除 profile.
-func (r *Repo) Delete(id string) (bool, error) {
+func (r *ProfileRepo) Delete(id string) (bool, error) {
 	res, err := r.db.Exec(`DELETE FROM profiles WHERE id = ?`, id)
 	if err != nil {
 		return false, err
@@ -64,7 +61,6 @@ func (r *Repo) Delete(id string) (bool, error) {
 	return n > 0, nil
 }
 
-// nullable 将空字符串转为 nil, 用于 SQLite 可空列写入.
 func nullable(s string) *string {
 	if s == "" {
 		return nil

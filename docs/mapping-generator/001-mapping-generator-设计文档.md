@@ -10,6 +10,7 @@
 |------|--------|----------|------|
 | 2026-05-15 | v1.0 | 初始实现 | AI |
 | 2026-05-16 | v2.0 | session 迁移到 SQLite; 参数从 source_fields+target_fields 改为 example+target_fields; 缓存 key 从 SHA-256 改为 FNV-1a; 新增 MappingRepo; 移除 session 包 | AI |
+| 2026-05-17 | v3.0 | DDD 分层重构: domain/infra/delivery/app 四层; 删除废弃包 (agents/orchestrator/notify/middleware) | AI |
 
 ## 1. 概述
 
@@ -107,39 +108,63 @@ kgbrain/
 ├── cmd/server/main.go
 ├── configs/config.toml
 ├── internal/
-│   ├── app/run.go              — 依赖注入 (store → repo → mapper → server)
-│   ├── config/config.go        — TOML 配置结构体
-│   ├── profile/
-│   │   ├── profile.go          — Profile + LLMConfig struct
-│   │   └── repo.go             — ProfileRepo (profiles 表 CRUD)
-│   ├── operation/mapping/
-│   │   ├── mapping.go          — Mapping 类型 + Validate + CacheRow
-│   │   ├── mapper.go           — Execute + generate + LLM 调用
-│   │   ├── prompt.go           — LLM Prompt (/nothink)
-│   │   └── repo.go             — MappingRepo (mapping_cache 表 CRUD)
-│   ├── rpc/
-│   │   ├── method.go           — MethodHandler 类型
-│   │   ├── server.go           — JSON-RPC Server
-│   │   ├── mapping_handler.go  — mapping.generate
-│   │   └── profile_handler.go  — profile.*
-│   ├── store/db.go             — SQLite 连接管理
-│   ├── notify/                 — 通知服务
-│   ├── agents/                 — 保留 (orchestrator 依赖)
-│   └── orchestrator/           — 保留 (待讨论)
+│   ├── domain/                    — 领域层 (零外部依赖)
+│   │   ├── profile/
+│   │   │   ├── profile.go         — Profile 实体 + LLMConfig + ParseLLMConfig
+│   │   │   └── repository.go      — ProfileRepository 接口
+│   │   └── mapping/
+│   │       ├── mapping.go         — Mapping 值对象 + Validate + Calc*
+│   │       ├── repository.go      — CacheRepository 接口
+│   │       ├── service.go         — MappingService + LLMClient 接口 + Execute
+│   │       └── prompt.go          — BuildMappingPrompt (返回 string)
+│   ├── infra/                     — 基础设施层
+│   │   ├── store/db.go            — SQLite 连接管理
+│   │   ├── repo/
+│   │   │   ├── profile.go         — SQLiteProfileRepo (实现 ProfileRepository)
+│   │   │   └── mapping.go         — SQLiteCacheRepo (实现 CacheRepository)
+│   │   └── llm/openai.go          — openaiClient (实现 LLMClient)
+│   ├── delivery/rpc/              — 接口层
+│   │   ├── method.go              — MethodHandler 类型
+│   │   ├── server.go              — JSON-RPC Server
+│   │   ├── handler_mapping.go     — mapping.generate
+│   │   └── handler_profile.go     — profile.*
+│   ├── app/run.go                 — 依赖注入 (domain → infra → delivery)
+│   ├── config/config.go           — TOML 配置结构体
+│   └── logger/                    — zap 日志
 ├── tests/
 │   ├── unit/
-│   │   ├── extract/            — JSON 提取测试
-│   │   └── operation/mapping/  — Mapping 校验测试
-│   └── integration/            — 全链路 JSON-RPC 测试
+│   │   ├── extract/               — JSON 提取测试
+│   │   └── domain/mapping/        — Mapping 校验测试
+│   └── integration/               — 全链路 JSON-RPC 测试
 ├── docs/
-│   └── api.md                  — API 参考文档
+│   └── api.md                     — API 参考文档
 └── README.md
 ```
+
+### 6.1 分层依赖规则
+
+- **domain** → stdlib + `pkg/` 纯工具 (hash, extract, jsonrpc)
+- **infra** → domain 接口, 第三方库 (sqlite, eino)
+- **delivery** → domain 接口
+- **app** → domain + infra + delivery, 负责组装
+
+不允许反向依赖: infra/delivery 不依赖 app; app 不依赖其他层具体实现。
+
+### 6.2 关键设计决策
+
+| 决策 | 说明 |
+|------|------|
+| LLMClient 接口定义在 domain | 服务层定义接口, infra 隐式实现, 不重复定义 |
+| ExecuteRequest.ProfileID string | 跨聚合通过 ID 引用, 不传实体对象 |
+| BuildMappingPrompt 返回 string | domain 不导入 eino/schema, infra 负责构造 Message |
+| LLMClientFactory 注入 handler | app 层注入, handler 不导入 infra/llm |
+| CacheRepository 返回 *Mapping | 接口返回领域类型, 不暴露 DTO |
+| CacheRow (cacheRow) 小写 | infra 内部实现细节, 不导出 |
 
 ## 7. 测试
 
 ```bash
-go test ./tests/... -count=1
+go test ./... -count=1
 ```
 
 ## 8. API 列表

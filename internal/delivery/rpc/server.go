@@ -13,8 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Server 实现 JSON-RPC 2.0 HTTP 服务.
-// 方法通过 Register() 注册, dispatch 时按 method 名称精确查找.
 type Server struct {
 	cfg     config.ServerConfig
 	methods map[string]MethodHandler
@@ -53,7 +51,6 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
-// handleRPC 解析 JSON-RPC 2.0 请求, 校验 id 类型必须为 string.
 func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -82,7 +79,6 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 	s.writeResponse(w, resp)
 }
 
-// dispatch 按 method 名称精确查找并调用处理函数.
 func (s *Server) dispatch(id string, method string, params json.RawMessage) jsonrpc.Response {
 	logger.L().Info("rpc request",
 		zap.String("id", id),

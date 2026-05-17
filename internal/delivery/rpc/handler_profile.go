@@ -3,17 +3,15 @@ package rpc
 import (
 	"encoding/json"
 
+	"kgbrain/internal/domain/mapping"
+	"kgbrain/internal/domain/profile"
 	"kgbrain/internal/logger"
-	"kgbrain/internal/operation/mapping"
-	"kgbrain/internal/profile"
 	"kgbrain/pkg/jsonrpc"
 
 	"go.uber.org/zap"
 )
 
-// RegisterProfileMethods 注册 profile.* 方法.
-func RegisterProfileMethods(s *Server, profileRepo *profile.Repo, mappingRepo *mapping.MappingRepo) {
-	// profile.set: 创建或更新 profile. llm/config 存为 JSON 字符串, 不做校验 (由调用方保证格式).
+func RegisterProfileMethods(s *Server, profileRepo profile.ProfileRepository, cacheRepo mapping.CacheRepository) {
 	hSet := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string          `json:"profile_id"`
@@ -34,7 +32,7 @@ func RegisterProfileMethods(s *Server, profileRepo *profile.Repo, mappingRepo *m
 		if len(req.Notify) > 0 {
 			p.NotifyConfig = string(req.Notify)
 		}
-		if err := profileRepo.Set(p); err != nil {
+		if err := profileRepo.Save(p); err != nil {
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "db write failed", err.Error())
 		}
 
@@ -43,7 +41,6 @@ func RegisterProfileMethods(s *Server, profileRepo *profile.Repo, mappingRepo *m
 			"profile_id": req.ProfileID,
 		})
 	}
-	// profile.get: 查询 profile, 不存在时返回 -32004.
 	hGet := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string `json:"profile_id"`
@@ -68,7 +65,6 @@ func RegisterProfileMethods(s *Server, profileRepo *profile.Repo, mappingRepo *m
 			"updated_at":    p.UpdatedAt,
 		})
 	}
-	// profile.delete: 删除 profile 并级联清空关联的 mapping_cache.
 	hDel := func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID string `json:"profile_id"`
@@ -82,8 +78,7 @@ func RegisterProfileMethods(s *Server, profileRepo *profile.Repo, mappingRepo *m
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "db delete failed", err.Error())
 		}
 
-		// 级联清理 mapping_cache: profile 删除后, 关联的缓存成为孤儿数据, 一并清理
-		if err := mappingRepo.ClearByProfile(req.ProfileID); err != nil {
+		if err := cacheRepo.ClearByProfile(req.ProfileID); err != nil {
 			logger.L().Warn("profile delete: clear mapping cache", zap.Error(err))
 		}
 

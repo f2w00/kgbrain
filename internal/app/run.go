@@ -6,11 +6,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"kgbrain/internal/config"
+	"kgbrain/internal/domain/mapping"
+	"kgbrain/internal/domain/profile"
+	"kgbrain/internal/infra/llm"
+	"kgbrain/internal/infra/repo"
+	"kgbrain/internal/infra/store"
+	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/logger"
-	"kgbrain/internal/operation/mapping"
-	"kgbrain/internal/profile"
-	"kgbrain/internal/rpc"
-	"kgbrain/internal/store"
 
 	"go.uber.org/zap"
 )
@@ -31,7 +33,7 @@ func Run(args []string) error {
 	return rootCmd.Execute()
 }
 
-// runWithConfig 加载配置并启动 server. 依赖注入链: store → profileRepo → mappingRepo → mapper → server.
+// runWithConfig 加载配置并启动 server. 依赖注入链: store → profileRepo → cacheRepo → mappingService → server.
 func runWithConfig(cfgFile string) error {
 	var cfg config.Config
 	if err := config.Load(&cfg, cfgFile); err != nil {
@@ -48,21 +50,27 @@ func runWithConfig(cfgFile string) error {
 		return fmt.Errorf("open store: %w", err)
 	}
 
-	profileRepo, err := profile.NewRepo(sqlDB)
+	profileRepo, err := repo.NewProfileRepo(sqlDB)
 	if err != nil {
 		return fmt.Errorf("init profile repo: %w", err)
 	}
 
-	mappingRepo, err := mapping.NewMappingRepo(sqlDB)
+	cacheRepo, err := repo.NewCacheRepo(sqlDB)
 	if err != nil {
-		return fmt.Errorf("init mapping repo: %w", err)
+		return fmt.Errorf("init cache repo: %w", err)
 	}
 
-	mapper := mapping.NewMapper(mappingRepo)
+	mappingService := mapping.NewService(cacheRepo)
+
+	llmFactory := func(baseURL, apiKey, model string) (mapping.LLMClient, error) {
+		return llm.NewClient(baseURL, apiKey, model)
+	}
+
+	var _ profile.ProfileRepository = profileRepo
 
 	server := rpc.New(cfg.Server)
-	rpc.RegisterProfileMethods(server, profileRepo, mappingRepo)
-	rpc.RegisterMappingMethods(server, mapper, profileRepo)
+	rpc.RegisterProfileMethods(server, profileRepo, cacheRepo)
+	rpc.RegisterMappingMethods(server, mappingService, profileRepo, llmFactory)
 
 	logger.L().Info("server ready", zap.String("address", cfg.Server.Address))
 	return server.Start()

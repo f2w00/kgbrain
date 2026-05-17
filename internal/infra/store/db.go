@@ -7,9 +7,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// Open 打开/创建 SQLite 数据库并执行 PRAGMA 配置.
-// pragmas 由外部传入, 支持自定义配置.
-// 返回的 *sql.DB 可跨多个 repository 共享.
 func Open(path string, pragmas []string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {

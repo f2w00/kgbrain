@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"kgbrain/internal/operation/mapping"
-	"kgbrain/internal/profile"
+	"kgbrain/internal/domain/mapping"
+	"kgbrain/internal/domain/profile"
 	"kgbrain/pkg/jsonrpc"
 )
 
-// RegisterMappingMethods 注册 mapping.* 方法.
-func RegisterMappingMethods(s *Server, mapper *mapping.Mapper, profileRepo *profile.Repo) {
+func RegisterMappingMethods(s *Server, svc *mapping.MappingService, profileRepo profile.ProfileRepository, llmFactory mapping.LLMClientFactory) {
 	s.Register("mapping.generate", func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID    string         `json:"profile_id"`
@@ -36,10 +35,20 @@ func RegisterMappingMethods(s *Server, mapper *mapping.Mapper, profileRepo *prof
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile not found, call profile.set first", nil)
 		}
 
-		result, err := mapper.Execute(
+		llmCfg, err := prof.ParseLLMConfig()
+		if err != nil {
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid llm config", err.Error())
+		}
+		llmClient, err := llmFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
+		if err != nil {
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "create llm client failed", err.Error())
+		}
+
+		result, err := svc.Execute(
 			context.Background(),
+			llmClient,
 			&mapping.ExecuteRequest{
-				Profile:      prof,
+				ProfileID:    prof.ID,
 				Example:      req.Example,
 				TargetFields: req.TargetFields,
 				Refresh:      req.Refresh,
