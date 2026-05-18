@@ -1,4 +1,4 @@
-# KGC Enrich 图片处理优化方案讨论
+# KGC Enrich 图片处理优化方案
 
 > 讨论时间: 2026-05-18
 > 状态: 待实施
@@ -15,94 +15,145 @@
 
 ## 问题分析
 
-### 上下文占用组成
+### 两个不同的空间占用
 
-| 1: base64 文本大小
+| 类型 | 来源 | 对 LLM 的影响 |
+|---|---|---|
+| **请求体大小** | base64 编码后文本长度 | HTTP 传输带宽, 到达 LLM 后不占 token 窗口 |
+| **Token 窗口** | 分辨率决定 tile 数量 | 直接占用上下文窗口 |
 
-base64 编码将二进制膨胀约 33%。JPEG Q95 的 2MB 照片 → ~2.7MB 文本。
+**关键认知修正**：Token 计费不按 base64 文本长度, 只按分辨率决定的 tile 数量。
 
-### 上下文占用 2: LLM 图片 Token
-
-图片 Token 由**分辨率**决定, 而非 base64 大小。主流计价规则:
+### LLM 图片 Token 计价规则
 
 | 模型 | 规则 | 说明 |
 |---|---|---|
-| OpenAI GPT-4o | 按 512×512 tile 切分 | Low: 85 token; High: ~85 + n×170 |
+| OpenAI GPT-4o | 按 512×512 tile 切分 | Low: 85 token 固定; High: 85 + n×170 |
 | Google Gemini | 固定 default tokens | Gemini 3.1: 1120 token/图 |
 | DeepSeek-VL | 按分辨率比例 | 类似 OpenAI tiling |
 
+### Detail 等级对比 (OpenAI 系)
+
+| Detail | 1024×768 图 token | 4K 窗口行数 |
+|---|---|---|
+| **Low** | **85** | **~27**~36行** |
+| High | ~765 (4 tiles) | ~4 行 |
+
+当前已实施 Detail=Low (`prompt.go:120`)。
+
 ---
 
-## 讨论的优化手段
+## 最终方案: JPEG 缩放 + 目标尺寸压缩
 
-### 1. 统一转 JPEG + 降低 Quality (零新依赖)
+### 选定方案
 
-用标准库 `image/jpeg`, 解码后以更低 quality 重编码:
+只做两项, 顺序不可再 tech stack 工作量:
 
-```go
-jpeg.Encode(&buf, src, &jpeg.Options{Quality: 70})
-```
-
-效果:
-
-| 原始 quality | 重编码 Q70 | base64 节省 |
+| 步骤 | 操作 | 依赖 |
 |---|---|---|
-| 95 (相机默认) | 70 | ~5x |
-| PNG 无压缩 | 70 | ~10x |
+| ① 缩放最长边 ≤ 1024px | `draw.ApproxBiLinear.Scale` | `golang.org/x/image/draw` (+1 依赖) |
+| ② 目标尺寸循环 compress | `image/jpeg.Encode` +循环降 quality | 标准库 |
 
-### 2. PNG 转 JPEG (叠白底)
+**不换格式**。JPEG 就是最合适的选型：
+- Go 标准库原生 encoding, 零额外依赖
+- WebP/AVIF 需要 CGO, 引入跨平台编译风险
+- Token 按 tile 计费, 换格式对窗口无收益
 
-文物照片 (青花瓷瓶) 本质是照片, PNG 选型不当。统一转 JPEG:
+### 完整处理链路
 
-```go
-dst := image.NewRGBA(src.Bounds())
-draw.Draw(dst, dst.Bounds(), image.White, image.Point{}, draw.Src)
-draw.Draw(dst, dst.Bounds(), src, src.Bounds(), draw.Over)
-jpeg.Encode(&buf, dst, &jpeg.Options{Q: 70})
+```
+用户传 data:image/xxx;base64,...
+  → 解析 data URI, 提取 MIME + base64 数据
+  → base64 decode
+  → image.Decode (支持 JPEG/PNG/WebP/GIF)
+  → 如有 Alpha → 叠白底 (PNG 兼容)
+  → draw.ApproxBiLinear.Scale (最长边 1024px)
+  → 循环 quality 降级至 ≤200KB
+  → jpeg.Encode(Quality)
+  → base64 encode → data:image/jpeg;base64,...
+  → 送 LLM
 ```
 
-### 3. 限制最长边 ≤ 1024px
-
-需引入 `golang.org/x/image/draw`, 用 ApproxBiLinear 缩放。
-
-几张 MB 照片 → 1024px + Q70 JPEG → ~150KB, 节省约 15 倍。
-
-### 4. 目标尺寸循环压缩 (保证窗口可控)
-
-JPEG 压缩率依赖内容复杂度, Quality 固定无法保证输出大小:
+### 关键代码组合
 
 ```go
-for quality := 80; size > 200KB && quality >= 40; quality -= 10 {
-    size = jpegEncode(img, quality)
+import (
+    "golang.org/x/image/draw"
+)
+
+func compressImage(dataURI string, maxSize int, targetBytes int) (string, error) {
+    // 1. 解析 data URI
+    comma := strings.Index(dataURI, ",")
+    if comma == -1 {
+        return dataURI, nil
+    }
+    raw, _ := base64.StdEncoding.DecodeString(dataURI[comma+1:])
+
+    // 2. 解码原始图片
+    src, _, err := image.Decode(bytes.NewReader(raw))
+    if err != nil {
+        return dataURI, nil // 解码失败, 原样放行
+    }
+
+    // 3. 叠白底 (处理 PNG 透明度)
+    dst := image.NewRGBA(src.Bounds())
+    draw.Draw(dst, dst.Bounds(), image.White, image.Point{}, draw.Src)
+    draw.Draw(dst, dst.Bounds(), src, src.Bounds(), draw.Over)
+    src = dst
+
+    // 4. 缩放最长边 ≤ maxSize
+    bounds := src.Bounds()
+    w, h := bounds.Dx(), bounds.Dy()
+    if w > maxSize || h > maxSize {
+        if w >= h {
+            h = h * maxSize / w
+            w = maxSize
+        } else {
+            w = w * maxSize / h
+            h = maxSize
+        }
+        resized := image.NewRGBA(image.Rect(0, 0, w, h))
+        draw.ApproxBiLinear.Scale(resized, resized.Bounds(), src, src.Bounds(), draw.Over, nil)
+        src = resized
+    }
+
+    // 5. 循环降 quality 至 ≤ targetBytes
+    quality := 85
+    for {
+        var buf bytes.Buffer
+        jpeg.Encode(&buf, src, &jpeg.Options{Quality: quality})
+        if buf.Len() <= targetBytes || quality <= 40 {
+            encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+            return "data:image/jpeg;base64," + encoded, nil
+        }
+        quality -= 5
+    }
 }
 ```
 
-保证每张图最终 ≤200KB, 窗口用量可精确计算。
+### 压缩效果预期
 
-### 5. Detail 等级 (已实施)
-
-`prompt.go:120` 从 `Detail: High` 改为 `Detail: Low`。
-
-| Detail | 单张 token | 4K 窗口下行数 |
+| 原始 | 处理后 | 倍数 |
 |---|---|---|
-| High | ~765 (4 tiles) | ~4 行 |
-| **Low** | **85** | **~27 行** |
+| 4032×3024, 2MB | 1024×768, ~80-150KB | **~13-25x** |
+| 3024×3024, 1.5MB | 1024×1024, ~100-180KB | **~15x** |
+| 1200×900, 500KB | 1024×768, ~120 | **~4x** |
+
+所有图片最终 ≤200KB, 边缘 case 通过循环降 quality 保证。
 
 ---
 
-## 建议实施优先级
+## 安全反思
 
-| 优先级 | 措施 | 工作量 |
-|---|---|---|
-| P0 | 已实施: Detail High → Low | 1 行 |
-| P1 | 统一转 JPEG + Q70 | ~30 行, 零新依赖 |
-| P2 | PNG 叠白底转 JPEG | ~10 行 |
-| P3 | 最长边缩放到 1024px | 需加 `golang.org/x/image` |
-| P4 | 目标尺寸循环压缩 | ~20 行 |
+- 不涉及敏感信息泄露 —— 图片本身由用户提供
+- 不涉及越权 —— 只做本地内存压缩, 不写磁盘
+- 输入校验 —— decode 失败直接原样放行, 不会 crash
+- 无额外网络请求 —— 纯本地 CPU 处理
 
 ---
 
 ## 参考
 
-- Google Vertex AI multimodal design: 推荐统一 JPEG 格式, 确保模型兼容性
-- OpenAI token calculation: Low detail 固定 85 token, High detail 按 512px tiles 计费
+- Google Vertex AI multimodal docs: 推荐统一 JPEG 格式
+- OpenAI vision docs: Low detail 固定 85 token, tile 计费规则
+- `golang.org/x/image/draw`: ApproxBiLinear 推荐用于缩放的 speed/quality 平衡
