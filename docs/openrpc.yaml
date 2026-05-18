@@ -167,13 +167,9 @@ methods:
               targets:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    field:
-                      type: string
-                    prompt:
-                      type: string
-                  required: [field]
+                  type: string
+                minItems: 1
+                description: "目标字段名列表，服务端自动生成 prompt"
             required: [source_type, targets]
           minItems: 1
         required: true

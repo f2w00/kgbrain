@@ -67,9 +67,9 @@ func (s *EnrichService) Execute(ctx context.Context, llm LLMClient, req *Request
 			continue
 		}
 		for _, t := range req.Tasks {
-			for _, tg := range t.Targets {
-				if v, ok := rowResult[tg.Field]; ok {
-					req.Data[i][tg.Field] = v
+			for _, targetField := range t.Targets {
+				if v, ok := rowResult[targetField]; ok {
+					req.Data[i][targetField] = v
 					enrichedCount++
 				}
 			}

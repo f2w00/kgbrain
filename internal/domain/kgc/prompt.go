@@ -25,44 +25,71 @@ func BuildMessages(req *Request) ([]*schema.Message, error) {
 	}, nil
 }
 
-// buildSystemPrompt 构建系统提示词
-// 包含: 角色定义 + 目标字段说明 (去重) + 示例数据 + 输出格式要求
-func buildSystemPrompt(req *Request) string {
-	// 收集目标字段说明, 去重
-	var targetLines []string
-	targetSet := make(map[string]bool)
-	for _, t := range req.Tasks {
-		for _, tg := range t.Targets {
-			if !targetSet[tg.Field] {
-				targetLines = append(targetLines, fmt.Sprintf("- %s: %s", tg.Field, tg.Prompt))
-				targetSet[tg.Field] = true
-			}
+// resolvePrompt 根据 task 定义自动生成字段说明
+// text 任务: "从{title}推断{dynasty}"
+// image 任务: "从{image_url}中识别{color}"
+func resolvePrompt(sourceType string, sourceFields []string, sourceField string, targetField string) string {
+	switch sourceType {
+	case "text":
+		paths := make([]string, len(sourceFields))
+		for i, f := range sourceFields {
+			paths[i] = fmt.Sprintf("{%s}", f)
 		}
+		return fmt.Sprintf("从%s推断{%s}", strings.Join(paths, "、"), targetField)
+	case "image":
+		return fmt.Sprintf("从{%s}中识别{%s}", sourceField, targetField)
+	default:
+		return fmt.Sprintf("补全{%s}", targetField)
+	}
+}
+
+// buildSystemPrompt 构建系统提示词
+// 包含: 角色定义 + 按 task 分组的目标字段说明 + 示例数据 + 输出格式要求
+func buildSystemPrompt(req *Request) string {
+	var taskLines []string
+	for i, t := range req.Tasks {
+		targetLines := make([]string, len(t.Targets))
+		for j, tg := range t.Targets {
+			prompt := resolvePrompt(t.SourceType, t.SourceFields, t.SourceField, tg)
+			targetLines[j] = fmt.Sprintf("    - {%s}: %s", tg, prompt)
+		}
+
+		var sources string
+		switch t.SourceType {
+		case "text":
+			srcs := make([]string, len(t.SourceFields))
+			for j, f := range t.SourceFields {
+				srcs[j] = fmt.Sprintf("{%s}", f)
+			}
+			sources = strings.Join(srcs, "、")
+		case "image":
+			sources = fmt.Sprintf("{%s}", t.SourceField)
+		}
+
+		typeLabel := "文本"
+		if t.SourceType == "image" {
+			typeLabel = "图片"
+		}
+		taskLines = append(taskLines, fmt.Sprintf(
+			"\n任务 %d (%s分析):\n  源字段: %s\n  目标字段:\n%s",
+			i+1, typeLabel, sources, strings.Join(targetLines, "\n")))
 	}
 
-	// 示例数据, 用于指导 LLM 输出格式
 	var exampleJSON string
 	if len(req.Examples) > 0 {
 		b, _ := json.Marshal(req.Examples)
 		exampleJSON = string(b)
 	}
 
-	return fmt.Sprintf(`你是一个数据补全助手。根据提供的文本和图片源数据，补全每行的目标字段。
-
-目标字段说明：
+	return fmt.Sprintf(
+		`你是一个数据补全助手。根据提供的文本和图片源数据，补全每行的目标字段。
 %s
 
-示例：
+请输出 JSON 数组，每行一个元素，包含所有目标字段。示例：
 %s
 
-请严格按 JSON 数组格式返回每行的补全结果，每个元素只包含目标字段：
-[{"field1": "value1", "field2": "value2"}, ...]
-
-不要添加任何多余的解释。只输出符合格式的 JSON。
-/nothink`,
-		strings.Join(targetLines, "\n"),
-		exampleJSON,
-	)
+不要添加任何多余的解释。
+/nothink`, strings.Join(taskLines, ""), exampleJSON)
 }
 
 // buildUserContent 构建用户消息的多模态内容部分
@@ -117,7 +144,7 @@ func buildUserContent(req *Request) []schema.MessageInputPart {
 						MessagePartCommon: schema.MessagePartCommon{
 							URL: &imgStrCopy,
 						},
-						Detail: schema.ImageURLDetailHigh,
+						Detail: schema.ImageURLDetailLow,
 					},
 				})
 			}

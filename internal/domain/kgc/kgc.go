@@ -13,12 +13,12 @@ type Request struct {
 }
 
 // TaskDef 定义一个补全任务
-// source_type 决定数据提取方式: text 从多个字段取值, image 从单个字段取图片
+// source_type 决定数据提取方式: text 从多个字段取值, image 从图片字段取图片
 type TaskDef struct {
 	SourceType   string   `json:"source_type"`             // "text" | "image"
 	SourceFields []string `json:"source_fields,omitempty"` // text 任务: 作为源的字段名列表
 	SourceField  string   `json:"source_field,omitempty"`  // image 任务: 图片字段名 (值为 data:image/...;base64,...)
-	Targets      []Target `json:"targets"`                 // 需要填充的目标字段
+	Targets      []string `json:"targets"`                 // 目标字段名列表，服务端自动生成 prompt
 }
 
 // Target 定义一个目标字段
@@ -51,8 +51,8 @@ func (r *Request) Validate() error {
 		if len(t.Targets) == 0 {
 			return fmt.Errorf("tasks[%d]: targets is required", i)
 		}
-		for j, tg := range t.Targets {
-			if tg.Field == "" {
+		for j, f := range t.Targets {
+			if f == "" {
 				return fmt.Errorf("tasks[%d].targets[%d]: field is required", i, j)
 			}
 		}
