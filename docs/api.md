@@ -16,6 +16,7 @@ id: `string`（必须为字符串，推荐 UUID 格式）
 - [profile.get](#profileget)
 - [profile.delete](#profiledelete)
 - [mapping.generate](#mappinggenerate)
+- [kgc.enrich](#kgcenrich)
 
 ---
 
@@ -231,15 +232,17 @@ curl -s -X POST http://localhost:8848/rpc \
 |------|------|------|------|
 | source_type | string | ✅ | `"text"` 或 `"image"` |
 | source_fields | string[] | ❌ | text 任务的源字段列表 |
-| source_field | string | ❌ | image 任务的图片字段名 |
-| targets | array | ✅ | 目标字段定义 |
+| source_field | string | ❌ | image 任务的图片字段名（值为 `data:image/...;base64,...`） |
+| targets | string[] | ✅ | 目标字段名列表，服务端自动生成 prompt |
 
-#### targets 元素
+#### targets
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| field | string | ✅ | 目标字段名 |
-| prompt | string | ❌ | 字段说明，用于指导 LLM 填充 |
+`targets` 直接传字段名字符串数组即可，无需再写 `prompt`。服务端自动生成：
+
+| source_type | 自动生成的 prompt |
+|-------------|------------------|
+| text | `从{title}推断{dynasty}` |
+| image | `从{image_url}中识别{color}` |
 
 ### 响应
 
@@ -261,10 +264,10 @@ curl -s -X POST http://localhost:8848/rpc \
       {"title":"明代青花山水纹瓶","dynasty":"明代","material":"陶瓷","image_url":"","image_desc":"青花瓷瓶，瓶身绘有山水图案","color":"蓝色、白色"}
     ],
     "tasks":[
-      {"source_type":"text","source_fields":["title"],"targets":[{"field":"dynasty","prompt":"从标题推断朝代"},{"field":"material","prompt":"从标题推断材质"}]},
-      {"source_type":"image","source_field":"image_url","targets":[{"field":"image_desc","prompt":"描述图片内容"},{"field":"color","prompt":"描述图片中的主要颜色"}]}
+      {"source_type":"text","source_fields":["title"],"targets":["dynasty","material"]},
+      {"source_type":"image","source_field":"image_url","targets":["image_desc","color"]}
     ]
-  },"id":"req_005"}'
+  },"id":"req_005":"req_005"}'
 ```
 
 ### 响应示例
@@ -276,6 +279,29 @@ curl -s -X POST http://localhost:8848/rpc \
   ],
   "enriched_count": 4
 }
+```
+
+### 内部处理流程
+
+```
+用户请求
+  │  data (源字段 + 空目标字段)
+  │  tasks (text + image)
+  │  examples (完整行)
+  ▼
+服务端组装 prompt
+  │  System: task 分组说明 + 示例（示例自动过滤，只保留目标字段）
+  │  User:  每行文本字段 + 图片（图片 Detail=Low，85 tokens/张）
+  ▼
+LLM 输出
+  │  [{"dynasty":"...","material":"...","image_desc":"...","color":"..."}]
+  │  只输出目标字段，不包含源字段（尤其避免输出 image_url base64）
+  ▼
+服务端回填
+  │  将 LLM 输出的目标字段合并到原始 data 行中
+  ▼
+返回
+  完整 data + enriched_count
 ```
 
 ### 错误
