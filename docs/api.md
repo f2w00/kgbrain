@@ -224,6 +224,7 @@ curl -s -X POST http://localhost:8848/rpc \
 | profile_id | string | ✅ | 关联的用户配置 |
 | data | array | ✅ | 待补全数据行 (≤100 行) |
 | examples | array | ❌ | 示例数据，指导 LLM 输出格式 |
+| max_image_kb | int | ❌ | 图片压缩目标大小(KB)，默认 200，设为 0 不压缩 |
 | tasks | array | ✅ | 补全任务列表 |
 
 #### tasks 元素

@@ -147,6 +147,14 @@ methods:
             type: object
         required: false
         description: 示例数据（可选）, 用于指导 LLM 输出格式
+      - name: max_image_kb
+        schema:
+          type: integer
+          minimum: 10
+          maximum: 5120
+          default: 200
+        required: false
+        description: "图片压缩目标大小(KB), 默认 200。设为 0 不压缩"
       - name: tasks
         schema:
           type: array

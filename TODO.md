@@ -5,6 +5,7 @@
 - [ ] **API key 加密存储** — `internal/profile/repo.go`
   LLMConfig 中的 api_key 当前以明文写入 SQLite。
   需增加 AES-256 加密，密钥从环境变量读取。
+- 修改缩放逻辑
 
 ## 容量
 

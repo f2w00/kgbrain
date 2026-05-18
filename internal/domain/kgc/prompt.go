@@ -1,11 +1,17 @@
 package kgc
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
+	_ "image/png"
 	"strings"
 
 	"github.com/cloudwego/eino/schema"
+	"golang.org/x/image/draw"
 )
 
 // BuildMessages 根据请求构建发给 LLM 的多模态消息
@@ -15,7 +21,7 @@ func BuildMessages(req *Request) ([]*schema.Message, error) {
 	parts := buildUserContent(req)
 
 	userMsg := &schema.Message{
-		Role: schema.User,
+		Role:                  schema.User,
 		UserInputMultiContent: parts,
 	}
 
@@ -155,12 +161,12 @@ func buildUserContent(req *Request) []schema.MessageInputPart {
 				if imgStr == "" {
 					continue
 				}
-				imgStrCopy := imgStr
+				compressed := compressImage(imgStr, req.MaxImageKB)
 				parts = append(parts, schema.MessageInputPart{
 					Type: schema.ChatMessagePartTypeImageURL,
 					Image: &schema.MessageInputImage{
 						MessagePartCommon: schema.MessagePartCommon{
-							URL: &imgStrCopy,
+							URL: &compressed,
 						},
 						Detail: schema.ImageURLDetailLow,
 					},
@@ -170,6 +176,63 @@ func buildUserContent(req *Request) []schema.MessageInputPart {
 	}
 
 	return parts
+}
+
+// compressImage 压缩图片到目标大小以内
+// 流程: 解析 data URI → decode → 叠白底 → 缩放宽高 (最长边 ≤1024px) → JPEG encode (循环降 quality)
+// dataURI 不是图片数据时原样放回
+func compressImage(dataURI string, targetKB int) string {
+	if targetKB < 0 {
+		return dataURI // 0 表示不压缩
+	}
+	_, after, ok := strings.Cut(dataURI, ",")
+	if !ok {
+		return dataURI // 不是 data URI, 原样放行
+	}
+	raw, err := base64.StdEncoding.DecodeString(after)
+	if err != nil {
+		return dataURI
+	}
+
+	src, _, err := image.Decode(bytes.NewReader(raw))
+	if err != nil {
+		return dataURI // 解码失败, 原样放行
+	}
+
+	// 叠白底 (处理 PNG 透明度)
+	dst := image.NewRGBA(src.Bounds())
+	draw.Draw(dst, dst.Bounds(), image.White, image.Point{}, draw.Src)
+	draw.Draw(dst, dst.Bounds(), src, image.Point{}, draw.Over)
+	src = dst
+
+	// 缩放最长边 ≤ 1024px
+	bounds := src.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	if w > 1024 || h > 1024 {
+		if w >= h {
+			h = h * 1024 / w
+			w = 1024
+		} else {
+			w = w * 1024 / h
+			h = 1024
+		}
+		resized := image.NewRGBA(image.Rect(0, 0, w, h))
+		draw.ApproxBiLinear.Scale(resized, resized.Bounds(), src, src.Bounds(), draw.Over, nil)
+		src = resized
+	}
+
+	// 循环降 quality 至 ≤ targetBytes
+	targetBytes := targetKB * 1024
+	quality := 85
+	for {
+		var buf bytes.Buffer
+		jpeg.Encode(&buf, src, &jpeg.Options{Quality: quality})
+		if buf.Len() <= targetBytes || quality <= 40 {
+			encoded := base64.StdEncoding.EncodeToString(buf.Bytes())
+			return "data:image/jpeg;base64," + encoded
+		}
+		quality -= 5
+	}
 }
 
 // formatValue 格式化字段值为字符串

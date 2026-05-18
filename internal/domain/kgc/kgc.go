@@ -7,9 +7,10 @@ import (
 // Request 是 kgc.enrich 的请求参数
 // 一次请求可包含多行数据 + 多个补全任务, 一次 LLM 调用完成所有补全
 type Request struct {
-	Data     []map[string]any `json:"data"`     // 待补全的数据行
-	Examples []map[string]any `json:"examples"` // 示例数据, 指导 LLM 输出格式
-	Tasks    []TaskDef        `json:"tasks"`    // 补全任务列表
+	Data       []map[string]any `json:"data"`
+	Examples   []map[string]any `json:"examples"`
+	Tasks      []TaskDef        `json:"tasks"`
+	MaxImageKB int              `json:"max_image_kb,omitempty"`
 }
 
 // TaskDef 定义一个补全任务
@@ -21,11 +22,7 @@ type TaskDef struct {
 	Targets      []string `json:"targets"`                 // 目标字段名列表，服务端自动生成 prompt
 }
 
-// Target 定义一个目标字段
-type Target struct {
-	Field  string `json:"field"`  // 目标字段名
-	Prompt string `json:"prompt"` // 字段说明, 用于指导 LLM 填充
-}
+
 
 // Result 是 kgc.enrich 的响应结果
 type Result struct {
@@ -44,6 +41,10 @@ func (r *Request) Validate() error {
 	if len(r.Tasks) == 0 {
 		return fmt.Errorf("tasks is required")
 	}
+	if r.MaxImageKB != 0 && r.MaxImageKB != -1 && (r.MaxImageKB < 10 || r.MaxImageKB > 5120) {
+		return fmt.Errorf("max_image_kb must be between 10 and 5120, or 0 to disable")
+	}
+
 	for i, t := range r.Tasks {
 		if t.SourceType != "text" && t.SourceType != "image" {
 			return fmt.Errorf("tasks[%d]: unsupported source_type %q", i, t.SourceType)
