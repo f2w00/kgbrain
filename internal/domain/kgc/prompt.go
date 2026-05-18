@@ -75,9 +75,27 @@ func buildSystemPrompt(req *Request) string {
 			i+1, typeLabel, sources, strings.Join(targetLines, "\n")))
 	}
 
+	// 收集所有目标字段, 用于过滤示例中的源字段
+	targetSet := make(map[string]bool)
+	for _, t := range req.Tasks {
+		for _, f := range t.Targets {
+			targetSet[f] = true
+		}
+	}
+
 	var exampleJSON string
 	if len(req.Examples) > 0 {
-		b, _ := json.Marshal(req.Examples)
+		filtered := make([]map[string]any, len(req.Examples))
+		for i, ex := range req.Examples {
+			row := make(map[string]any)
+			for f := range targetSet {
+				if v, ok := ex[f]; ok {
+					row[f] = v
+				}
+			}
+			filtered[i] = row
+		}
+		b, _ := json.Marshal(filtered)
 		exampleJSON = string(b)
 	}
 
@@ -85,7 +103,7 @@ func buildSystemPrompt(req *Request) string {
 		`你是一个数据补全助手。根据提供的文本和图片源数据，补全每行的目标字段。
 %s
 
-请输出 JSON 数组，每行一个元素，包含所有目标字段。示例：
+请只输出目标字段，不要包含源字段。每行输出一个 JSON 对象。示例：
 %s
 
 不要添加任何多余的解释。
