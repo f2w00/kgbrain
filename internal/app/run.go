@@ -69,6 +69,7 @@ func runWithConfig(cfgFile string) error {
 
 	// 4. 领域层: 创建 Service 实例
 	mappingService := mapping.NewService(cacheRepo)
+	contentMappingService := mapping.NewContentService(cacheRepo)
 	kgcService := kgc.NewService()
 
 	// 5. 基础设施层: LLM 客户端工厂 (两个工厂返回同一底层实例, 分别实现不同接口)
@@ -80,7 +81,7 @@ func runWithConfig(cfgFile string) error {
 	}
 
 	// 6. 用例层: 组装所有依赖
-	uc := usecase.New(profileRepo, mappingService, llmFactory, kgcService, kgcFactory)
+	uc := usecase.New(profileRepo, mappingService, contentMappingService, llmFactory, kgcService, kgcFactory)
 
 	// 7. 接口层: 参数校验器 (基于 OpenRPC YAML)
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
@@ -96,6 +97,7 @@ func runWithConfig(cfgFile string) error {
 	}
 	handlers.RegisterProfileMethods(server, uc)
 	handlers.RegisterMappingMethods(server, uc)
+	handlers.RegisterContentMappingMethods(server, uc)
 	handlers.RegisterKGCMethods(server, uc)
 
 	// 9. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)

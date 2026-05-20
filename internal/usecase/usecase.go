@@ -10,16 +10,18 @@ import (
 )
 
 type UseCase struct {
-	profileRepo     profile.ProfileRepository
-	mappingSvc      *mapping.MappingService
+	profileRepo       profile.ProfileRepository
+	mappingSvc        *mapping.MappingService
+	contentMappingSvc *mapping.ContentMappingService
 	mappingLLMFactory mapping.LLMClientFactory
-	enrichSvc       *kgc.EnrichService
-	enrichLLMFactory kgc.LLMClientFactory
+	enrichSvc         *kgc.EnrichService
+	enrichLLMFactory  kgc.LLMClientFactory
 }
 
 func New(
 	profileRepo profile.ProfileRepository,
 	mappingSvc *mapping.MappingService,
+	contentMappingSvc *mapping.ContentMappingService,
 	mappingLLMFactory mapping.LLMClientFactory,
 	enrichSvc *kgc.EnrichService,
 	enrichLLMFactory kgc.LLMClientFactory,
@@ -27,6 +29,7 @@ func New(
 	return &UseCase{
 		profileRepo:       profileRepo,
 		mappingSvc:        mappingSvc,
+		contentMappingSvc: contentMappingSvc,
 		mappingLLMFactory: mappingLLMFactory,
 		enrichSvc:         enrichSvc,
 		enrichLLMFactory:  enrichLLMFactory,
@@ -85,6 +88,56 @@ func (u *UseCase) GenerateMapping(
 		Example:      example,
 		TargetFields: targetFields,
 		Refresh:      refresh,
+	})
+}
+
+func (u *UseCase) ApplyContentMapping(
+	ctx context.Context,
+	profileID string,
+	topic string,
+	values []string,
+) (*mapping.ContentResult, error) {
+	prof, err := u.profileRepo.Get(profileID)
+	if err != nil {
+		return nil, err
+	}
+	if prof == nil {
+		return nil, errProfileNotFound
+	}
+
+	llmCfg, err := prof.ParseLLMConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	llmClient, err := u.mappingLLMFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.contentMappingSvc.Execute(ctx, llmClient, &mapping.ContentExecuteRequest{
+		Topic:  topic,
+		Values: values,
+	})
+}
+
+func (u *UseCase) SetContentMapping(
+	ctx context.Context,
+	profileID string,
+	topic string,
+	m mapping.ContentMapping,
+) error {
+	prof, err := u.profileRepo.Get(profileID)
+	if err != nil {
+		return err
+	}
+	if prof == nil {
+		return errProfileNotFound
+	}
+
+	return u.contentMappingSvc.Set(&mapping.ContentSetRequest{
+		Topic:   topic,
+		Mapping: m,
 	})
 }
 

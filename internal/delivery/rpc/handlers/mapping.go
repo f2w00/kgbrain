@@ -10,7 +10,7 @@ import (
 )
 
 func RegisterMappingMethods(s *rpc.Server, uc *usecase.UseCase) {
-	s.Register("mapping.generate", func(id string, params json.RawMessage) jsonrpc.Response {
+	s.Register("mapping.field", func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
 			ProfileID    string         `json:"profile_id"`
 			Example      map[string]any `json:"example"`

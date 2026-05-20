@@ -59,10 +59,10 @@ func TestProfileSetGetDelete(t *testing.T) {
 	}
 }
 
-func TestMappingGenerateNoProfile(t *testing.T) {
+func TestMappingFieldNoProfile(t *testing.T) {
 	initTestServer(t)
 
-	resp, err := rpcRequest(t, "mapping.generate", map[string]any{
+	resp, err := rpcRequest(t, "mapping.field", map[string]any{
 		"profile_id":    "no_prof",
 		"example":       map[string]any{"name": "test"},
 		"target_fields": []string{"product"},
@@ -75,10 +75,10 @@ func TestMappingGenerateNoProfile(t *testing.T) {
 	}
 }
 
-func TestMappingGenerateMissingFields(t *testing.T) {
+func TestMappingFieldMissingFields(t *testing.T) {
 	initTestServer(t)
 
-	resp, err := rpcRequest(t, "mapping.generate", map[string]any{"profile_id": "p"})
+	resp, err := rpcRequest(t, "mapping.field", map[string]any{"profile_id": "p"})
 	if err != nil {
 		t.Fatal(err)
 	}
