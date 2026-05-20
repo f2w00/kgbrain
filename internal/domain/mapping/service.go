@@ -27,10 +27,10 @@ type ExecuteRequest struct {
 }
 
 type Result struct {
-	Mapping        Mapping
-	UnmappedSource []string
-	UnfilledTarget []string
-	Cached         bool
+	Mapping        Mapping  `json:"mapping"`
+	UnmappedSource []string `json:"unmapped_source"`
+	UnfilledTarget []string `json:"unfilled_target"`
+	Cached         bool     `json:"cached"`
 }
 
 type MappingService struct {

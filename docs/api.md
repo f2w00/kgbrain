@@ -15,7 +15,9 @@ id: `string`（必须为字符串，推荐 UUID 格式）
 - [profile.set](#profileset)
 - [profile.get](#profileget)
 - [profile.delete](#profiledelete)
-- [mapping.generate](#mappinggenerate)
+- [mapping.field](#mappingfield)
+- [mapping.content](#mappingcontent)
+- [mapping.content.set](#mappingcontentset)
 - [kgc.enrich](#kgcenrich)
 
 ---
@@ -148,11 +150,11 @@ curl -s -X POST http://localhost:8848/rpc \
 
 ---
 
-## mapping.generate
+## mapping.field
 
 根据示例数据推导源字段到目标字段的映射关系。
 
-一次 LLM 调用后缓存结果（按 `profile_id + 字段组合`），相同字段组合再次请求直接从缓存返回。
+一次 LLM 调用后缓存结果（按 `字段组合`），相同字段组合再次请求直接从缓存返回。
 设置 `refresh: true` 可跳过缓存，强制重新生成并覆盖旧缓存。
 
 ### 请求
@@ -181,7 +183,7 @@ curl -s -X POST http://localhost:8848/rpc \
 
 ```bash
 curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"mapping.generate","params":{
+  -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代","material":"陶瓷"},
     "target_fields":["product_name","dynasty","material_type"],
@@ -211,7 +213,195 @@ curl -s -X POST http://localhost:8848/rpc \
 
 ---
 
+## mapping.content
+
+按 topic 查询内容映射表。未命中的值自动调 LLM 映射并缓存。返回该 topic 的完整映射表。
+
+如果传入 `targets` 参数，会使用该目标值列表并持久化；如果未传，则从存储中读取该 topic 的目标值。
+如果 targets 未设置且未传入，返回错误。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| topic | string | ✅ | 映射主题 (如 dynasty, location) |
+| values | string[] | ✅ | 需要映射的源值列表 |
+| targets | string[] | ❌ | 目标值列表。传入时会使用该列表并持久化；未传时从存储读取 |
+
+### 响应
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| topic | string | 映射主题 |
+| mapping | object | 完整内容映射表 {源值: 目标值} |
+
+### 示例
+
+```bash
+# 先设置目标值
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content.targets.set","params":{
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "targets":["唐","宋","明","清"]
+  },"id":"req_004a"}'
+
+# 再查询映射（不传 targets，从存储读取）
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content","params":{
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "values":["唐朝","宋朝","元朝"]
+  },"id":"req_004b"}'
+
+# 或直接传入 targets（会隐式持久化）
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content","params":{
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "values":["唐朝","宋朝"],
+    "targets":["唐","宋","明","清"]
+  },"id":"req_004c"}'
+```
+
+### 响应示例
+
+```json
+{
+  "topic": "dynasty",
+  "mapping": {
+    "唐朝": "唐",
+    "宋朝": "宋",
+    "元朝": "元"
+  }
+}
+```
+
+### 错误
+
+- `-32602`: profile 不存在 / targets 未设置
+- `-32603`: LLM 调用失败
+
 ---
+
+## mapping.content.targets.set
+
+设置指定 topic 的目标值列表。LLM 映射时会将源值映射到这些目标值之一。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| topic | string | ✅ | 映射主题 (如 dynasty, location) |
+| targets | string[] | ✅ | 目标值列表 (如 ["唐", "宋", "明", "清"]) |
+
+### 响应
+
+```json
+{
+  "success": true
+}
+```
+
+### 示例
+
+```bash
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content.targets.set","params":{
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "targets":["唐","宋","明","清"]
+  },"id":"req_006"}'
+```
+
+### 错误
+
+- `-32602`: profile 不存在
+- `-32603`: 存储失败
+
+---
+
+## mapping.content.targets.get
+
+获取指定 topic 的目标值列表。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| topic | string | ✅ | 映射主题 (如 dynasty, location) |
+
+### 响应
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| topic | string | 映射主题 |
+| targets | string[] | 目标值列表 |
+
+### 响应示例
+
+```json
+{
+  "topic": "dynasty",
+  "targets": ["唐", "宋", "明", "清"]
+}
+```
+
+### 示例
+
+```bash
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content.targets.get","params":{
+    "profile_id":"demo",
+    "topic":"dynasty"
+  },"id":"req_007"}'
+```
+
+### 错误
+
+- `-32602`: profile 不存在
+- `-32603`: 查询失败
+
+---
+
+## mapping.content.set
+
+设置或更新指定 topic 的完整内容映射表。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| topic | string | ✅ | 映射主题 (如 dynasty, location) |
+| mapping | object | ✅ | 内容映射表 {源值: 目标值} |
+
+### 响应
+
+```json
+{
+  "success": true
+}
+```
+
+### 示例
+
+```bash
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"mapping.content.set","params":{
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "mapping":{"唐朝":"唐","宋朝":"宋","明朝":"明"}
+  },"id":"req_005"}'
+```
+
+### 错误
+
+- `-32602`: profile 不存在
+- `-32603`: 存储失败
 
 ## kgc.enrich
 
@@ -328,13 +518,37 @@ rpc("profile.set", {
     "llm":{"base_url":"http://localhost:8000/v1","api_key":"sk-xxx","model":"qwen2.5"}
 })
 
-# 生成映射
-resp = rpc("mapping.generate", {
+# 生成字段映射
+resp = rpc("mapping.field", {
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代"},
     "target_fields":["name","dynasty"]
 })
 mapping = resp["result"]["mapping"]
+
+# 内容映射（先设置目标值）
+rpc("mapping.content.targets.set", {
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "targets":["唐","宋","明","清"]
+})
+
+# 再查询映射（不传 targets，从存储读取）
+resp = rpc("mapping.content", {
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "values":["唐朝","宋朝"]
+})
+content_mapping = resp["result"]["mapping"]
+
+# 或直接传入 targets（会隐式持久化）
+resp = rpc("mapping.content", {
+    "profile_id":"demo",
+    "topic":"dynasty",
+    "values":["唐朝","宋朝"],
+    "targets":["唐","宋","明","清"]
+})
+content_mapping = resp["result"]["mapping"]
 
 # 批量应用
 rows = [{"title":"青花瓷瓶","era":"明代"}, {"title":"铜鼎","era":"商代"}]

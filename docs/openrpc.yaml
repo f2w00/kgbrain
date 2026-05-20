@@ -78,10 +78,10 @@ methods:
       - code: -32603
         message: Internal error
 
-  - name: mapping.generate
+  - name: mapping.field
     summary: 生成字段映射关系
     description: |
-      根据示例数据推导源字段到目标字段的映射关系。一次 LLM 调用后缓存结果 (按 profile_id + 字段组合), 相同字段组合再次请求直接从缓存返回。设置 refresh: true 可跳过缓存, 强制重新生成并覆盖旧缓存。
+      根据示例数据推导源字段到目标字段的映射关系。一次 LLM 调用后缓存结果 (按字段组合), 相同字段组合再次请求直接从缓存返回。设置 refresh: true 可跳过缓存, 强制重新生成并覆盖旧缓存。
     params:
       - name: profile_id
         schema:
@@ -112,7 +112,148 @@ methods:
     result:
       name: result
       schema:
-        $ref: "#/components/schemas/MappingResult"
+        $ref: "#/components/schemas/FieldMappingResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+  - name: mapping.content
+    summary: 查询并自动补全内容映射
+    description: |
+      按 topic 查询内容映射表。未命中的值自动调 LLM 映射并缓存。返回该 topic 的完整映射表。
+      如果传入 targets 参数，会使用该目标值列表并持久化；如果未传，则从存储中读取该 topic 的目标值。
+      如果 targets 未设置且未传入，返回错误。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: topic
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 映射主题 (如 dynasty, location)
+      - name: values
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        required: true
+        description: 需要映射的源值列表
+      - name: targets
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        required: false
+        description: 目标值列表。传入时会使用该列表并持久化；未传时从存储读取
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ContentMappingResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+  - name: mapping.content.set
+    summary: 设置/更新内容映射表
+    description: |
+      设置或更新指定 topic 的完整内容映射表。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: topic
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 映射主题 (如 dynasty, location)
+      - name: mapping
+        schema:
+          type: object
+          additionalProperties:
+            type: string
+        required: true
+        description: 内容映射表 {源值: 目标值}
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ContentMappingSetResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+  - name: mapping.content.targets.set
+    summary: 设置内容映射目标值
+    description: |
+      设置指定 topic 的目标值列表。LLM 映射时会将源值映射到这些目标值之一。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: topic
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 映射主题 (如 dynasty, location)
+      - name: targets
+        schema:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        required: true
+        description: 目标值列表 (如 ["唐", "宋", "明", "清"])
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ContentMappingSetResult"
+    errors:
+      - code: -32602
+        message: Invalid params
+      - code: -32603
+        message: Internal error
+
+  - name: mapping.content.targets.get
+    summary: 获取内容映射目标值
+    description: |
+      获取指定 topic 的目标值列表。
+    params:
+      - name: profile_id
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 关联的用户配置
+      - name: topic
+        schema:
+          type: string
+          minLength: 1
+        required: true
+        description: 映射主题 (如 dynasty, location)
+    result:
+      name: result
+      schema:
+        $ref: "#/components/schemas/ContentMappingTargetsResult"
     errors:
       - code: -32602
         message: Invalid params
@@ -231,7 +372,7 @@ components:
           type: string
       required: [status, profile_id]
 
-    MappingResult:
+    FieldMappingResult:
       type: object
       properties:
         mapping:
@@ -255,6 +396,40 @@ components:
           type: boolean
           description: 是否来自缓存
       required: [mapping, unmapped_source, unfilled_target, cached]
+
+    ContentMappingResult:
+      type: object
+      properties:
+        topic:
+          type: string
+          description: 映射主题
+        mapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: 完整内容映射表 {源值: 目标值}
+      required: [topic, mapping]
+
+    ContentMappingSetResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 设置是否成功
+      required: [success]
+
+    ContentMappingTargetsResult:
+      type: object
+      properties:
+        topic:
+          type: string
+          description: 映射主题
+        targets:
+          type: array
+          items:
+            type: string
+          description: 目标值列表
+      required: [topic, targets]
 
     KGCEnrichResult:
       type: object

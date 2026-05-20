@@ -7,18 +7,20 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/spf13/cobra"
 
+	"kgbrain/internal/application/kgc"
+	"kgbrain/internal/application/mapping"
+	"kgbrain/internal/application/profile"
 	"kgbrain/internal/config"
 	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/delivery/rpc/handlers"
-	"kgbrain/internal/domain/kgc"
-	"kgbrain/internal/domain/mapping"
-	"kgbrain/internal/domain/profile"
+	domainkgc "kgbrain/internal/domain/kgc"
+	domainmapping "kgbrain/internal/domain/mapping"
+	domainprofile "kgbrain/internal/domain/profile"
 	"kgbrain/internal/infra/llm"
 	"kgbrain/internal/infra/middleware"
 	"kgbrain/internal/infra/repo"
 	"kgbrain/internal/infra/store"
 	"kgbrain/internal/logger"
-	"kgbrain/internal/usecase"
 
 	"go.uber.org/zap"
 )
@@ -68,20 +70,22 @@ func runWithConfig(cfgFile string) error {
 	}
 
 	// 4. 领域层: 创建 Service 实例
-	mappingService := mapping.NewService(cacheRepo)
-	contentMappingService := mapping.NewContentService(cacheRepo)
-	kgcService := kgc.NewService()
+	mappingDomainSvc := domainmapping.NewService(cacheRepo)
+	contentMappingDomainSvc := domainmapping.NewContentService(cacheRepo)
+	kgcDomainSvc := domainkgc.NewService()
 
 	// 5. 基础设施层: LLM 客户端工厂 (两个工厂返回同一底层实例, 分别实现不同接口)
-	llmFactory := func(baseURL, apiKey, model string) (mapping.LLMClient, error) {
+	mappingLLMFactory := func(baseURL, apiKey, model string) (domainmapping.LLMClient, error) {
 		return llm.NewClient(baseURL, apiKey, model)
 	}
-	kgcFactory := func(baseURL, apiKey, model string) (kgc.LLMClient, error) {
+	kgcLLMFactory := func(baseURL, apiKey, model string) (domainkgc.LLMClient, error) {
 		return llm.NewClient(baseURL, apiKey, model)
 	}
 
-	// 6. 用例层: 组装所有依赖
-	uc := usecase.New(profileRepo, mappingService, contentMappingService, llmFactory, kgcService, kgcFactory)
+	// 6. 应用层: 组装所有依赖
+	profileAppSvc := profile.NewService(profileRepo)
+	mappingAppSvc := mapping.NewService(profileRepo, mappingDomainSvc, contentMappingDomainSvc, mappingLLMFactory)
+	kgcAppSvc := kgc.NewService(profileRepo, kgcDomainSvc, kgcLLMFactory)
 
 	// 7. 接口层: 参数校验器 (基于 OpenRPC YAML)
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
@@ -95,10 +99,9 @@ func runWithConfig(cfgFile string) error {
 	if validator != nil {
 		handlers.RegisterSystemMethods(server, validator.OpenRPCDoc())
 	}
-	handlers.RegisterProfileMethods(server, uc)
-	handlers.RegisterMappingMethods(server, uc)
-	handlers.RegisterContentMappingMethods(server, uc)
-	handlers.RegisterKGCMethods(server, uc)
+	handlers.RegisterProfileMethods(server, profileAppSvc)
+	handlers.RegisterMappingMethods(server, mappingAppSvc)
+	handlers.RegisterKGCMethods(server, kgcAppSvc)
 
 	// 9. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
 	server.Use(middleware.DecompressBody)
@@ -120,4 +123,4 @@ func runWithConfig(cfgFile string) error {
 	return server.Start()
 }
 
-var _ profile.ProfileRepository = (*repo.ProfileRepo)(nil)
+var _ domainprofile.ProfileRepository = (*repo.ProfileRepo)(nil)

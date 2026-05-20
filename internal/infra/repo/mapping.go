@@ -43,6 +43,16 @@ func NewCacheRepo(db *sql.DB) (*CacheRepo, error) {
 		return nil, fmt.Errorf("create content_mapping table: %w", err)
 	}
 
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS content_mapping_targets (
+		topic      TEXT NOT NULL,
+		targets    TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		PRIMARY KEY (topic)
+	)`)
+	if err != nil {
+		return nil, fmt.Errorf("create content_mapping_targets table: %w", err)
+	}
+
 	return &CacheRepo{db: db}, nil
 }
 
@@ -107,5 +117,36 @@ func (r *CacheRepo) SaveContentMapping(topic string, m mapping.ContentMapping) e
 		(topic, mapping, updated_at)
 		VALUES (?, ?, ?)`,
 		topic, string(mJSON), time.Now().UTC().Format(time.RFC3339))
+	return err
+}
+
+func (r *CacheRepo) GetTargets(topic string) ([]string, error) {
+	var targetsJSON string
+	err := r.db.QueryRow(
+		`SELECT targets FROM content_mapping_targets WHERE topic = ?`, topic).
+		Scan(&targetsJSON)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var targets []string
+	if err := json.Unmarshal([]byte(targetsJSON), &targets); err != nil {
+		return nil, err
+	}
+	return targets, nil
+}
+
+func (r *CacheRepo) SaveTargets(topic string, targets []string) error {
+	tJSON, err := json.Marshal(targets)
+	if err != nil {
+		return fmt.Errorf("marshal targets: %w", err)
+	}
+	_, err = r.db.Exec(`INSERT OR REPLACE INTO content_mapping_targets
+		(topic, targets, updated_at)
+		VALUES (?, ?, ?)`,
+		topic, string(tJSON), time.Now().UTC().Format(time.RFC3339))
 	return err
 }

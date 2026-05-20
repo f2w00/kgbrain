@@ -12,8 +12,9 @@ import (
 )
 
 type ContentExecuteRequest struct {
-	Topic  string
-	Values []string
+	Topic   string
+	Values  []string
+	Targets []string
 }
 
 type ContentSetRequest struct {
@@ -21,9 +22,19 @@ type ContentSetRequest struct {
 	Mapping ContentMapping
 }
 
-type ContentResult struct {
+type TargetsSetRequest struct {
 	Topic   string
-	Mapping ContentMapping
+	Targets []string
+}
+
+type TargetsResult struct {
+	Topic   string   `json:"topic"`
+	Targets []string `json:"targets"`
+}
+
+type ContentResult struct {
+	Topic   string         `json:"topic"`
+	Mapping ContentMapping `json:"mapping"`
 }
 
 type ContentMappingService struct {
@@ -44,6 +55,22 @@ func (s *ContentMappingService) Execute(ctx context.Context, llm LLMClient, req 
 		existing = make(ContentMapping)
 	}
 
+	var targets []string
+	if len(req.Targets) > 0 {
+		targets = req.Targets
+		if err := s.repo.SaveTargets(req.Topic, targets); err != nil {
+			logger.L().Warn("save targets failed", zap.Error(err))
+		}
+	} else {
+		targets, err = s.repo.GetTargets(req.Topic)
+		if err != nil {
+			return nil, fmt.Errorf("get targets: %w", err)
+		}
+		if len(targets) == 0 {
+			return nil, fmt.Errorf("targets not set for topic %q. Use mapping.content.targets.set to set targets first", req.Topic)
+		}
+	}
+
 	var unmapped []string
 	for _, v := range req.Values {
 		if _, ok := existing[v]; !ok {
@@ -52,7 +79,6 @@ func (s *ContentMappingService) Execute(ctx context.Context, llm LLMClient, req 
 	}
 
 	if len(unmapped) > 0 {
-		targets := extractTargets(existing)
 		prompt := BuildContentMappingPrompt(req.Topic, unmapped, targets)
 		resp, err := llm.Generate(ctx, prompt)
 		if err != nil {
@@ -88,14 +114,18 @@ func (s *ContentMappingService) Set(req *ContentSetRequest) error {
 	return nil
 }
 
-func extractTargets(m ContentMapping) []string {
-	seen := make(map[string]bool)
-	var targets []string
-	for _, v := range m {
-		if !seen[v] {
-			seen[v] = true
-			targets = append(targets, v)
-		}
+func (s *ContentMappingService) SetTargets(req *TargetsSetRequest) error {
+	if err := s.repo.SaveTargets(req.Topic, req.Targets); err != nil {
+		return fmt.Errorf("save targets: %w", err)
 	}
-	return targets
+	logger.L().Info("targets set", zap.String("topic", req.Topic), zap.Int("targets", len(req.Targets)))
+	return nil
+}
+
+func (s *ContentMappingService) GetTargets(topic string) (*TargetsResult, error) {
+	targets, err := s.repo.GetTargets(topic)
+	if err != nil {
+		return nil, fmt.Errorf("get targets: %w", err)
+	}
+	return &TargetsResult{Topic: topic, Targets: targets}, nil
 }

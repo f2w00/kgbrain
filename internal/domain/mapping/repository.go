@@ -8,4 +8,6 @@ type CacheRepository interface {
 type ContentRepository interface {
 	GetContentMapping(topic string) (ContentMapping, error)
 	SaveContentMapping(topic string, m ContentMapping) error
+	GetTargets(topic string) ([]string, error)
+	SaveTargets(topic string, targets []string) error
 }
