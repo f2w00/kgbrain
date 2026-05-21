@@ -1,0 +1,17 @@
+.git
+.gitignore
+AGENTS.md
+PROJECT.md
+README.md
+TODO.md
+prompts/
+tests/
+data/
+*.db
+*.db-shm
+*.db-wal
+.vscode/
+.idea/
+*.swp
+*.swo
+*.md

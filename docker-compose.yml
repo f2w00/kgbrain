@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+    kgbrain:
+        image: 10.15.22.234:5005/kgbrain:latest
+        container_name: kgbrain
+        ports:
+            - "8848:8848"
+        volumes:
+            - ./data:/app/data
+            - ./configs:/app/configs
+        environment:
+            - TZ=Asia/Shanghai
+        restart: unless-stopped
