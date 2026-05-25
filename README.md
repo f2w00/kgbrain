@@ -28,18 +28,18 @@ curl -s -X POST http://localhost:8848/rpc \
 
 # 2. 生成字段映射
 curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"mapping.generate","params":{
+  -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代","material":"陶瓷"},
-    "target_fields":["product_name","dynasty","material_type"]
+    "target_fields":[{"product_name":"青花瓷瓶","dynasty":"明代","material_type":"陶瓷"}]
   },"id":"req_002"}'
 
 # 3. 强制刷新缓存
 curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"mapping.generate","params":{
+  -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":["product_name","dynasty"],
+    "target_fields":[{"product_name":"青花瓷瓶","dynasty":"明代"}],
     "refresh":true
   },"id":"req_003"}'
 ```
@@ -58,10 +58,10 @@ rpc("profile.set", {"profile_id":"demo", "llm":{
     "base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3"}})
 
 # 生成映射
-resp = rpc("mapping.generate", {
+resp = rpc("mapping.field", {
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":["name","dynasty"]})
+    "target_fields":[{"name":"青花瓷瓶","dynasty":"明代"}]})
 mapping = resp["result"]["mapping"]  # {"name": ["title"], "dynasty": ["era"]}
 
 # 批量应用
@@ -75,8 +75,8 @@ output = [{tgt: row[srcs[0]] for tgt, srcs in mapping.items()} for row in rows]
 |------|------|
 | `profile.set` | 创建/更新 Profile（LLM + 通知配置） |
 | `profile.get` | 查询 Profile |
-| `profile.delete` | 删除 Profile（级联清空 mapping 缓存） |
-| `mapping.generate` | 生成字段映射关系（支持 `refresh` 参数强制刷新） |
+| `profile.delete` | 删除 Profile |
+| `mapping.field` | 生成字段映射关系（支持 `refresh` 参数强制刷新） |
 
 详见 [docs/api.md](docs/api.md)。
 
@@ -94,7 +94,7 @@ output = [{tgt: row[srcs[0]] for tgt, srcs in mapping.items()} for row in rows]
 
 ## 特性
 
-- **缓存复用**：相同 `profile_id + 字段组合` 自动从缓存返回，不做二次 LLM 调用
+- **缓存复用**：相同字段组合自动从缓存返回，不做二次 LLM 调用
 - **强制刷新**：请求参数 `refresh: true` 跳过缓存，重新生成并覆盖
 - **LLM 类型安全**：`profile.LLMConfig` 命名结构体，支持 `ParseLLMConfig()` 解析
 - **纯 JSON 输出**：`response_format: json_object` + `/nothink`，确保模型输出合法 JSON

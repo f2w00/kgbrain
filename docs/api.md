@@ -163,7 +163,7 @@ curl -s -X POST http://localhost:8848/rpc \
 |------|------|------|------|
 | profile_id | string | ✅ | 关联的用户配置 |
 | example | object | ✅ | 一条示例数据，key 自动作为源字段 |
-| target_fields | string[] | ✅ | 目标字段列表 |
+| target_fields | object[] | ✅ | 目标字段示例, 单个对象, key 为目标字段名（自动提取为字段列表）, value 为示例值（注入 prompt 辅助 LLM 理解取值语义）, 如 [{"name":"李白","dynasty":"唐"}] |
 | refresh | bool | ❌ | 设为 true 时忽略缓存，强制重新生成 |
 
 ### 响应
@@ -177,7 +177,8 @@ curl -s -X POST http://localhost:8848/rpc \
 
 ### 注意事项
 
-- LLM prompt 末尾包含 `/nothink` 指令，用于禁用 Qwen3 等模型的思考模式，加快响应速度。其他模型忽略不识别的 token。|
+- LLM prompt 末尾包含 `/nothink` 指令，用于禁用 Qwen3 等模型的思考模式，加快响应速度。其他模型忽略不识别的 token。
+- `target_fields` 中每个字段的 value 会作为示例数据注入 LLM prompt，帮助模型理解目标字段期望的数据格式与取值语义，提升映射准确性。例如 value 为 "李白" 时，LLM 能推断目标字段期待人名风格的内容，而非物品名。|
 
 ### 示例
 
@@ -186,7 +187,7 @@ curl -s -X POST http://localhost:8848/rpc \
   -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代","material":"陶瓷"},
-    "target_fields":["product_name","dynasty","material_type"],
+    "target_fields":[{"product_name":"青花瓷瓶","dynasty":"明代","material_type":"陶瓷"}],
     "refresh":false
   },"id":"req_003"}'
 ```
@@ -522,7 +523,7 @@ rpc("profile.set", {
 resp = rpc("mapping.field", {
     "profile_id":"demo",
     "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":["name","dynasty"]
+    "target_fields":[{"name":"青花瓷瓶","dynasty":"明代"}]
 })
 mapping = resp["result"]["mapping"]
 

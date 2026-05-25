@@ -12,23 +12,33 @@ import (
 
 func RegisterMappingMethods(s *rpc.Server, svc *mapping.Service) {
 	s.Register("mapping.field", func(id string, params json.RawMessage) jsonrpc.Response {
-		var req struct {
-			ProfileID    string         `json:"profile_id"`
-			Example      map[string]any `json:"example"`
-			TargetFields []string       `json:"target_fields"`
-			Refresh      bool           `json:"refresh"`
-		}
-		if err := json.Unmarshal(params, &req); err != nil {
-			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
-		}
+	var req struct {
+		ProfileID    string              `json:"profile_id"`
+		Example      map[string]any      `json:"example"`
+		TargetFields []map[string]any    `json:"target_fields"`
+		Refresh      bool                `json:"refresh"`
+	}
+	if err := json.Unmarshal(params, &req); err != nil {
+		return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
+	}
 
-		result, err := svc.GenerateField(
-			context.Background(),
-			req.ProfileID,
-			req.Example,
-			req.TargetFields,
-			req.Refresh,
-		)
+	var targetNames []string
+	var targetExample map[string]any
+	if len(req.TargetFields) > 0 {
+		targetExample = req.TargetFields[0]
+		for k := range targetExample {
+			targetNames = append(targetNames, k)
+		}
+	}
+
+	result, err := svc.GenerateField(
+		context.Background(),
+		req.ProfileID,
+		req.Example,
+		targetNames,
+		targetExample,
+		req.Refresh,
+	)
 		if err != nil {
 			if err.Error() == "profile not found" {
 				return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile not found", nil)

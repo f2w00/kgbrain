@@ -13,6 +13,7 @@
 | 2026-05-17 | v3.0 | DDD 分层重构: domain/infra/delivery/app 四层; 删除废弃包 (agents/orchestrator/notify/middleware) | AI |
 | 2026-05-17 | v4.0 | OpenRPC IDL + JSON Schema 校验; UseCase 层提取; domain 设计优化 (Mapping method + Profile 工厂); handler 精简; rpc.discover 服务发现 | AI |
 | 2026-05-17 | v5.0 | 缓存改为全局共享: 移除 profile_id; CacheRepository 简化为 Get/Save; ExecuteRequest 移除 ProfileID; DeleteProfile 不再级联清理缓存 | AI |
+| 2026-05-25 | v6.0 | target_fields 格式从字符串数组改为对象数组 (key→字段名, value→LLM prompt 示例); 方法名 mapping.generate → mapping.field | AI |
 
 ## 1. 概述
 
@@ -28,22 +29,22 @@ data[1] → LLM → 标准化 JSON
 ### 改后
 
 ```
-mapping.generate {example, target_fields}
+mapping.field {example, target_fields}
     → LLM (一次) → mapping {目标→源}
     → 调用方 apply(mapping, data) 自行转换 (零 LLM 成本)
 ```
 
 ## 2. API
 
-### mapping.generate
+### mapping.field
 
 ```json
 {
-  "method": "mapping.generate",
+  "method": "mapping.field",
   "params": {
     "profile_id": "user_abc",
     "example": {"title": "青花瓷瓶", "era": "明代", "material": "陶瓷"},
-    "target_fields": ["name", "dynasty", "material_type"],
+    "target_fields": [{"name": "青花瓷瓶", "dynasty": "明代", "material_type": "陶瓷"}],
     "refresh": false
   }
 }
@@ -67,7 +68,7 @@ mapping.generate {example, target_fields}
 ## 3. 架构
 
 ```
-mapping.generate {profile_id, example, target_fields}
+mapping.field {profile_id, example, target_fields}
     │
     ├── refresh=true?
     │   ├── 是 → 跳过缓存, 直接调 LLM
@@ -130,7 +131,7 @@ kgbrain/
 │   │   ├── method.go              — MethodHandler 类型
 │   │   ├── server.go              — JSON-RPC Server + ParamsValidator
 │   │   ├── validator.go           — OpenRPC YAML 加载 + JSON Schema 校验
-│   │   ├── handler_mapping.go     — mapping.generate (精简, 依赖 UseCase)
+│   │   ├── handlers/mapping.go     — mapping.field (精简, 依赖 UseCase)
 │   │   ├── handler_profile.go     — profile.* (精简, 依赖 UseCase)
 │   │   └── handler_rpc.go         — rpc.discover 服务发现
 │   ├── usecase/                   — 用例层 (业务编排)
@@ -171,6 +172,7 @@ kgbrain/
 | CacheRepository 返回 *Mapping | 接口返回领域类型, 不暴露 DTO |
 | CacheRepository 仅 Get/Save | 全局共享缓存, 无需 ClearByProfile |
 | CacheRow (cacheRow) 小写 | infra 内部实现细节, 不导出 |
+| target_fields 格式为对象数组 | key 自动提取为目标字段名列表, value 在 prompt 中作为语义示例展示 (targetExample), 帮助 LLM 理解目标字段期望的取值 |
 | openrpc.yaml 为权威接口定义 | 机器可读 + schema 校验 + rpc.discover 服务发现 |
 | UseCase 层提取编排逻辑 | handler 只负责 unmarshal + respond, 业务编排在 usecase/usecase.go |
 | Schema 校验放 server interceptor | 不是 HTTP middleware, 在 parse 之后 dispatch 之前集中校验 |
@@ -188,4 +190,4 @@ go test ./... -count=1
 | `profile.set` | 创建/更新 Profile |
 | `profile.get` | 查询 Profile |
 | `profile.delete` | 删除 Profile |
-| `mapping.generate` | 生成字段映射关系 (支持 refresh) |
+| `mapping.field` | 生成字段映射关系 (支持 refresh) |

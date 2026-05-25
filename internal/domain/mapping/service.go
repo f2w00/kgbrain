@@ -21,9 +21,10 @@ type LLMClient interface {
 type LLMClientFactory func(baseURL, apiKey, model string) (LLMClient, error)
 
 type ExecuteRequest struct {
-	Example      map[string]any
-	TargetFields []string
-	Refresh      bool
+	Example       map[string]any
+	TargetFields  []string
+	TargetExample map[string]any
+	Refresh       bool
 }
 
 type Result struct {
@@ -64,7 +65,7 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 		}
 	}
 
-	prompt := BuildMappingPrompt(source, req.TargetFields, req.Example)
+	prompt := BuildMappingPrompt(source, req.TargetFields, req.Example, req.TargetExample)
 	resp, err := llm.Generate(ctx, prompt)
 	if err != nil {
 		return nil, fmt.Errorf("llm generate: %w", err)

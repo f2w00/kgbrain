@@ -37,6 +37,7 @@ func (s *Service) GenerateField(
 	profileID string,
 	example map[string]any,
 	targetFields []string,
+	targetExample map[string]any,
 	refresh bool,
 ) (*FieldResult, error) {
 	prof, err := s.profileRepo.Get(profileID)
@@ -58,9 +59,10 @@ func (s *Service) GenerateField(
 	}
 
 	return s.domainSvc.Execute(ctx, llmClient, &mapping.ExecuteRequest{
-		Example:      example,
-		TargetFields: targetFields,
-		Refresh:      refresh,
+		Example:       example,
+		TargetFields:  targetFields,
+		TargetExample: targetExample,
+		Refresh:       refresh,
 	})
 }
 

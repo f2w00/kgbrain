@@ -65,7 +65,7 @@ func TestMappingFieldNoProfile(t *testing.T) {
 	resp, err := rpcRequest(t, "mapping.field", map[string]any{
 		"profile_id":    "no_prof",
 		"example":       map[string]any{"name": "test"},
-		"target_fields": []string{"product"},
+		"target_fields": []map[string]any{{"product": "test"}},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -81,7 +81,7 @@ methods:
     - name: mapping.field
       summary: 生成字段映射关系
       description: |
-          根据示例数据推导源字段到目标字段的映射关系。一次 LLM 调用后缓存结果 (按字段组合), 相同字段组合再次请求直接从缓存返回。设置 refresh: true 可跳过缓存, 强制重新生成并覆盖旧缓存。
+          根据示例数据推导源字段到目标字段的映射关系。target_fields 中每个字段的 value 会注入 prompt 作为语义示例, 帮助 LLM 理解目标字段期望的取值。一次 LLM 调用后缓存结果 (按字段组合), 相同字段组合再次请求直接从缓存返回。设置 refresh: true 可跳过缓存, 强制重新生成并覆盖旧缓存。
       params:
           - name: profile_id
             schema:
@@ -99,10 +99,12 @@ methods:
             schema:
                 type: array
                 items:
-                    type: string
+                    type: object
+                    minProperties: 1
                 minItems: 1
+                maxItems: 1
             required: true
-            description: 目标字段列表
+            description: 目标字段示例, 单个对象, key 为目标字段名 (自动提取为字段列表), value 为示例值 (注入 prompt 辅助 LLM 理解取值语义), 如 [{"name":"李白","dynasty":"唐"}]
           - name: refresh
             schema:
                 type: boolean
