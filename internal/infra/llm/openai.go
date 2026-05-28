@@ -15,15 +15,18 @@ import (
 	"go.uber.org/zap"
 )
 
+// globalCMCache 包级全局缓存 ChatModel 实例, 按 (baseURL, apiKey, model) 组合复用
+var (
+	globalCMCache = make(map[string]model.BaseChatModel)
+	globalCMMu    sync.RWMutex
+)
+
 // openaiClient 封装 OpenAI 兼容的 LLM 客户端
 // 同时实现 mapping.LLMClient 和 kgc.LLMClient 两个接口
-// ChatModel 实例按 (baseURL, apiKey, model) 组合缓存, 避免重复创建
 type openaiClient struct {
 	baseURL   string
 	apiKey    string
 	modelName string
-	cmCache   map[string]model.BaseChatModel
-	mu        sync.RWMutex
 }
 
 // NewClient 创建 LLM 客户端实例
@@ -32,7 +35,6 @@ func NewClient(baseURL, apiKey, modelName string) (*openaiClient, error) {
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		modelName: modelName,
-		cmCache:   make(map[string]model.BaseChatModel),
 	}, nil
 }
 
@@ -56,9 +58,9 @@ func (c *openaiClient) GenerateMessages(ctx context.Context, msgs []*schema.Mess
 	return c.generateWithOpts(ctx, msgs)
 }
 
-// generateWithOpts 底层调用方法, 共享 ChatModel 缓存
+// generateWithOpts 底层调用方法, 使用全局 ChatModel 缓存
 func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Message, opts ...model.Option) (string, error) {
-	cm, err := c.getOrCreateCM(c.baseURL, c.apiKey, c.modelName)
+	cm, err := getOrCreateChatModel(c.baseURL, c.apiKey, c.modelName)
 	if err != nil {
 		return "", fmt.Errorf("get chat model: %w", err)
 	}
@@ -71,26 +73,26 @@ func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Mess
 	return resp.Content, nil
 }
 
-// getOrCreateCM 获取或创建 ChatModel 实例 (双重检查锁)
+// getOrCreateChatModel 获取或创建 ChatModel 实例 (双重检查锁, 包级缓存)
 // 不在模型级设置 response_format, 改为按请求传入 option
-func (c *openaiClient) getOrCreateCM(baseURL, apiKey, modelName string) (model.BaseChatModel, error) {
-	key := llmCacheKey(baseURL, apiKey, modelName)
+func getOrCreateChatModel(baseURL, apiKey, modelName string) (model.BaseChatModel, error) {
+	key := hash.Key(baseURL, apiKey, modelName)
 
-	c.mu.RLock()
-	if cm, ok := c.cmCache[key]; ok {
-		c.mu.RUnlock()
+	globalCMMu.RLock()
+	if cm, ok := globalCMCache[key]; ok {
+		globalCMMu.RUnlock()
 		return cm, nil
 	}
-	c.mu.RUnlock()
+	globalCMMu.RUnlock()
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	globalCMMu.Lock()
+	defer globalCMMu.Unlock()
 
-	if cm, ok := c.cmCache[key]; ok {
+	if cm, ok := globalCMCache[key]; ok {
 		return cm, nil
 	}
 
-	temp := float32(0)
+	temp := float32(0.2)
 	cm, err := openai.NewChatModel(context.Background(), &openai.ChatModelConfig{
 		BaseURL:     baseURL,
 		APIKey:      apiKey,
@@ -101,12 +103,7 @@ func (c *openaiClient) getOrCreateCM(baseURL, apiKey, modelName string) (model.B
 		return nil, fmt.Errorf("create chat model: %w", err)
 	}
 
-	c.cmCache[key] = cm
+	globalCMCache[key] = cm
 	logger.L().Info("cached new chat model", zap.String("model", modelName))
 	return cm, nil
-}
-
-// llmCacheKey 生成缓存键
-func llmCacheKey(baseURL, apiKey, modelName string) string {
-	return hash.Key(baseURL, apiKey, modelName)
 }

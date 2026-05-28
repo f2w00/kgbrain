@@ -97,7 +97,7 @@ func (s *ContentMappingService) Execute(ctx context.Context, llm LLMClient, req 
 			logger.L().Warn("save content mapping failed", zap.Error(err))
 		}
 
-		logger.L().Info("content mapping updated", zap.String("topic", req.Topic), zap.Int("new_mappings", len(newMapping)))
+		logger.L().Debug("content mapping updated", zap.String("topic", req.Topic), zap.Int("new_mappings", len(newMapping)))
 	}
 
 	return &ContentResult{
@@ -110,7 +110,7 @@ func (s *ContentMappingService) Set(req *ContentSetRequest) error {
 	if err := s.repo.SaveContentMapping(req.Topic, req.Mapping); err != nil {
 		return fmt.Errorf("save content mapping: %w", err)
 	}
-	logger.L().Info("content mapping set", zap.String("topic", req.Topic), zap.Int("mappings", len(req.Mapping)))
+	logger.L().Debug("content mapping set", zap.String("topic", req.Topic), zap.Int("mappings", len(req.Mapping)))
 	return nil
 }
 
@@ -118,7 +118,7 @@ func (s *ContentMappingService) SetTargets(req *TargetsSetRequest) error {
 	if err := s.repo.SaveTargets(req.Topic, req.Targets); err != nil {
 		return fmt.Errorf("save targets: %w", err)
 	}
-	logger.L().Info("targets set", zap.String("topic", req.Topic), zap.Int("targets", len(req.Targets)))
+	logger.L().Debug("targets set", zap.String("topic", req.Topic), zap.Int("targets", len(req.Targets)))
 	return nil
 }
 

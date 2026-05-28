@@ -10,8 +10,7 @@ import (
 	"kgbrain/pkg/jsonrpc"
 )
 
-// RegisterKGCMethods 注册 kgc.enrich 方法
-// 功能: 接收一批数据 + 补全任务定义, 一次 LLM 调用完成所有行的字段填充
+// RegisterKGCMethods 注册 kgc.enrich 和 kgc.autofill 方法
 func RegisterKGCMethods(s *rpc.Server, svc *kgc.Service) {
 	s.Register("kgc.enrich", func(id string, params json.RawMessage) jsonrpc.Response {
 		var req struct {
@@ -41,6 +40,35 @@ func RegisterKGCMethods(s *rpc.Server, svc *kgc.Service) {
 				return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile not found", nil)
 			}
 			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "kgc enrich failed", errStr)
+		}
+
+		return jsonrpc.NewResponse(id, result)
+	})
+
+	s.Register("kgc.autofill", func(id string, params json.RawMessage) jsonrpc.Response {
+		var req struct {
+			ProfileID      string           `json:"profile_id"`
+			Data           []map[string]any `json:"data"`
+			TargetsExample []map[string]any `json:"targets_example"`
+		}
+		if err := json.Unmarshal(params, &req); err != nil {
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "invalid params", err.Error())
+		}
+
+		if req.ProfileID == "" {
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile_id is required", nil)
+		}
+
+		result, err := svc.Autofill(context.Background(), req.ProfileID, &domainkgc.AutofillRequest{
+			Data:           req.Data,
+			TargetsExample: req.TargetsExample,
+		})
+		if err != nil {
+			errStr := err.Error()
+			if errStr == "profile not found" {
+				return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInvalidParams, "profile not found", nil)
+			}
+			return jsonrpc.NewErrorResponse(id, jsonrpc.CodeInternalError, "kgc autofill failed", errStr)
 		}
 
 		return jsonrpc.NewResponse(id, result)

@@ -76,11 +76,6 @@ func (s *EnrichService) Execute(ctx context.Context, llm LLMClient, req *Request
 		}
 	}
 
-	logger.L().Info("kgc enrich completed",
-		zap.Int("rows", len(req.Data)),
-		zap.Int("enriched", enrichedCount),
-	)
-
 	return &Result{
 		Data:          req.Data,
 		EnrichedCount: enrichedCount,

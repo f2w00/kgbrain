@@ -14,6 +14,7 @@
 | 2026-05-17 | v4.0 | OpenRPC IDL + JSON Schema 校验; UseCase 层提取; domain 设计优化 (Mapping method + Profile 工厂); handler 精简; rpc.discover 服务发现 | AI |
 | 2026-05-17 | v5.0 | 缓存改为全局共享: 移除 profile_id; CacheRepository 简化为 Get/Save; ExecuteRequest 移除 ProfileID; DeleteProfile 不再级联清理缓存 | AI |
 | 2026-05-25 | v6.0 | target_fields 格式从字符串数组改为对象数组 (key→字段名, value→LLM prompt 示例); 方法名 mapping.generate → mapping.field | AI |
+| 2026-05-26 | v7.0 | LLMConfig 新增 timeout_seconds 字段, 默认 180 秒超时, 可在 profile.set 中配置 | AI |
 
 ## 1. 概述
 

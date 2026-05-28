@@ -30,6 +30,11 @@
 
 ## 优化
 
+- [ ] **ChatModel 缓存增加 LRU 淘汰** — `internal/infra/llm/openai.go`
+  全局 `globalCMCache` 按 (baseURL, apiKey, model) 组合缓存 ChatModel 实例,
+  当前为无限增长 map。需引入 LRU 淘汰策略 (如最大 50 条),
+  避免对接大量不同 LLM 配置时内存膨胀。
+
 - [ ] **TOON 输出格式** — `kgc.enrich` 让 LLM 输出 TOON 格式替代 JSON, 节省 40-60% token。
    LLM 输出解析需基于 TOON 的 Go SDK (github.com/toon-format/toon)。
    先跑通 JSON 版本, 后续再优化此条目。

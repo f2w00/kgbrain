@@ -124,11 +124,6 @@ func (s *Server) handleRPC(w http.ResponseWriter, r *http.Request) {
 
 // dispatch 根据方法名分发到注册的处理器
 func (s *Server) dispatch(id string, method string, params json.RawMessage) jsonrpc.Response {
-	logger.L().Info("rpc request",
-		zap.String("id", id),
-		zap.String("method", method),
-	)
-
 	h, ok := s.methods[method]
 	if !ok {
 		return jsonrpc.NewErrorResponse(id, jsonrpc.CodeMethodNotFound,

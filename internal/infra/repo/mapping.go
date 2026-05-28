@@ -22,7 +22,7 @@ type cacheRow struct {
 }
 
 func NewCacheRepo(db *sql.DB) (*CacheRepo, error) {
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS mapping_cache (
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS field_mapping (
 		cache_key     TEXT PRIMARY KEY,
 		mapping       TEXT NOT NULL,
 		source_fields TEXT NOT NULL,
@@ -30,7 +30,7 @@ func NewCacheRepo(db *sql.DB) (*CacheRepo, error) {
 		created_at    TEXT NOT NULL
 	)`)
 	if err != nil {
-		return nil, fmt.Errorf("create mapping_cache table: %w", err)
+		return nil, fmt.Errorf("create field_mapping table: %w", err)
 	}
 
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS content_mapping (
@@ -60,7 +60,7 @@ func (r *CacheRepo) Get(cacheKey string) (*mapping.Mapping, error) {
 	row := &cacheRow{}
 	err := r.db.QueryRow(
 		`SELECT cache_key, mapping, source_fields, target_fields, created_at
-		FROM mapping_cache WHERE cache_key = ?`, cacheKey).
+		FROM field_mapping WHERE cache_key = ?`, cacheKey).
 		Scan(&row.CacheKey, &row.Mapping, &row.SourceFields, &row.TargetFields, &row.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -80,7 +80,7 @@ func (r *CacheRepo) Save(cacheKey string, m *mapping.Mapping, source, target []s
 	mJSON, _ := json.Marshal(m)
 	sJSON, _ := json.Marshal(source)
 	tJSON, _ := json.Marshal(target)
-	_, err := r.db.Exec(`INSERT OR REPLACE INTO mapping_cache
+	_, err := r.db.Exec(`INSERT OR REPLACE INTO field_mapping
 		(cache_key, mapping, source_fields, target_fields, created_at)
 		VALUES (?, ?, ?, ?, ?)`,
 		cacheKey, string(mJSON), string(sJSON), string(tJSON),

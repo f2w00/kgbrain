@@ -23,7 +23,7 @@ go build -o kgbrain ./cmd/server
 curl -s -X POST http://localhost:8848/rpc \
   -d '{"jsonrpc":"2.0","method":"profile.set","params":{
     "profile_id":"demo",
-    "llm":{"base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3"}
+    "llm":{"base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3","timeout_seconds":180}
   },"id":"req_001"}'
 
 # 2. 生成字段映射
@@ -55,7 +55,7 @@ def rpc(method, params):
 
 # 创建配置
 rpc("profile.set", {"profile_id":"demo", "llm":{
-    "base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3"}})
+    "base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3","timeout_seconds":120}})
 
 # 生成映射
 resp = rpc("mapping.field", {

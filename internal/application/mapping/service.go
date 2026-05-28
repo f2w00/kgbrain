@@ -2,16 +2,17 @@ package mapping
 
 import (
 	"context"
+	"time"
 
 	"kgbrain/internal/domain/mapping"
 	"kgbrain/internal/domain/profile"
 )
 
 type Service struct {
-	profileRepo   profile.ProfileRepository
-	domainSvc     *mapping.MappingService
-	contentSvc    *mapping.ContentMappingService
-	llmFactory    mapping.LLMClientFactory
+	profileRepo profile.ProfileRepository
+	domainSvc   *mapping.MappingService
+	contentSvc  *mapping.ContentMappingService
+	llmFactory  mapping.LLMClientFactory
 }
 
 func NewService(
@@ -53,6 +54,13 @@ func (s *Service) GenerateField(
 		return nil, err
 	}
 
+	timeout := llmCfg.TimeoutSeconds
+	if timeout <= 0 {
+		timeout = 180
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancel()
+
 	llmClient, err := s.llmFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
 	if err != nil {
 		return nil, err
@@ -85,6 +93,13 @@ func (s *Service) ApplyContent(
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := llmCfg.TimeoutSeconds
+	if timeout <= 0 {
+		timeout = 180
+	}
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+	defer cancel()
 
 	llmClient, err := s.llmFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
 	if err != nil {

@@ -16,6 +16,7 @@ kgbrain 是一个基于 JSON-RPC 2.0 协议的后端服务，主要提供三大�
 | **字段映射** | `mapping.field` | 一次 LLM 调用推导字段映射关系，缓存复用 |
 | **内容映射** | `mapping.content` / `mapping.content.set` / `mapping.content.targets.*` | 值级别的语义映射（如"唐朝"→"唐"） |
 | **数据补全** | `kgc.enrich` | 多模态数据补全（文本+图片），一次 LLM 调用完成批量补全 |
+| **智能补全** | `kgc.autofill` | 源结构→目标结构智能转换，LLM 自主推断映射，返回置信度 |
 
 ### 1.2 技术栈
 
@@ -88,8 +89,11 @@ kgbrain/
 │   │   │   └── repository.go       # CacheRepository + ContentRepository 接口
 │   │   └── kgc/
 │   │       ├── kgc.go              # Request/Result/TaskDef
+│   │       ├── autofill.go         # AutofillRequest/AutofillResult
 │   │       ├── service.go          # EnrichService
+│   │       ├── autofill_service.go # AutofillService
 │   │       ├── prompt.go           # 多模态 prompt 构建 + 图片压缩
+│   │       ├── autofill_prompt.go  # Autofill prompt 构建
 │   │       └── llm.go              # LLMClient 接口
 │   │
 │   ├── delivery/                   # 接口层
@@ -127,10 +131,19 @@ kgbrain/
 ├── docs/
 │   ├── openrpc.yaml                # OpenRPC 接口定义（权威源）
 │   ├── api.md                      # API 参考文档
-│   └── mapping-generator/          # 功能设计文档
-│       ├── 001-mapping-generator-设计文档.md
-│       ├── 002-功能总结-DDD分层重构.md
-│       └── 003-内容映射功能设计.md
+│   ├── python-client-examples.md   # Python 客户端完整示例
+│   ├── mapping-generator/          # 映射功能设计文档
+│   │   ├── 001-mapping-generator-设计文档.md
+│   │   ├── 002-功能总结-DDD分层重构.md
+│   │   └── 003-内容映射功能设计.md
+│   ├── kgc/                        # kgc 领域文档
+│   │   ├── README.md
+│   │   ├── enrich/
+│   │   │   └── 001-kgc-enrich-image-optimization.md
+│   │   └── autofill/
+│   │       └── 001-autofill-设计文档.md
+│   └── testing/
+│       └── 001-测试文档.md
 │
 ├── tests/
 │   ├── integration/                # 全链路集成测试
@@ -229,7 +242,7 @@ CREATE TABLE content_mapping_targets (
   ├── 2. 校验请求 (行数≤100, 任务定义合法)
   ├── 3. 构建多模态消息:
   │   ├── System: 目标字段说明 + 示例（自动过滤源字段）
-  │   └── User: 每行文本字段 + 图片（图片自动压缩，Detail=Low）
+  │   └── User:  每行文本字段 + 图片（图片自动压缩，Detail=Low）
   ├── 4. 一次 LLM 调用 → 返回 JSON 数组
   ├── 5. 提取 JSON → 校验行数 → 回填到原始数据
   └── 6. 返回 {data[], enriched_count}
@@ -240,6 +253,26 @@ CREATE TABLE content_mapping_targets (
 - 叠白底处理 PNG 透明度
 - 缩放最长边 ≤ 1024px
 - JPEG 循环降 quality 至目标大小
+
+### 3.5 智能补全流程 (`kgc.autofill`)
+
+```
+请求: {profile_id, data[], targets_example[]}
+  │
+  ├── 1. 获取 profile → 解析 LLM 配置
+  ├── 2. 校验请求 (行数≤100, targets_example 非空+字段一致)
+  ├── 3. 构建 prompt:
+  │   ├── System: 目标字段 + 置信度规则 + 输出格式
+  │   └── User: 源数据格式化
+  ├── 4. 一次 LLM 调用 → 返回 JSON 数组
+  ├── 5. 提取 JSON → 校验行数 → 构建纯目标结构数据
+  └── 6. 返回 {data[]}（纯目标结构数据）
+```
+
+**行为规则**：
+- LLM 能推断 → 输出推断值 + 置信度 (0.5-0.95)
+- LLM 不确定 → 输出推测值 + 低置信度 (<0.5)
+- 完全无法推断 → 输出 `null` + 置信度 `0`
 
 ---
 
@@ -256,6 +289,7 @@ CREATE TABLE content_mapping_targets (
 | `mapping.content.targets.set` | 设置内容映射目标值 | profile_id, topic, targets |
 | `mapping.content.targets.get` | 获取内容映射目标值 | profile_id, topic |
 | `kgc.enrich` | 数据补全 | profile_id, data, tasks, examples, max_image_kb |
+| `kgc.autofill` | 智能转换 | profile_id, data, targets_example |
 | `rpc.discover` | 服务发现（返回 OpenRPC 文档） | 无 |
 
 ---

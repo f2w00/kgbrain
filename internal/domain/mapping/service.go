@@ -66,7 +66,9 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 	}
 
 	prompt := BuildMappingPrompt(source, req.TargetFields, req.Example, req.TargetExample)
+	print(prompt)
 	resp, err := llm.Generate(ctx, prompt)
+	print("resp", resp)
 	if err != nil {
 		return nil, fmt.Errorf("llm generate: %w", err)
 	}
@@ -84,7 +86,6 @@ func (s *MappingService) Execute(ctx context.Context, llm LLMClient, req *Execut
 		logger.L().Warn("save mapping cache failed", zap.Error(err))
 	}
 
-	logger.L().Info("mapping generated", zap.Int("mappings", len(mapping)))
 	return &Result{
 		Mapping:        mapping,
 		UnmappedSource: mapping.UnmappedSource(source),

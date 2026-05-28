@@ -19,6 +19,7 @@ id: `string`（必须为字符串，推荐 UUID 格式）
 - [mapping.content](#mappingcontent)
 - [mapping.content.set](#mappingcontentset)
 - [kgc.enrich](#kgcenrich)
+- [kgc.autofill](#kgcautofill)
 
 ---
 
@@ -54,6 +55,7 @@ id: `string`（必须为字符串，推荐 UUID 格式）
 | base_url | string | OpenAI 兼容端点 |
 | api_key | string | API Key |
 | model | string | 模型名 |
+| timeout_seconds | int | LLM 请求超时(秒), 默认 180, 0 不设超时 |
 
 #### notify 推荐格式
 
@@ -88,7 +90,7 @@ id: `string`（必须为字符串，推荐 UUID 格式）
 curl -s -X POST http://localhost:8848/rpc \
   -d '{"jsonrpc":"2.0","method":"profile.set","params":{
     "profile_id":"demo",
-    "llm":{"base_url":"http://localhost:8000/v1","api_key":"sk-xxx","model":"qwen2.5"}
+    "llm":{"base_url":"http://localhost:8000/v1","api_key":"sk-xxx","model":"qwen2.5","timeout_seconds":180}
   },"id":"req_001"}'
 ```
 
@@ -503,57 +505,74 @@ LLM 输出
 
 ---
 
+## kgc.autofill
+
+智能数据转换。LLM 自主推断源数据到目标结构的映射关系，不需要指定字段对应关系。返回完整目标结构数据及每个字段的置信度。
+
+### 请求
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| profile_id | string | ✅ | 关联的用户配置 |
+| data | array | ✅ | 源数据行 (≤100 行) |
+| targets_example | array | ✅ | 目标结构示例数组，定义所有输出字段。所有示例的字段集合必须一致 |
+
+### 响应
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| data | array | 补全后的目标结构数据，无法推断的字段输出 `null` |
+
+### 示例
+
+```bash
+curl -s -X POST http://localhost:8848/rpc \
+  -d '{"jsonrpc":"2.0","method":"kgc.autofill","params":{
+    "profile_id":"demo",
+    "data":[
+      {"title":"青花瓷瓶","era":"明代"},
+      {"title":"唐三彩马","era":"唐代"}
+    ],
+    "targets_example":[
+      {"product_name":"青花瓷瓶","dynasty":"明代"}
+    ]
+  },"id":"req_006"}'
+```
+
+### 响应示例
+
+```json
+{
+  "data": [
+    {"product_name":"青花瓷瓶","dynasty":"明代"},
+    {"product_name":"唐三彩马","dynasty":"唐代"}
+  ]
+}
+```
+
+### 错误
+
+- `-32602`: profile 不存在 / 参数校验失败
+- `-32603`: LLM 调用失败或响应解析失败
+
+---
+
 ## Python 客户端示例
 
+完整示例参见 [docs/python-client-examples.md](docs/python-client-examples.md)，包含：
+
+* Profile 管理（set/get/delete）
+* 字段映射（mapping.field）
+* 内容映射（mapping.content/.*）
+* 数据补全（kgc.enrich）
+* 智能补全（kgc.autofill）
+* 异步调用（aiohttp）
+
+### 快速示例
+
 ```python
-import requests
-
-rpc = lambda method, params: requests.post(
-    "http://localhost:8848/rpc",
-    json={"jsonrpc":"2.0","method":method,"params":params,"id":"req"}
-).json()
-
-# 创建配置
-rpc("profile.set", {
-    "profile_id":"demo",
-    "llm":{"base_url":"http://localhost:8000/v1","api_key":"sk-xxx","model":"qwen2.5"}
-})
-
-# 生成字段映射
-resp = rpc("mapping.field", {
-    "profile_id":"demo",
-    "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":[{"name":"青花瓷瓶","dynasty":"明代"}]
-})
-mapping = resp["result"]["mapping"]
-
-# 内容映射（先设置目标值）
-rpc("mapping.content.targets.set", {
-    "profile_id":"demo",
-    "topic":"dynasty",
-    "targets":["唐","宋","明","清"]
-})
-
-# 再查询映射（不传 targets，从存储读取）
-resp = rpc("mapping.content", {
-    "profile_id":"demo",
-    "topic":"dynasty",
-    "values":["唐朝","宋朝"]
-})
-content_mapping = resp["result"]["mapping"]
-
-# 或直接传入 targets（会隐式持久化）
-resp = rpc("mapping.content", {
-    "profile_id":"demo",
-    "topic":"dynasty",
-    "values":["唐朝","宋朝"],
-    "targets":["唐","宋","明","清"]
-})
-content_mapping = resp["result"]["mapping"]
-
-# 批量应用
-rows = [{"title":"青花瓷瓶","era":"明代"}, {"title":"铜鼎","era":"商代"}]
-output = [{tgt: row[src] for src, tgt in mapping.items()} for row in rows]
+for row in resp["result"]["data"]:
+    print(row)
 ```
 
 ## 错误响应格式

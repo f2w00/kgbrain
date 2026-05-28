@@ -26,7 +26,7 @@ methods:
             schema:
                 type: object
             required: true
-            description: LLM 连接配置 (任意 JSON)
+            description: "LLM 连接配置 (任意 JSON), 推荐字段: base_url, api_key, model, timeout_seconds(默认180秒)"
           - name: notify
             schema:
                 type: object
@@ -335,6 +335,45 @@ methods:
           - code: -32603
             message: Internal error
 
+    - name: kgc.autofill
+      summary: 智能数据转换 (KGC Autofill)
+      description: |
+          LLM 自主推断源数据到目标结构的映射关系。用户输入源数据 + 目标结构示例，LLM 自行判断如何填充每个目标字段。返回完整目标结构数据 + 每个字段的置信度。
+      params:
+          - name: profile_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 关联的用户配置
+          - name: data
+            schema:
+                type: array
+                items:
+                    type: object
+                maxItems: 100
+                minItems: 1
+            required: true
+            description: 源数据行
+          - name: targets_example
+            schema:
+                type: array
+                items:
+                    type: object
+                    minProperties: 1
+                minItems: 1
+            required: true
+            description: 目标结构示例数组，定义输出字段。所有示例必须具有一致的字段集合
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/KGCAutofillResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
 components:
     schemas:
         ProfileSetResult:
@@ -445,3 +484,13 @@ components:
                     type: integer
                     description: 实际填充的字段总数
             required: [data, enriched_count]
+
+        KGCAutofillResult:
+            type: object
+            properties:
+                data:
+                    type: array
+                    items:
+                        type: object
+                    description: 补全后的目标结构数据，无法推断的字段输出 null
+            required: [data]
