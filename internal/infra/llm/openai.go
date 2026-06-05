@@ -58,6 +58,23 @@ func (c *openaiClient) GenerateMessages(ctx context.Context, msgs []*schema.Mess
 	return c.generateWithOpts(ctx, msgs)
 }
 
+// GenerateMessagesWithOptions 实现 kgc.LLMClient 接口
+// 在 GenerateMessages 基础上支持按请求指定 temperature
+func (c *openaiClient) GenerateMessagesWithOptions(ctx context.Context, msgs []*schema.Message, temp float32) (string, error) {
+	return c.generateWithOpts(ctx, msgs, model.WithTemperature(temp))
+}
+
+// GenerateXformMessages 为 xform 域专用方法
+// 自动注入 json_object 约束和关闭 thinking 的 extra_body
+func (c *openaiClient) GenerateXformMessages(ctx context.Context, msgs []*schema.Message) (string, error) {
+	return c.generateWithOpts(ctx, msgs,
+		openai.WithExtraFields(map[string]any{
+			"response_format": map[string]string{"type": "json_object"},
+			"extra_body":      map[string]any{"enable_thinking": false},
+		}),
+	)
+}
+
 // generateWithOpts 底层调用方法, 使用全局 ChatModel 缓存
 func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Message, opts ...model.Option) (string, error) {
 	cm, err := getOrCreateChatModel(c.baseURL, c.apiKey, c.modelName)
@@ -92,7 +109,7 @@ func getOrCreateChatModel(baseURL, apiKey, modelName string) (model.BaseChatMode
 		return cm, nil
 	}
 
-	temp := float32(0.2)
+	temp := float32(0.7)
 	cm, err := openai.NewChatModel(context.Background(), &openai.ChatModelConfig{
 		BaseURL:     baseURL,
 		APIKey:      apiKey,

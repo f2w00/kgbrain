@@ -338,7 +338,7 @@ methods:
     - name: kgc.autofill
       summary: 智能数据转换 (KGC Autofill)
       description: |
-          LLM 自主推断源数据到目标结构的映射关系。用户输入源数据 + 目标结构示例，LLM 自行判断如何填充每个目标字段。返回完整目标结构数据 + 每个字段的置信度。
+          LLM 自主推断源数据到目标结构的映射关系。用户输入源数据 + 目标结构示例，LLM 自行判断如何填充每个目标字段。返回纯目标结构数据。
       params:
           - name: profile_id
             schema:
@@ -368,6 +368,189 @@ methods:
           name: result
           schema:
               $ref: "#/components/schemas/KGCAutofillResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.submit
+      summary: 提交异步数据转换任务
+      description: |
+          创建新的异步数据转换任务。返回 task_id，客户端可通过 append 持续追加数据。
+          target_fields 由 targets_example 自动提取，LLM 逐行推断目标字段值。
+          可选自定义 task_id，不传时服务端自动生成。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                maxLength: 64
+                pattern: "^[a-zA-Z0-9_-]+$"
+            required: false
+            description: 可选，自定义任务标识。不传时服务端自动生成。仅允许字母、数字、下划线和连字符
+          - name: profile_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 关联的用户配置
+          - name: targets_example
+            schema:
+                type: array
+                items:
+                    type: object
+                    minProperties: 1
+                minItems: 1
+            required: true
+            description: 目标结构示例数组，定义输出字段。所有示例必须具有一致的字段集合
+          - name: primary_key
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 主键字段名，结果中自动保留此字段以便追溯
+          - name: pool_size
+            schema:
+                type: integer
+                minimum: 1
+                maximum: 100
+            required: true
+            description: 并发 Worker 数量，控制 LLM 并发调用数
+          - name: max_retries
+            schema:
+                type: integer
+                minimum: 0
+            required: true
+            description: 每行数据最大重试次数
+          - name: ttl_hours
+            schema:
+                type: integer
+                minimum: 1
+            required: true
+            description: 任务存活时间（小时），超时自动关闭
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformSubmitResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.append
+      summary: 追加数据到异步任务
+      description: |
+          向已创建的任务追加源数据行。每行数据必须包含 primary_key 定义的字段。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 任务 ID
+          - name: data
+            schema:
+                type: array
+                items:
+                    type: object
+                minItems: 1
+            required: true
+            description: 待转换的源数据行
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformAppendResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.close
+      summary: 关闭异步任务
+      description: |
+          标记任务为 closing 状态，停止接收新数据。Worker 继续处理队列中剩余数据。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 任务 ID
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformCloseResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.get_status
+      summary: 查询异步任务状态
+      description: 获取任务的当前状态及进度信息。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 任务 ID
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformStatusResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.get_result
+      summary: 拉取异步任务结果
+      description: |
+          拉取已处理的结果。结果拉取后即删除（消费语义），避免重复。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 任务 ID
+          - name: limit
+            schema:
+                type: integer
+                minimum: 1
+                default: 100
+            required: false
+            description: 单次拉取最大行数
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformResult"
+      errors:
+          - code: -32602
+            message: Invalid params
+          - code: -32603
+            message: Internal error
+
+    - name: xform.delete
+      summary: 删除异步任务
+      description: |
+          强制删除任务，清理所有关联资源。Worker 立即停止，所有 Redis Key 被删除。
+      params:
+          - name: task_id
+            schema:
+                type: string
+                minLength: 1
+            required: true
+            description: 任务 ID
+      result:
+          name: result
+          schema:
+              $ref: "#/components/schemas/XformDeleteResult"
       errors:
           - code: -32602
             message: Invalid params
@@ -494,3 +677,98 @@ components:
                         type: object
                     description: 补全后的目标结构数据，无法推断的字段输出 null
             required: [data]
+
+        XformSubmitResult:
+            type: object
+            properties:
+                task_id:
+                    type: string
+                    description: 任务唯一标识
+            required: [task_id]
+
+        XformAppendResult:
+            type: object
+            properties:
+                appended:
+                    type: integer
+                    description: 成功追加的数据行数
+            required: [appended]
+
+        XformCloseResult:
+            type: object
+            properties:
+                status:
+                    type: string
+                    enum: ["closing"]
+                    description: 当前任务状态
+            required: [status]
+
+        XformStatusResult:
+            type: object
+            properties:
+                task_id:
+                    type: string
+                    description: 任务唯一标识
+                status:
+                    type: string
+                    enum: ["open", "processing", "closing", "completed", "failed", "partial", "deleted"]
+                    description: 任务状态
+                pending_input:
+                    type: integer
+                    description: Stream 中尚未消费的输入行数
+                pending_output:
+                    type: integer
+                    description: 结果队列中待拉取的行数
+                pending_errors:
+                    type: integer
+                    description: 错误队列中待拉取的行数
+            required: [task_id, status, pending_input, pending_output, pending_errors]
+
+        XformErrorEntry:
+            type: object
+            properties:
+                pk_field:
+                    type: string
+                    description: 主键字段名
+                pk_value:
+                    description: 主键值
+                _error:
+                    type: string
+                    description: 错误原因
+            required: [pk_field, pk_value, _error]
+
+        XformResult:
+            type: object
+            properties:
+                task_id:
+                    type: string
+                    description: 任务唯一标识
+                status:
+                    type: string
+                    enum: ["open", "processing", "closing", "completed", "failed", "partial", "deleted"]
+                    description: 任务状态
+                results:
+                    type: array
+                    items:
+                        type: object
+                    description: 本次拉取的成功结果列表（消费即删）
+                errors:
+                    type: array
+                    items:
+                        $ref: "#/components/schemas/XformErrorEntry"
+                    description: 本次拉取的错误信息
+                pending_output:
+                    type: integer
+                    description: 结果队列中剩余行数
+                pending_errors:
+                    type: integer
+                    description: 错误队列中剩余行数
+            required: [task_id, status, results, errors, pending_output, pending_errors]
+
+        XformDeleteResult:
+            type: object
+            properties:
+                deleted:
+                    type: boolean
+                    description: 是否删除成功
+            required: [deleted]

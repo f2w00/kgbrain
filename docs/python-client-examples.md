@@ -197,3 +197,152 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## 异步大规模数据转换 (xform)
+
+适用于大批量数据（数千到数百万行）的流式异步处理。
+
+```python
+import requests
+import time
+import json
+
+BASE_URL = "http://localhost:8848/rpc"
+
+def rpc(method, params, req_id="req"):
+    """发送 JSON-RPC 请求"""
+    resp = requests.post(
+        BASE_URL,
+        json={"jsonrpc": "2.0", "method": method, "params": params, "id": req_id}
+    )
+    data = resp.json()
+    if "error" in data:
+        raise Exception(f"RPC Error: {data['error']}")
+    return data["result"]
+
+# ======================== 1. 提交任务 ========================
+
+# 方式 A：自定义 task_id（推荐，便于追踪）
+result = rpc("xform.submit", {
+    "task_id": "my_batch_20260601_001",
+    "profile_id": "demo",
+    "targets_example": [
+        {"product_name": "青花瓷瓶", "dynasty": "明代", "category": "陶瓷"}
+    ],
+    "primary_key": "relic_id",
+    "pool_size": 10,
+    "max_retries": 2,
+    "ttl_hours": 24
+})
+
+# 方式 B：不传 task_id，服务端自动生成
+# result = rpc("xform.submit", {
+#     "profile_id": "demo",
+#     "targets_example": [
+#         {"product_name": "青花瓷瓶", "dynasty": "明代", "category": "陶瓷"}
+#     ],
+#     "primary_key": "relic_id",
+#     "pool_size": 10,
+#     "max_retries": 2,
+#     "ttl_hours": 24
+# })
+
+task_id = result["task_id"]
+print(f"任务已创建: {task_id}")
+
+# ======================== 2. 持续追加数据 ========================
+
+# 第一批数据
+rpc("xform.append", {
+    "task_id": task_id,
+    "data": [
+        {"relic_id": "R001", "title": "青花山水纹瓶", "era": "明代"},
+        {"relic_id": "R002", "title": "唐三彩马", "era": "唐代"}
+    ]
+})
+
+# 第二批数据（可随时追加）
+rpc("xform.append", {
+    "task_id": task_id,
+    "data": [
+        {"relic_id": "R003", "title": "商代青铜鼎", "era": "商代"},
+        {"relic_id": "R004", "title": "宋代汝窑茶盏", "era": "宋代"}
+    ]
+})
+
+print("数据已追加")
+
+# ======================== 3. 轮询状态 ========================
+
+while True:
+    status = rpc("xform.get_status", {"task_id": task_id})
+    print(f"状态: {status['status']}, 待消费: {status['pending_input']}, "
+          f"待取结果: {status['pending_output']}, 待取错误: {status['pending_errors']}")
+
+    if status["status"] in ("completed", "partial", "failed"):
+        break
+
+    time.sleep(1)
+
+# ======================== 4. 关闭任务 ========================
+
+rpc("xform.close", {"task_id": task_id})
+print("任务已关闭，Worker 正在处理剩余数据...")
+
+# 等待最终完成
+while True:
+    status = rpc("xform.get_status", {"task_id": task_id})
+    if status["status"] in ("completed", "partial", "failed"):
+        break
+    time.sleep(1)
+
+# ======================== 5. 拉取结果（消费即删）========================
+
+all_results = []
+while True:
+    result = rpc("xform.get_result", {
+        "task_id": task_id,
+        "limit": 100
+    })
+
+    if result["results"]:
+        all_results.extend(result["results"])
+
+    if result["errors"]:
+        print(f"发现 {len(result['errors'])} 条错误:")
+        for err in result["errors"]:
+            print(f"  {err['pk_value']}: {err['_error']}")
+
+    if not result["results"] and result["pending_output"] == 0 and result["pending_errors"] == 0:
+        break
+
+    time.sleep(0.5)
+
+print(f"共获取 {len(all_results)} 条结果")
+for row in all_results[:3]:
+    print(json.dumps(row, ensure_ascii=False, indent=2))
+
+# ======================== 6. 清理任务 ========================
+
+rpc("xform.delete", {"task_id": task_id})
+print("任务已删除")
+```
+
+### xform 接口说明
+
+| 方法 | 说明 | 请求参数 | 返回 |
+|------|------|---------|------|
+| `xform.submit` | 提交任务 | task_id (可选), profile_id, targets_example, primary_key, pool_size, max_retries, ttl_hours | task_id |
+| `xform.append` | 追加数据 | task_id, data | appended |
+| `xform.close` | 关闭任务 | task_id | status |
+| `xform.get_status` | 查询状态 | task_id | status, pending_input, pending_output, pending_errors |
+| `xform.get_result` | 拉取结果 | task_id, limit | results, errors, pending_output, pending_errors |
+| `xform.delete` | 删除任务 | task_id | deleted |
+
+### 状态流转
+
+```
+submit → open → processing → closing → completed/partial/failed
+                                    ↓
+                               deleted (随时可删除)
+```

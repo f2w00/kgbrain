@@ -14,10 +14,11 @@ type Profile struct {
 }
 
 type LLMConfig struct {
-	BaseURL        string `json:"base_url"`
-	APIKey         string `json:"api_key"`
-	Model          string `json:"model"`
-	TimeoutSeconds int    `json:"timeout_seconds"`
+	BaseURL        string   `json:"base_url"`
+	APIKey         string   `json:"api_key"`
+	Model          string   `json:"model"`
+	TimeoutSeconds int      `json:"timeout_seconds"`
+	Temperature    *float64 `json:"temperature,omitempty"`
 }
 
 func NewProfile(id, llmCfg, notifyCfg string) (*Profile, error) {

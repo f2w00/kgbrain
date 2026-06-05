@@ -39,7 +39,7 @@ func TestBuildAutofillSystemPrompt(t *testing.T) {
 	})
 
 	t.Run("mentions output format", func(t *testing.T) {
-		if !strings.Contains(msgs[0].Content, `{"字段1":"值","字段2":null`) {
+		if !strings.Contains(msgs[0].Content, `{"字段1":"值","字段2":"值"`) {
 			t.Errorf("system prompt should mention direct value output format")
 		}
 	})

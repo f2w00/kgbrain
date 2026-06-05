@@ -1,8 +1,12 @@
 package app
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/spf13/cobra"
@@ -10,6 +14,8 @@ import (
 	"kgbrain/internal/application/kgc"
 	"kgbrain/internal/application/mapping"
 	"kgbrain/internal/application/profile"
+	"kgbrain/internal/application/xform"
+	appxforminterfaces "kgbrain/internal/application/xform/interfaces"
 	"kgbrain/internal/config"
 	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/delivery/rpc/handlers"
@@ -20,6 +26,8 @@ import (
 	"kgbrain/internal/infra/middleware"
 	"kgbrain/internal/infra/repo"
 	"kgbrain/internal/infra/store"
+	redislib "kgbrain/internal/infra/redis"
+	xforminfra "kgbrain/internal/infra/xform"
 	"kgbrain/internal/logger"
 
 	"go.uber.org/zap"
@@ -32,7 +40,7 @@ func Run(args []string) error {
 		Use:   "kgbrain",
 		Short: "字段映射生成服务",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runWithConfig(cfgFile)
+			return runWithConfig(cfgFile, cmd.Context())
 		},
 	}
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c", "configs/config.toml", "config file path")
@@ -41,7 +49,7 @@ func Run(args []string) error {
 }
 
 // runWithConfig 是服务启动的核心流程, 按 DDD 分层组装所有依赖
-func runWithConfig(cfgFile string) error {
+func runWithConfig(cfgFile string, ctx context.Context) error {
 	// 1. 加载配置 + 初始化日志
 	var cfg config.Config
 	if err := config.Load(&cfg, cfgFile); err != nil {
@@ -94,7 +102,61 @@ func runWithConfig(cfgFile string) error {
 		logger.L().Warn("schema validator unavailable", zap.Error(err))
 	}
 
-	// 8. 接口层: 创建 JSON-RPC 服务器, 注册所有方法处理器
+	// 8. 基础设施层: Redis 客户端 (xform 异步任务)
+	redisURL, err := url.Parse(cfg.Xform.RedisURL)
+	if err != nil {
+		return fmt.Errorf("parse redis url: %w", err)
+	}
+	redisDB := 0
+	if redisURL.Path != "" {
+		fmt.Sscanf(redisURL.Path, "/%d", &redisDB)
+	}
+	redisPassword, _ := redisURL.User.Password()
+	redisClient := redislib.NewClient(redisURL.Host, redisPassword, redisDB)
+
+	if err := redisClient.Ping(ctx); err != nil {
+		logger.L().Warn("redis connection failed", zap.Error(err))
+	}
+
+	xformRepo := repo.NewXformRepo(redisClient)
+	xformConfig := &xform.Config{
+		MaxErrorRate:    cfg.Xform.MaxErrorRate,
+		DefaultTTLHours: cfg.Xform.DefaultTTLHours,
+		StreamBlockMs:   cfg.Xform.StreamBlockMs,
+	}
+
+	xformLLMFactory := func(profileID string) (xform.LLMClient, error) {
+		prof, err := profileAppSvc.Get(profileID)
+		if err != nil {
+			return nil, err
+		}
+
+		var llmConfig struct {
+			BaseURL string `json:"base_url"`
+			APIKey  string `json:"api_key"`
+			Model   string `json:"model"`
+		}
+		if err := json.Unmarshal([]byte(prof.LLMConfig), &llmConfig); err != nil {
+			return nil, fmt.Errorf("parse llm config: %w", err)
+		}
+
+		return llm.NewClient(llmConfig.BaseURL, llmConfig.APIKey, llmConfig.Model)
+	}
+
+	workerPoolFactory := func(cfg appxforminterfaces.WorkerPoolConfig, handler appxforminterfaces.MessageHandler) (appxforminterfaces.WorkerPool, error) {
+		return xforminfra.NewRedisWorkerPool(cfg, handler, redisClient), nil
+	}
+
+	xformAppSvc := xform.NewService(xformRepo, xformLLMFactory, workerPoolFactory, xformConfig)
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			xformAppSvc.CleanupExpiredTasks(ctx)
+		}
+	}()
+
+	// 9. 接口层: 创建 JSON-RPC 服务器, 注册所有方法处理器
 	server := rpc.New(cfg.Server)
 	server.SetValidator(validator)
 	if validator != nil {
@@ -103,6 +165,7 @@ func runWithConfig(cfgFile string) error {
 	handlers.RegisterProfileMethods(server, profileAppSvc)
 	handlers.RegisterMappingMethods(server, mappingAppSvc)
 	handlers.RegisterKGCMethods(server, kgcAppSvc)
+	handlers.RegisterXformMethods(server, xformAppSvc)
 
 	// 9. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
 	server.Use(middleware.DecompressBody)
@@ -119,7 +182,12 @@ func runWithConfig(cfgFile string) error {
 		})
 	}
 
-	// 10. 启动服务
+	// 10. 服务重启恢复: 重建已有活跃任务的 WorkerPool
+	if err := xformAppSvc.RecoverActiveTasks(ctx); err != nil {
+		logger.L().Warn("recover active tasks failed", zap.Error(err))
+	}
+
+	// 11. 启动服务
 	logger.L().Info("server ready", zap.String("address", cfg.Server.Address))
 	return server.Start()
 }

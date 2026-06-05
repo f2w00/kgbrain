@@ -79,12 +79,18 @@ func (s *Service) Autofill(ctx context.Context, profileID string, req *kgc.Autof
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
 	defer cancel()
 
+	// 获取 temperature, 默认 0.7
+	temperature := float32(0.7)
+	if llmCfg.Temperature != nil {
+		temperature = float32(*llmCfg.Temperature)
+	}
+
 	llmClient, err := s.llmFactory(llmCfg.BaseURL, llmCfg.APIKey, llmCfg.Model)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.autofillSvc.Execute(ctx, llmClient, req)
+	return s.autofillSvc.Execute(ctx, llmClient, req, temperature)
 }
 
 type profileNotFoundError struct {

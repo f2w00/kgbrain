@@ -10,6 +10,8 @@ import (
 type LLMClient interface {
 	// GenerateMessages 发送消息列表给 LLM, 返回原始响应文本
 	GenerateMessages(ctx context.Context, msgs []*schema.Message) (string, error)
+	// GenerateMessagesWithOptions 发送消息列表并指定 temperature, 返回原始响应文本
+	GenerateMessagesWithOptions(ctx context.Context, msgs []*schema.Message, temp float32) (string, error)
 }
 
 // LLMClientFactory 创建 LLM 客户端的工厂函数类型

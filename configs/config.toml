@@ -18,3 +18,12 @@ pragmas = [
     "PRAGMA synchronous = NORMAL",
     "PRAGMA busy_timeout = 5000",
 ]
+
+# ---------- Xform ----------
+[xform]
+redis_url = "redis://10.15.22.91:6379"
+redis_password = ""
+redis_db = 0
+max_error_rate = 0.3
+default_ttl_hours = 24
+stream_block_ms = 5000

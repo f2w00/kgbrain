@@ -20,7 +20,7 @@ func NewAutofillService() *AutofillService {
 
 // Execute 执行数据转换, 一次 LLM 调用完成所有行的源→目标映射
 // 流程: 校验 → 构建消息 → LLM 调用 → 解析 JSON → 构建目标结构数据
-func (s *AutofillService) Execute(ctx context.Context, llm LLMClient, req *AutofillRequest) (*AutofillResult, error) {
+func (s *AutofillService) Execute(ctx context.Context, llm LLMClient, req *AutofillRequest, temperature float32) (*AutofillResult, error) {
 	// 1. 校验请求
 	if err := req.Validate(); err != nil {
 		return nil, fmt.Errorf("validate: %w", err)
@@ -32,8 +32,8 @@ func (s *AutofillService) Execute(ctx context.Context, llm LLMClient, req *Autof
 		return nil, fmt.Errorf("build messages: %w", err)
 	}
 
-	// 3. LLM 调用
-	resp, err := llm.GenerateMessages(ctx, msgs)
+	// 3. LLM 调用 (使用指定的 temperature)
+	resp, err := llm.GenerateMessagesWithOptions(ctx, msgs, temperature)
 	if err != nil {
 		return nil, fmt.Errorf("llm generate: %w", err)
 	}
