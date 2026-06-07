@@ -17,6 +17,7 @@ import (
 	"kgbrain/internal/application/xform"
 	appxforminterfaces "kgbrain/internal/application/xform/interfaces"
 	"kgbrain/internal/config"
+	"kgbrain/internal/delivery/connect"
 	"kgbrain/internal/delivery/rpc"
 	"kgbrain/internal/delivery/rpc/handlers"
 	domainkgc "kgbrain/internal/domain/kgc"
@@ -167,8 +168,13 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	handlers.RegisterKGCMethods(server, kgcAppSvc)
 	handlers.RegisterXformMethods(server, xformAppSvc)
 
-	// 9. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
+	// 10. 接口层: 创建 Connect RPC 服务器, 注册 Connect 协议服务
+	connectServer := connect.New(connect.NewHealthChecker())
+
+	// 11. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
+	// 中间件现在挂载到 JSON-RPC 与 Connect 两个 Server 上, 后续组合入口统一应用一次
 	server.Use(middleware.DecompressBody)
+	connectServer.Use(middleware.DecompressBody)
 
 	gzWrapper, err := gzhttp.NewWrapper(
 		gzhttp.MinSize(256),
@@ -177,19 +183,58 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	if err != nil {
 		logger.L().Warn("gzhttp wrapper unavailable", zap.Error(err))
 	} else {
-		server.Use(func(next http.Handler) http.Handler {
-			return gzWrapper(next)
-		})
+		gzMW := func(next http.Handler) http.Handler { return gzWrapper(next) }
+		server.Use(gzMW)
+		connectServer.Use(gzMW)
 	}
 
-	// 10. 服务重启恢复: 重建已有活跃任务的 WorkerPool
+	// 12. 服务重启恢复: 重建已有活跃任务的 WorkerPool
 	if err := xformAppSvc.RecoverActiveTasks(ctx); err != nil {
 		logger.L().Warn("recover active tasks failed", zap.Error(err))
 	}
 
-	// 11. 启动服务
+	// 13. 启动组合服务: JSON-RPC + Connect 共享 :8848 端口与中间件链,
+	//     HTTP/2 cleartext 启用以支持 gRPC 协议客户端 (grpcurl 等).
 	logger.L().Info("server ready", zap.String("address", cfg.Server.Address))
-	return server.Start()
+	return serveCombined(cfg.Server, server, connectServer)
+}
+
+// serveCombined 在同一端口上同时托管 JSON-RPC 与 Connect RPC, 中间件统一应用一次.
+//
+// 路径分发:
+//   - /rpc, /health       → JSON-RPC (含旧的 K8s /health 探针)
+//   - /grpc.health.v1.Health/*  → Connect (gRPC / Connect / gRPC-Web 三协议)
+//
+// 启用 SetUnencryptedHTTP2(true) 以允许 gRPC 客户端通过明文 HTTP/2 连接,
+// 这是 Connect 同时支持 gRPC 协议的必要条件.
+func serveCombined(cfg config.ServerConfig, rpcServer *rpc.Server, connectServer *connect.Server) error {
+	combinedMux := http.NewServeMux()
+	combinedMux.Handle("/rpc", rpcServer.Mux())
+	combinedMux.Handle("/health", rpcServer.Mux())
+	combinedMux.Handle("/", connectServer.Mux())
+
+	// 中间件在两个 Server 上都已注册, 任取其一应用即可, 避免重复包裹
+	handler := connectServer.WrapMiddleware(combinedMux)
+
+	protocols := &http.Protocols{}
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+
+	srv := &http.Server{
+		Addr:         cfg.Address,
+		Handler:      handler,
+		Protocols:    protocols,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+	}
+
+	logger.L().Info("HTTP server starting (JSON-RPC + Connect)",
+		zap.String("address", cfg.Address),
+		zap.Bool("http2_cleartext", true),
+	)
+	defer logger.L().Info("HTTP server stopped")
+
+	return srv.ListenAndServe()
 }
 
 var _ domainprofile.ProfileRepository = (*repo.ProfileRepo)(nil)

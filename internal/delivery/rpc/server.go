@@ -33,19 +33,30 @@ func (s *Server) Use(mw func(http.Handler) http.Handler) {
 	s.middleware = append(s.middleware, mw)
 }
 
-// Handler 返回包含所有路由和中间件的 HTTP handler
-// 中间件按注册顺序从外到内包裹, 请求先经过先注册的中间件
-func (s *Server) Handler() http.Handler {
+// Mux 返回未应用中间件的内层 mux, 仅包含路由 (/rpc, /health).
+// 供上层组合入口使用, 避免中间件在多处被重复应用.
+func (s *Server) Mux() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/rpc", s.handleRPC)
 	mux.HandleFunc("/health", s.handleHealth)
+	return mux
+}
 
-	// 从内到外包裹中间件, 保证请求按注册顺序执行
-	handler := http.Handler(mux)
+// WrapMiddleware 将 s 上注册的中间件按注册顺序从外到内包裹 h.
+// 与 Mux() 配合, 让外部组合入口能统一应用一次中间件链.
+func (s *Server) WrapMiddleware(h http.Handler) http.Handler {
+	handler := h
 	for i := len(s.middleware) - 1; i >= 0; i-- {
 		handler = s.middleware[i](handler)
 	}
 	return handler
+}
+
+// Handler 返回包含所有路由和中间件的 HTTP handler
+// 中间件按注册顺序从外到内包裹, 请求先经过先注册的中间件.
+// 已弃用: 多协议共存时中间件应在组合入口处统一应用, 请改用 Mux() + WrapMiddleware().
+func (s *Server) Handler() http.Handler {
+	return s.WrapMiddleware(s.Mux())
 }
 
 // SetValidator 设置参数校验器, 基于 OpenRPC YAML 规范
@@ -63,8 +74,9 @@ func (s *Server) Register(method string, h MethodHandler) error {
 }
 
 // Start 启动 HTTP 服务, 阻塞直到出错
+// 仅供独立部署 JSON-RPC 的场景使用; 与 Connect RPC 共存时应由 app 层构造 *http.Server.
 func (s *Server) Start() error {
-	handler := s.Handler()
+	handler := s.WrapMiddleware(s.Mux())
 
 	logger.L().Info("JSON-RPC server starting",
 		zap.String("address", s.cfg.Address),

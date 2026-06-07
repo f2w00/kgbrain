@@ -5,7 +5,7 @@ TAG = latest
 SHA = $(shell git rev-parse --short HEAD)
 DATA_DIR = ./data
 
-.PHONY: all build test docker-build docker-push docker-run docker-clean
+.PHONY: all build test proto proto-deps proto-lint docker-build docker-push docker-run docker-clean
 
 all: test docker-build
 
@@ -14,6 +14,22 @@ build:
 
 test:
 	go test ./tests/... -count=1
+
+# --- Proto / Connect RPC ---
+# buf v2 + managed mode, 生成 Go (internal/gen) 与 Python (gen/py).
+# buf.lock 提交进仓以锁定插件版本.
+
+proto-deps:        ## 安装 buf CLI (一次性本地开发)
+	go install github.com/bufbuild/buf/cmd/buf@latest
+
+proto:             ## buf lint + format + generate
+	buf lint proto/
+	buf format -w proto/
+	buf generate --template proto/buf.gen.yaml proto
+
+proto-lint:        ## 静态检查 + 防 schema 退化
+	buf lint proto/
+	buf breaking --against '.git#branch=main' proto/
 
 docker-build:
 	docker build -t $(IMAGE):$(TAG) -t $(IMAGE):$(SHA) .

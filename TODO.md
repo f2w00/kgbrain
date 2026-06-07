@@ -1,5 +1,16 @@
 # TODO
 
+## 健康检查
+
+- [ ] **grpchealth 接入真实探活** — `internal/delivery/connect/health.go`
+  当前 `NewHealthChecker()` 返回 `grpchealth.NewStaticChecker()`，
+  对进程级 (service="") 健康请求永远返回 `StatusServing`，
+  未注册的具体 service 返回 `CodeNotFound`。
+  后续需替换为实现 `grpchealth.Checker` 接口的真实 checker：
+  - SQLite 探活：`sqlDB.PingContext()` 失败 → `StatusNotServing`
+  - Redis 探活：`redisClient.Ping()` 失败 → `StatusNotServing`
+  - 整体策略：任一依赖不健康 → 整体 `StatusNotServing` (fail-fast)
+
 ## 安全
 
 - [ ] **API key 加密存储** — `internal/profile/repo.go`
