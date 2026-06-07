@@ -118,6 +118,20 @@ func (c *Client) ConsumeFromStream(ctx context.Context, taskID string, group str
 	}).Result()
 }
 
+// XAutoClaimPending 使用 XAUTOCLAIM 将 PEL 中所有 pending 消息重新分配给当前 consumer。
+// 用于服务重启后 reclaim 宕机前已投递但未 ACK 的消息，不阻塞。
+func (c *Client) XAutoClaimPending(ctx context.Context, taskID string, group string, consumer string, count int) ([]redis.XMessage, error) {
+	messages, _, err := c.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		Stream:   InputStreamKey(taskID),
+		Group:    group,
+		Consumer: consumer,
+		MinIdle:  0,
+		Start:    "0-0",
+		Count:    int64(count),
+	}).Result()
+	return messages, err
+}
+
 // AckMessage 确认消息已处理并从 Stream 中删除 (XACKDEL DELREF).
 func (c *Client) AckMessage(ctx context.Context, taskID string, group string, msgID string) error {
 	return c.rdb.XAckDel(ctx, InputStreamKey(taskID), group, "DELREF", msgID).Err()

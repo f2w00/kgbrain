@@ -70,6 +70,10 @@ type XformRepo interface {
 	// ConsumeFromStream 阻塞读取 Stream (XREADGROUP), 每次返回 1 条消息.
 	ConsumeFromStream(ctx context.Context, taskID string, group string, consumer string, block time.Duration) ([]XMessage, error)
 
+	// XAutoClaimPending 使用 XAUTOCLAIM 将 PEL 中所有 pending 消息重新分配给当前 consumer。
+	// 用于服务重启后 reclaim 宕机前已投递但未 ACK 的消息。
+	XAutoClaimPending(ctx context.Context, taskID string, group string, consumer string, count int) ([]XMessage, error)
+
 	// AckMessage 确认消息已处理 (XACK).
 	AckMessage(ctx context.Context, taskID string, group string, msgID string) error
 
@@ -250,6 +254,9 @@ func (s *Service) RecoverActiveTasks(ctx context.Context) error {
 
 		pool.Start(ctx)
 
+		// 启动 PEL 消息重放: 读取宕机前已投递但未 ACK 的消息重新处理
+		go s.reclaimPendingPEL(ctx, taskID, handler)
+
 		logger.L().Info("recovered worker pool for task",
 			zap.String("task_id", taskID),
 			zap.String("status", status),
@@ -265,6 +272,47 @@ func (s *Service) RecoverActiveTasks(ctx context.Context) error {
 		)
 	}
 	return nil
+}
+
+// reclaimPendingPEL 在服务重启后使用 XAUTOCLAIM 将 PEL 中 pending 消息重新分配给
+// pel-reclaimer，并重新处理。
+//
+// 触发条件: RecoverActiveTasks 为每个活跃任务重建 WorkerPool 后以 goroutine 调用。
+// 读取方式: XAUTOCLAIM，从 "0-0" 开始扫描所有已投递但未 ACK 的消息，
+// 无论它们之前属于哪个 Worker，都重新分配给 "pel-reclaimer"。
+// 处理完成后执行 XACK 确认，无论成功或失败（与正常 Worker processMessage 一致）。
+func (s *Service) reclaimPendingPEL(ctx context.Context, taskID string, handler appinterfaces.MessageHandler) {
+	messages, err := s.repo.XAutoClaimPending(ctx, taskID, "xform-workers", "pel-reclaimer", 1000)
+	if err != nil {
+		logger.L().Warn("reclaim PEL failed",
+			zap.String("task_id", taskID),
+			zap.Error(err),
+		)
+		return
+	}
+
+	if len(messages) == 0 {
+		return
+	}
+
+	meta, err := s.repo.GetTaskMeta(ctx, taskID)
+	if err != nil || len(meta) == 0 {
+		return
+	}
+	systemPrompt := meta["system_prompt"]
+
+	reclaimedCount := 0
+	for _, msg := range messages {
+		data := map[string]any{"data": msg.Values["data"]}
+		handler.Handle(ctx, taskID, systemPrompt, data)
+		s.repo.AckMessage(ctx, taskID, "xform-workers", msg.ID)
+		reclaimedCount++
+	}
+
+	logger.L().Info("reclaimed pending PEL messages",
+		zap.String("task_id", taskID),
+		zap.Int("count", reclaimedCount),
+	)
 }
 
 // SubmitTask 提交一个新的异步转换任务.

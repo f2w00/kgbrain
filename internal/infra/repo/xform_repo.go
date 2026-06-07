@@ -63,6 +63,22 @@ func (r *XformRepo) ConsumeFromStream(ctx context.Context, taskID string, group 
 	return result, nil
 }
 
+func (r *XformRepo) XAutoClaimPending(ctx context.Context, taskID string, group string, consumer string, count int) ([]appxform.XMessage, error) {
+	messages, err := r.client.XAutoClaimPending(ctx, taskID, group, consumer, count)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]appxform.XMessage, 0, len(messages))
+	for _, msg := range messages {
+		result = append(result, appxform.XMessage{
+			ID:     msg.ID,
+			Values: msg.Values,
+		})
+	}
+	return result, nil
+}
+
 func (r *XformRepo) AckMessage(ctx context.Context, taskID string, group string, msgID string) error {
 	return r.client.AckMessage(ctx, taskID, group, msgID)
 }

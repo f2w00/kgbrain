@@ -44,6 +44,12 @@
   TOON: name:Luna;age:3
   ```
 
+## xform 结果写入文件
+
+- [ ] **xform 处理结果写入生产者队列** — xform worker 处理完成后，结果写入一个生产者队列（如 Redis List 或 Stream），而非仅由客户端通过 `get_result` 拉取
+- [ ] **独立消费者写入文件** — 一个独立的消费者 goroutine 从该队列消费，将结果写入文件（JSONL 格式），支持按大小滚动切分
+- [ ] **消费者重启恢复** — 消费者支持断点续传，通过记录已消费的游标位置，重启后从上次位置继续
+
 ## kgc.xform WorkerPool 重构（待执行）
 
 > 背景：当前 WorkerPool 实现混在 Application 层，需按 Interface + Impl 分离重构。
