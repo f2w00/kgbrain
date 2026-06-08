@@ -1,0 +1,8 @@
+// 临时占位 proto, 仅用于使 buf 模块不为空, 让 buf lint / buf generate 可运行.
+// 真正的 .proto 将在 dedup / 其他新功能模块设计时添加, 此文件届时移除.
+
+syntax = "proto3";
+
+package kgbrain.v1;
+
+option go_package = "kgbrain/internal/gen/kgbrain/v1;kgbrainv1";
