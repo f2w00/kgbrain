@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package kgbrain.v1;
+
+option go_package = "kgbrain/internal/gen/kgbrain/v1;kgbrainv1";
+
+service EntityAlignmentService {
+  rpc StartEntityAlignment(StartEntityAlignmentRequest) returns (StartEntityAlignmentResponse);
+  rpc GetEntityAlignmentJob(GetEntityAlignmentJobRequest) returns (GetEntityAlignmentJobResponse);
+}
+
+message StartEntityAlignmentRequest {
+  string llm_resource_id = 1;
+  string database_resource_id = 2;
+  string source_table = 3;
+  string output_table = 4;
+  optional bool reuse_mapping = 5;
+  repeated EntityAlignmentField fields = 6;
+}
+
+message EntityAlignmentField {
+  string name = 1;
+  repeated string targets = 2;
+  optional int32 batch_size = 3;
+}
+
+message StartEntityAlignmentResponse {
+  string job_id = 1;
+  EntityAlignmentJobStatus status = 2;
+}
+
+message GetEntityAlignmentJobRequest {
+  string job_id = 1;
+}
+
+message GetEntityAlignmentJobResponse {
+  string job_id = 1;
+  string llm_resource_id = 2;
+  string database_resource_id = 3;
+  string source_table = 4;
+  string output_table = 5;
+  EntityAlignmentJobStatus status = 6;
+  string error_message = 7;
+  int64 created_at_unix = 8;
+  int64 started_at_unix = 9;
+  int64 finished_at_unix = 10;
+}
+
+enum EntityAlignmentJobStatus {
+  ENTITY_ALIGNMENT_JOB_STATUS_UNSPECIFIED = 0;
+  ENTITY_ALIGNMENT_JOB_STATUS_PENDING = 1;
+  ENTITY_ALIGNMENT_JOB_STATUS_RUNNING = 2;
+  ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED = 3;
+  ENTITY_ALIGNMENT_JOB_STATUS_FAILED = 4;
+}

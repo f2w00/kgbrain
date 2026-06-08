@@ -23,6 +23,12 @@ type HealthChecker grpchealth.Checker
 type Server struct {
 	checker    HealthChecker
 	middleware []func(http.Handler) http.Handler
+	routes     []route
+}
+
+type route struct {
+	path    string
+	handler http.Handler
 }
 
 // New 构造 Connect Server 实例.
@@ -35,6 +41,11 @@ func (s *Server) Use(mw func(http.Handler) http.Handler) {
 	s.middleware = append(s.middleware, mw)
 }
 
+// Register 注册 Connect service handler.
+func (s *Server) Register(path string, handler http.Handler) {
+	s.routes = append(s.routes, route{path: path, handler: handler})
+}
+
 // Mux 返回未应用中间件的内层 mux, 仅包含 Connect 路由.
 // grpchealth.NewHandler 返回的 path 是健康检查的 URL 前缀 (如 "/grpc.health.v1.Health/"),
 // 此处直接以 path 形式注册到 mux 上.
@@ -45,6 +56,10 @@ func (s *Server) Mux() http.Handler {
 	logger.L().Info("connect health handler registered", zap.String("path", healthPath))
 	mux.Handle(healthPath, healthHandler)
 	mux.Handle(healthPath+"Watch", healthHandler)
+	for _, r := range s.routes {
+		logger.L().Info("connect service handler registered", zap.String("path", r.path))
+		mux.Handle(r.path, r.handler)
+	}
 
 	return mux
 }

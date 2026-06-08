@@ -16,6 +16,15 @@
 - [ ] **API key 加密存储** — `internal/profile/repo.go`
   LLMConfig 中的 api_key 当前以明文写入 SQLite。
   需增加 AES-256 加密，密钥从环境变量读取。
+- [ ] **Resource 敏感字段加密存储** — `internal/infra/repo/resource.go`
+  ResourceService 第一版将 `llm_resources.api_key` 与 `database_resources.password` 明文写入服务 SQLite。
+  后续需增加加密存储，密钥从环境变量或密钥管理服务读取。
+- [ ] **Resource Get 接口敏感字段脱敏** — `internal/delivery/connect/resource_handler.go`
+  ResourceService 第一版 `GetLLMResource` 返回 `api_key` 明文，`GetDatabaseResource` 返回 `password` 明文。
+  后续需按调用场景支持脱敏返回、显式 reveal 或权限校验。
+- [ ] **ResourceService 权限控制与审计** — `internal/delivery/connect/resource_handler.go`
+  ResourceService 第一版不做资源级权限控制和读取审计。
+  后续需补充访问控制、敏感配置读取日志和操作审计。
 - 修改缩放逻辑
 
 ## 容量

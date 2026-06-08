@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package kgbrain.v1;
+
+option go_package = "kgbrain/internal/gen/kgbrain/v1;kgbrainv1";
+
+service ResourceService {
+  rpc SetLLMResource(SetLLMResourceRequest) returns (SetLLMResourceResponse);
+  rpc GetLLMResource(GetLLMResourceRequest) returns (GetLLMResourceResponse);
+  rpc DeleteLLMResource(DeleteLLMResourceRequest) returns (DeleteLLMResourceResponse);
+
+  rpc SetDatabaseResource(SetDatabaseResourceRequest) returns (SetDatabaseResourceResponse);
+  rpc GetDatabaseResource(GetDatabaseResourceRequest) returns (GetDatabaseResourceResponse);
+  rpc DeleteDatabaseResource(DeleteDatabaseResourceRequest) returns (DeleteDatabaseResourceResponse);
+}
+
+message SetLLMResourceRequest {
+  string resource_id = 1;
+  string name = 2;
+  LLMResourceConfig config = 3;
+}
+
+message SetLLMResourceResponse {
+  string resource_id = 1;
+  string status = 2;
+}
+
+message GetLLMResourceRequest {
+  string resource_id = 1;
+}
+
+message GetLLMResourceResponse {
+  string resource_id = 1;
+  string name = 2;
+  LLMResourceConfig config = 3;
+  int64 created_at_unix = 4;
+  int64 updated_at_unix = 5;
+}
+
+message DeleteLLMResourceRequest {
+  string resource_id = 1;
+}
+
+message DeleteLLMResourceResponse {
+  string resource_id = 1;
+  string status = 2;
+}
+
+message LLMResourceConfig {
+  string base_url = 1;
+  string api_key = 2;
+  string model = 3;
+  int32 timeout_seconds = 4;
+  optional double temperature = 5;
+}
+
+message SetDatabaseResourceRequest {
+  string resource_id = 1;
+  string name = 2;
+  DatabaseResourceConfig config = 3;
+}
+
+message SetDatabaseResourceResponse {
+  string resource_id = 1;
+  string status = 2;
+}
+
+message GetDatabaseResourceRequest {
+  string resource_id = 1;
+}
+
+message GetDatabaseResourceResponse {
+  string resource_id = 1;
+  string name = 2;
+  DatabaseResourceConfig config = 3;
+  int64 created_at_unix = 4;
+  int64 updated_at_unix = 5;
+}
+
+message DeleteDatabaseResourceRequest {
+  string resource_id = 1;
+}
+
+message DeleteDatabaseResourceResponse {
+  string resource_id = 1;
+  string status = 2;
+}
+
+message DatabaseResourceConfig {
+  DatabaseType type = 1;
+  PostgresResourceConfig postgres = 2;
+}
+
+message PostgresResourceConfig {
+  string host = 1;
+  int32 port = 2;
+  string database = 3;
+  string user = 4;
+  string password = 5;
+  string sslmode = 6;
+}
+
+enum DatabaseType {
+  DATABASE_TYPE_UNSPECIFIED = 0;
+  DATABASE_TYPE_POSTGRES = 1;
+}

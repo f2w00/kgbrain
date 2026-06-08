@@ -14,6 +14,7 @@ import (
 	"kgbrain/internal/application/kgc"
 	"kgbrain/internal/application/mapping"
 	"kgbrain/internal/application/profile"
+	appresource "kgbrain/internal/application/resource"
 	"kgbrain/internal/application/xform"
 	appxforminterfaces "kgbrain/internal/application/xform/interfaces"
 	"kgbrain/internal/config"
@@ -23,11 +24,12 @@ import (
 	domainkgc "kgbrain/internal/domain/kgc"
 	domainmapping "kgbrain/internal/domain/mapping"
 	domainprofile "kgbrain/internal/domain/profile"
+	"kgbrain/internal/gen/kgbrain/v1/kgbrainv1connect"
 	"kgbrain/internal/infra/llm"
 	"kgbrain/internal/infra/middleware"
+	redislib "kgbrain/internal/infra/redis"
 	"kgbrain/internal/infra/repo"
 	"kgbrain/internal/infra/store"
-	redislib "kgbrain/internal/infra/redis"
 	xforminfra "kgbrain/internal/infra/xform"
 	"kgbrain/internal/logger"
 
@@ -77,6 +79,10 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("init cache repo: %w", err)
 	}
+	resourceRepo, err := repo.NewResourceRepo(sqlDB)
+	if err != nil {
+		return fmt.Errorf("init resource repo: %w", err)
+	}
 
 	// 4. 领域层: 创建 Service 实例
 	mappingDomainSvc := domainmapping.NewService(cacheRepo)
@@ -96,6 +102,7 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	profileAppSvc := profile.NewService(profileRepo)
 	mappingAppSvc := mapping.NewService(profileRepo, mappingDomainSvc, contentMappingDomainSvc, mappingLLMFactory)
 	kgcAppSvc := kgc.NewService(profileRepo, kgcEnrichSvc, kgcAutofillSvc, kgcLLMFactory)
+	resourceAppSvc := appresource.NewService(resourceRepo)
 
 	// 7. 接口层: 参数校验器 (基于 OpenRPC YAML)
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
@@ -170,6 +177,8 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 
 	// 10. 接口层: 创建 Connect RPC 服务器, 注册 Connect 协议服务
 	connectServer := connect.New(connect.NewHealthChecker())
+	resourcePath, resourceHTTPHandler := kgbrainv1connect.NewResourceServiceHandler(connect.NewResourceHandler(resourceAppSvc))
+	connectServer.Register(resourcePath, resourceHTTPHandler)
 
 	// 11. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
 	// 中间件现在挂载到 JSON-RPC 与 Connect 两个 Server 上, 后续组合入口统一应用一次
