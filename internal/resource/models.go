@@ -15,6 +15,7 @@ type LLMResource struct {
 	Model          string
 	TimeoutSeconds int
 	Temperature    *float64
+	MaxConcurrency *int
 	CreatedAt      string
 	UpdatedAt      string
 }
@@ -31,6 +32,9 @@ func (r *LLMResource) Validate() error {
 	}
 	if strings.TrimSpace(r.Model) == "" {
 		return errors.New("model is required")
+	}
+	if r.MaxConcurrency != nil && *r.MaxConcurrency <= 0 {
+		return errors.New("max_concurrency must be greater than 0")
 	}
 	return nil
 }

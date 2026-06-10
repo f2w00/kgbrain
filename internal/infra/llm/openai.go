@@ -24,9 +24,11 @@ var (
 // openaiClient 封装 OpenAI 兼容的 LLM 客户端
 // 同时实现 mapping.LLMClient 和 kgc.LLMClient 两个接口
 type openaiClient struct {
-	baseURL   string
-	apiKey    string
-	modelName string
+	resourceID     string
+	baseURL        string
+	apiKey         string
+	modelName      string
+	maxConcurrency *int
 }
 
 // NewClient 创建 LLM 客户端实例
@@ -35,6 +37,24 @@ func NewClient(baseURL, apiKey, modelName string) (*openaiClient, error) {
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		modelName: modelName,
+	}, nil
+}
+
+// NewResourceClient 创建绑定 llm_resource_id 的客户端实例。
+// 该客户端会在真实请求发出前应用 resource 级全局并发限制。
+func NewResourceClient(
+	resourceID string,
+	baseURL string,
+	apiKey string,
+	modelName string,
+	maxConcurrency *int,
+) (*openaiClient, error) {
+	return &openaiClient{
+		resourceID:     resourceID,
+		baseURL:        baseURL,
+		apiKey:         apiKey,
+		modelName:      modelName,
+		maxConcurrency: maxConcurrency,
 	}, nil
 }
 
@@ -81,6 +101,15 @@ func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Mess
 	if err != nil {
 		return "", fmt.Errorf("get chat model: %w", err)
 	}
+	release, err := globalResourceLimiter.Acquire(
+		ctx,
+		c.resourceID,
+		c.maxConcurrency,
+	)
+	if err != nil {
+		return "", fmt.Errorf("acquire llm resource slot: %w", err)
+	}
+	defer release()
 
 	resp, err := cm.Generate(ctx, msgs, opts...)
 	if err != nil {

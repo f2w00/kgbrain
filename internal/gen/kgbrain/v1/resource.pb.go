@@ -402,6 +402,7 @@ type LLMResourceConfig struct {
 	Model          string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
 	TimeoutSeconds int32                  `protobuf:"varint,4,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
 	Temperature    *float64               `protobuf:"fixed64,5,opt,name=temperature,proto3,oneof" json:"temperature,omitempty"`
+	MaxConcurrency *int32                 `protobuf:"varint,6,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof" json:"max_concurrency,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -467,6 +468,13 @@ func (x *LLMResourceConfig) GetTimeoutSeconds() int32 {
 func (x *LLMResourceConfig) GetTemperature() float64 {
 	if x != nil && x.Temperature != nil {
 		return *x.Temperature
+	}
+	return 0
+}
+
+func (x *LLMResourceConfig) GetMaxConcurrency() int32 {
+	if x != nil && x.MaxConcurrency != nil {
+		return *x.MaxConcurrency
 	}
 	return 0
 }
@@ -966,14 +974,16 @@ const file_kgbrain_v1_resource_proto_rawDesc = "" +
 	"\x19DeleteLLMResourceResponse\x12\x1f\n" +
 	"\vresource_id\x18\x01 \x01(\tR\n" +
 	"resourceId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\"\xbd\x01\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\xff\x01\n" +
 	"\x11LLMResourceConfig\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12\x17\n" +
 	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\x12'\n" +
 	"\x0ftimeout_seconds\x18\x04 \x01(\x05R\x0etimeoutSeconds\x12%\n" +
-	"\vtemperature\x18\x05 \x01(\x01H\x00R\vtemperature\x88\x01\x01B\x0e\n" +
-	"\f_temperature\"\x8d\x01\n" +
+	"\vtemperature\x18\x05 \x01(\x01H\x00R\vtemperature\x88\x01\x01\x12,\n" +
+	"\x0fmax_concurrency\x18\x06 \x01(\x05H\x01R\x0emaxConcurrency\x88\x01\x01B\x0e\n" +
+	"\f_temperatureB\x12\n" +
+	"\x10_max_concurrency\"\x8d\x01\n" +
 	"\x1aSetDatabaseResourceRequest\x12\x1f\n" +
 	"\vresource_id\x18\x01 \x01(\tR\n" +
 	"resourceId\x12\x12\n" +

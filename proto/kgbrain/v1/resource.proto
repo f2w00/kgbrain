@@ -52,6 +52,7 @@ message LLMResourceConfig {
   string model = 3;
   int32 timeout_seconds = 4;
   optional double temperature = 5;
+  optional int32 max_concurrency = 6;
 }
 
 message SetDatabaseResourceRequest {

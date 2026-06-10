@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19kgbrain/v1/resource.proto\x12\nkgbrain.v1\"\x83\x01\n\x15SetLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x35\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\x1d.kgbrain.v1.LLMResourceConfigR\x06\x63onfig\"Q\n\x16SetLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"8\n\x15GetLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"\xd4\x01\n\x16GetLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x35\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\x1d.kgbrain.v1.LLMResourceConfigR\x06\x63onfig\x12&\n\x0f\x63reated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fupdated_at_unix\x18\x05 \x01(\x03R\rupdatedAtUnix\";\n\x18\x44\x65leteLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"T\n\x19\x44\x65leteLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"\xbd\x01\n\x11LLMResourceConfig\x12\x19\n\x08\x62\x61se_url\x18\x01 \x01(\tR\x07\x62\x61seUrl\x12\x17\n\x07\x61pi_key\x18\x02 \x01(\tR\x06\x61piKey\x12\x14\n\x05model\x18\x03 \x01(\tR\x05model\x12\'\n\x0ftimeout_seconds\x18\x04 \x01(\x05R\x0etimeoutSeconds\x12%\n\x0btemperature\x18\x05 \x01(\x01H\x00R\x0btemperature\x88\x01\x01\x42\x0e\n\x0c_temperature\"\x8d\x01\n\x1aSetDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12:\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\".kgbrain.v1.DatabaseResourceConfigR\x06\x63onfig\"V\n\x1bSetDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"=\n\x1aGetDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"\xde\x01\n\x1bGetDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12:\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\".kgbrain.v1.DatabaseResourceConfigR\x06\x63onfig\x12&\n\x0f\x63reated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fupdated_at_unix\x18\x05 \x01(\x03R\rupdatedAtUnix\"@\n\x1d\x44\x65leteDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"Y\n\x1e\x44\x65leteDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"\x86\x01\n\x16\x44\x61tabaseResourceConfig\x12,\n\x04type\x18\x01 \x01(\x0e\x32\x18.kgbrain.v1.DatabaseTypeR\x04type\x12>\n\x08postgres\x18\x02 \x01(\x0b\x32\".kgbrain.v1.PostgresResourceConfigR\x08postgres\"\xa6\x01\n\x16PostgresResourceConfig\x12\x12\n\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n\x04port\x18\x02 \x01(\x05R\x04port\x12\x1a\n\x08\x64\x61tabase\x18\x03 \x01(\tR\x08\x64\x61tabase\x12\x12\n\x04user\x18\x04 \x01(\tR\x04user\x12\x1a\n\x08password\x18\x05 \x01(\tR\x08password\x12\x18\n\x07sslmode\x18\x06 \x01(\tR\x07sslmode*I\n\x0c\x44\x61tabaseType\x12\x1d\n\x19\x44\x41TABASE_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n\x16\x44\x41TABASE_TYPE_POSTGRES\x10\x01\x32\xe6\x04\n\x0fResourceService\x12W\n\x0eSetLLMResource\x12!.kgbrain.v1.SetLLMResourceRequest\x1a\".kgbrain.v1.SetLLMResourceResponse\x12W\n\x0eGetLLMResource\x12!.kgbrain.v1.GetLLMResourceRequest\x1a\".kgbrain.v1.GetLLMResourceResponse\x12`\n\x11\x44\x65leteLLMResource\x12$.kgbrain.v1.DeleteLLMResourceRequest\x1a%.kgbrain.v1.DeleteLLMResourceResponse\x12\x66\n\x13SetDatabaseResource\x12&.kgbrain.v1.SetDatabaseResourceRequest\x1a\'.kgbrain.v1.SetDatabaseResourceResponse\x12\x66\n\x13GetDatabaseResource\x12&.kgbrain.v1.GetDatabaseResourceRequest\x1a\'.kgbrain.v1.GetDatabaseResourceResponse\x12o\n\x16\x44\x65leteDatabaseResource\x12).kgbrain.v1.DeleteDatabaseResourceRequest\x1a*.kgbrain.v1.DeleteDatabaseResourceResponseB+Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19kgbrain/v1/resource.proto\x12\nkgbrain.v1\"\x83\x01\n\x15SetLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x35\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\x1d.kgbrain.v1.LLMResourceConfigR\x06\x63onfig\"Q\n\x16SetLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"8\n\x15GetLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"\xd4\x01\n\x16GetLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12\x35\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\x1d.kgbrain.v1.LLMResourceConfigR\x06\x63onfig\x12&\n\x0f\x63reated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fupdated_at_unix\x18\x05 \x01(\x03R\rupdatedAtUnix\";\n\x18\x44\x65leteLLMResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"T\n\x19\x44\x65leteLLMResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"\xff\x01\n\x11LLMResourceConfig\x12\x19\n\x08\x62\x61se_url\x18\x01 \x01(\tR\x07\x62\x61seUrl\x12\x17\n\x07\x61pi_key\x18\x02 \x01(\tR\x06\x61piKey\x12\x14\n\x05model\x18\x03 \x01(\tR\x05model\x12\'\n\x0ftimeout_seconds\x18\x04 \x01(\x05R\x0etimeoutSeconds\x12%\n\x0btemperature\x18\x05 \x01(\x01H\x00R\x0btemperature\x88\x01\x01\x12,\n\x0fmax_concurrency\x18\x06 \x01(\x05H\x01R\x0emaxConcurrency\x88\x01\x01\x42\x0e\n\x0c_temperatureB\x12\n\x10_max_concurrency\"\x8d\x01\n\x1aSetDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12:\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\".kgbrain.v1.DatabaseResourceConfigR\x06\x63onfig\"V\n\x1bSetDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"=\n\x1aGetDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"\xde\x01\n\x1bGetDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x12\n\x04name\x18\x02 \x01(\tR\x04name\x12:\n\x06\x63onfig\x18\x03 \x01(\x0b\x32\".kgbrain.v1.DatabaseResourceConfigR\x06\x63onfig\x12&\n\x0f\x63reated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fupdated_at_unix\x18\x05 \x01(\x03R\rupdatedAtUnix\"@\n\x1d\x44\x65leteDatabaseResourceRequest\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\"Y\n\x1e\x44\x65leteDatabaseResourceResponse\x12\x1f\n\x0bresource_id\x18\x01 \x01(\tR\nresourceId\x12\x16\n\x06status\x18\x02 \x01(\tR\x06status\"\x86\x01\n\x16\x44\x61tabaseResourceConfig\x12,\n\x04type\x18\x01 \x01(\x0e\x32\x18.kgbrain.v1.DatabaseTypeR\x04type\x12>\n\x08postgres\x18\x02 \x01(\x0b\x32\".kgbrain.v1.PostgresResourceConfigR\x08postgres\"\xa6\x01\n\x16PostgresResourceConfig\x12\x12\n\x04host\x18\x01 \x01(\tR\x04host\x12\x12\n\x04port\x18\x02 \x01(\x05R\x04port\x12\x1a\n\x08\x64\x61tabase\x18\x03 \x01(\tR\x08\x64\x61tabase\x12\x12\n\x04user\x18\x04 \x01(\tR\x04user\x12\x1a\n\x08password\x18\x05 \x01(\tR\x08password\x12\x18\n\x07sslmode\x18\x06 \x01(\tR\x07sslmode*I\n\x0c\x44\x61tabaseType\x12\x1d\n\x19\x44\x41TABASE_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n\x16\x44\x41TABASE_TYPE_POSTGRES\x10\x01\x32\xe6\x04\n\x0fResourceService\x12W\n\x0eSetLLMResource\x12!.kgbrain.v1.SetLLMResourceRequest\x1a\".kgbrain.v1.SetLLMResourceResponse\x12W\n\x0eGetLLMResource\x12!.kgbrain.v1.GetLLMResourceRequest\x1a\".kgbrain.v1.GetLLMResourceResponse\x12`\n\x11\x44\x65leteLLMResource\x12$.kgbrain.v1.DeleteLLMResourceRequest\x1a%.kgbrain.v1.DeleteLLMResourceResponse\x12\x66\n\x13SetDatabaseResource\x12&.kgbrain.v1.SetDatabaseResourceRequest\x1a\'.kgbrain.v1.SetDatabaseResourceResponse\x12\x66\n\x13GetDatabaseResource\x12&.kgbrain.v1.GetDatabaseResourceRequest\x1a\'.kgbrain.v1.GetDatabaseResourceResponse\x12o\n\x16\x44\x65leteDatabaseResource\x12).kgbrain.v1.DeleteDatabaseResourceRequest\x1a*.kgbrain.v1.DeleteDatabaseResourceResponseB+Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,8 +32,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'kgbrain.v1.resource_pb2', _
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1'
-  _globals['_DATABASETYPE']._serialized_start=1853
-  _globals['_DATABASETYPE']._serialized_end=1926
+  _globals['_DATABASETYPE']._serialized_start=1919
+  _globals['_DATABASETYPE']._serialized_end=1992
   _globals['_SETLLMRESOURCEREQUEST']._serialized_start=42
   _globals['_SETLLMRESOURCEREQUEST']._serialized_end=173
   _globals['_SETLLMRESOURCERESPONSE']._serialized_start=175
@@ -47,23 +47,23 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_DELETELLMRESOURCERESPONSE']._serialized_start=592
   _globals['_DELETELLMRESOURCERESPONSE']._serialized_end=676
   _globals['_LLMRESOURCECONFIG']._serialized_start=679
-  _globals['_LLMRESOURCECONFIG']._serialized_end=868
-  _globals['_SETDATABASERESOURCEREQUEST']._serialized_start=871
-  _globals['_SETDATABASERESOURCEREQUEST']._serialized_end=1012
-  _globals['_SETDATABASERESOURCERESPONSE']._serialized_start=1014
-  _globals['_SETDATABASERESOURCERESPONSE']._serialized_end=1100
-  _globals['_GETDATABASERESOURCEREQUEST']._serialized_start=1102
-  _globals['_GETDATABASERESOURCEREQUEST']._serialized_end=1163
-  _globals['_GETDATABASERESOURCERESPONSE']._serialized_start=1166
-  _globals['_GETDATABASERESOURCERESPONSE']._serialized_end=1388
-  _globals['_DELETEDATABASERESOURCEREQUEST']._serialized_start=1390
-  _globals['_DELETEDATABASERESOURCEREQUEST']._serialized_end=1454
-  _globals['_DELETEDATABASERESOURCERESPONSE']._serialized_start=1456
-  _globals['_DELETEDATABASERESOURCERESPONSE']._serialized_end=1545
-  _globals['_DATABASERESOURCECONFIG']._serialized_start=1548
-  _globals['_DATABASERESOURCECONFIG']._serialized_end=1682
-  _globals['_POSTGRESRESOURCECONFIG']._serialized_start=1685
-  _globals['_POSTGRESRESOURCECONFIG']._serialized_end=1851
-  _globals['_RESOURCESERVICE']._serialized_start=1929
-  _globals['_RESOURCESERVICE']._serialized_end=2543
+  _globals['_LLMRESOURCECONFIG']._serialized_end=934
+  _globals['_SETDATABASERESOURCEREQUEST']._serialized_start=937
+  _globals['_SETDATABASERESOURCEREQUEST']._serialized_end=1078
+  _globals['_SETDATABASERESOURCERESPONSE']._serialized_start=1080
+  _globals['_SETDATABASERESOURCERESPONSE']._serialized_end=1166
+  _globals['_GETDATABASERESOURCEREQUEST']._serialized_start=1168
+  _globals['_GETDATABASERESOURCEREQUEST']._serialized_end=1229
+  _globals['_GETDATABASERESOURCERESPONSE']._serialized_start=1232
+  _globals['_GETDATABASERESOURCERESPONSE']._serialized_end=1454
+  _globals['_DELETEDATABASERESOURCEREQUEST']._serialized_start=1456
+  _globals['_DELETEDATABASERESOURCEREQUEST']._serialized_end=1520
+  _globals['_DELETEDATABASERESOURCERESPONSE']._serialized_start=1522
+  _globals['_DELETEDATABASERESOURCERESPONSE']._serialized_end=1611
+  _globals['_DATABASERESOURCECONFIG']._serialized_start=1614
+  _globals['_DATABASERESOURCECONFIG']._serialized_end=1748
+  _globals['_POSTGRESRESOURCECONFIG']._serialized_start=1751
+  _globals['_POSTGRESRESOURCECONFIG']._serialized_end=1917
+  _globals['_RESOURCESERVICE']._serialized_start=1995
+  _globals['_RESOURCESERVICE']._serialized_end=2609
 # @@protoc_insertion_point(module_scope)

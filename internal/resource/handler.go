@@ -1,4 +1,4 @@
-package connect
+package resource
 
 import (
 	"context"
@@ -7,21 +7,22 @@ import (
 
 	connectrpc "connectrpc.com/connect"
 
-	appresource "kgbrain/internal/application/resource"
-	domainresource "kgbrain/internal/domain/resource"
 	kgbrainv1 "kgbrain/internal/gen/kgbrain/v1"
 	"kgbrain/internal/gen/kgbrain/v1/kgbrainv1connect"
 )
 
 type ResourceHandler struct {
-	svc *appresource.Service
+	svc *Service
 }
 
-func NewResourceHandler(svc *appresource.Service) *ResourceHandler {
+func NewResourceHandler(svc *Service) *ResourceHandler {
 	return &ResourceHandler{svc: svc}
 }
 
-func (h *ResourceHandler) SetLLMResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.SetLLMResourceRequest]) (*connectrpc.Response[kgbrainv1.SetLLMResourceResponse], error) {
+func (h *ResourceHandler) SetLLMResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.SetLLMResourceRequest],
+) (*connectrpc.Response[kgbrainv1.SetLLMResourceResponse], error) {
 	_ = ctx
 	msg := req.Msg
 	if msg.GetConfig() == nil {
@@ -33,8 +34,13 @@ func (h *ResourceHandler) SetLLMResource(ctx context.Context, req *connectrpc.Re
 		v := msg.GetConfig().GetTemperature()
 		temperature = &v
 	}
+	var maxConcurrency *int
+	if msg.GetConfig().MaxConcurrency != nil {
+		v := int(msg.GetConfig().GetMaxConcurrency())
+		maxConcurrency = &v
+	}
 
-	result, err := h.svc.SetLLM(&domainresource.LLMResource{
+	result, err := h.svc.SetLLM(&LLMResource{
 		ID:             msg.GetResourceId(),
 		Name:           msg.GetName(),
 		BaseURL:        msg.GetConfig().GetBaseUrl(),
@@ -42,6 +48,7 @@ func (h *ResourceHandler) SetLLMResource(ctx context.Context, req *connectrpc.Re
 		Model:          msg.GetConfig().GetModel(),
 		TimeoutSeconds: int(msg.GetConfig().GetTimeoutSeconds()),
 		Temperature:    temperature,
+		MaxConcurrency: maxConcurrency,
 	})
 	if err != nil {
 		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
@@ -53,7 +60,10 @@ func (h *ResourceHandler) SetLLMResource(ctx context.Context, req *connectrpc.Re
 	}), nil
 }
 
-func (h *ResourceHandler) GetLLMResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.GetLLMResourceRequest]) (*connectrpc.Response[kgbrainv1.GetLLMResourceResponse], error) {
+func (h *ResourceHandler) GetLLMResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.GetLLMResourceRequest],
+) (*connectrpc.Response[kgbrainv1.GetLLMResourceResponse], error) {
 	_ = ctx
 	result, err := h.svc.GetLLM(req.Msg.GetResourceId())
 	if err != nil {
@@ -69,6 +79,10 @@ func (h *ResourceHandler) GetLLMResource(ctx context.Context, req *connectrpc.Re
 	if result.Temperature != nil {
 		cfg.Temperature = result.Temperature
 	}
+	if result.MaxConcurrency != nil {
+		v := int32(*result.MaxConcurrency)
+		cfg.MaxConcurrency = &v
+	}
 
 	return connectrpc.NewResponse(&kgbrainv1.GetLLMResourceResponse{
 		ResourceId:    result.ID,
@@ -79,7 +93,10 @@ func (h *ResourceHandler) GetLLMResource(ctx context.Context, req *connectrpc.Re
 	}), nil
 }
 
-func (h *ResourceHandler) DeleteLLMResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.DeleteLLMResourceRequest]) (*connectrpc.Response[kgbrainv1.DeleteLLMResourceResponse], error) {
+func (h *ResourceHandler) DeleteLLMResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.DeleteLLMResourceRequest],
+) (*connectrpc.Response[kgbrainv1.DeleteLLMResourceResponse], error) {
 	_ = ctx
 	result, err := h.svc.DeleteLLM(req.Msg.GetResourceId())
 	if err != nil {
@@ -91,7 +108,10 @@ func (h *ResourceHandler) DeleteLLMResource(ctx context.Context, req *connectrpc
 	}), nil
 }
 
-func (h *ResourceHandler) SetDatabaseResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.SetDatabaseResourceRequest]) (*connectrpc.Response[kgbrainv1.SetDatabaseResourceResponse], error) {
+func (h *ResourceHandler) SetDatabaseResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.SetDatabaseResourceRequest],
+) (*connectrpc.Response[kgbrainv1.SetDatabaseResourceResponse], error) {
 	_ = ctx
 	msg := req.Msg
 	if msg.GetConfig() == nil || msg.GetConfig().GetPostgres() == nil {
@@ -99,7 +119,7 @@ func (h *ResourceHandler) SetDatabaseResource(ctx context.Context, req *connectr
 	}
 
 	pg := msg.GetConfig().GetPostgres()
-	result, err := h.svc.SetDatabase(&domainresource.DatabaseResource{
+	result, err := h.svc.SetDatabase(&DatabaseResource{
 		ID:       msg.GetResourceId(),
 		Name:     msg.GetName(),
 		Type:     databaseType(msg.GetConfig().GetType()),
@@ -120,7 +140,10 @@ func (h *ResourceHandler) SetDatabaseResource(ctx context.Context, req *connectr
 	}), nil
 }
 
-func (h *ResourceHandler) GetDatabaseResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.GetDatabaseResourceRequest]) (*connectrpc.Response[kgbrainv1.GetDatabaseResourceResponse], error) {
+func (h *ResourceHandler) GetDatabaseResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.GetDatabaseResourceRequest],
+) (*connectrpc.Response[kgbrainv1.GetDatabaseResourceResponse], error) {
 	_ = ctx
 	result, err := h.svc.GetDatabase(req.Msg.GetResourceId())
 	if err != nil {
@@ -146,7 +169,10 @@ func (h *ResourceHandler) GetDatabaseResource(ctx context.Context, req *connectr
 	}), nil
 }
 
-func (h *ResourceHandler) DeleteDatabaseResource(ctx context.Context, req *connectrpc.Request[kgbrainv1.DeleteDatabaseResourceRequest]) (*connectrpc.Response[kgbrainv1.DeleteDatabaseResourceResponse], error) {
+func (h *ResourceHandler) DeleteDatabaseResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.DeleteDatabaseResourceRequest],
+) (*connectrpc.Response[kgbrainv1.DeleteDatabaseResourceResponse], error) {
 	_ = ctx
 	result, err := h.svc.DeleteDatabase(req.Msg.GetResourceId())
 	if err != nil {
@@ -159,7 +185,7 @@ func (h *ResourceHandler) DeleteDatabaseResource(ctx context.Context, req *conne
 }
 
 func resourceError(err error) error {
-	if appresource.IsNotFound(err) {
+	if IsNotFound(err) {
 		return connectrpc.NewError(connectrpc.CodeNotFound, err)
 	}
 	return connectrpc.NewError(connectrpc.CodeInternal, err)
@@ -167,16 +193,18 @@ func resourceError(err error) error {
 
 func databaseType(t kgbrainv1.DatabaseType) string {
 	if t == kgbrainv1.DatabaseType_DATABASE_TYPE_POSTGRES {
-		return domainresource.DatabaseTypePostgres
+		return DatabaseTypePostgres
 	}
 	return ""
 }
 
 func protoDatabaseType(t string) kgbrainv1.DatabaseType {
-	if t == domainresource.DatabaseTypePostgres {
+	switch t {
+	case DatabaseTypePostgres:
 		return kgbrainv1.DatabaseType_DATABASE_TYPE_POSTGRES
+	default:
+		return kgbrainv1.DatabaseType_DATABASE_TYPE_UNSPECIFIED
 	}
-	return kgbrainv1.DatabaseType_DATABASE_TYPE_UNSPECIFIED
 }
 
 func parseUnix(v string) int64 {

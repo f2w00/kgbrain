@@ -65,18 +65,20 @@ class DeleteLLMResourceResponse(_message.Message):
     def __init__(self, resource_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
 
 class LLMResourceConfig(_message.Message):
-    __slots__ = ("base_url", "api_key", "model", "timeout_seconds", "temperature")
+    __slots__ = ("base_url", "api_key", "model", "timeout_seconds", "temperature", "max_concurrency")
     BASE_URL_FIELD_NUMBER: _ClassVar[int]
     API_KEY_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
     TIMEOUT_SECONDS_FIELD_NUMBER: _ClassVar[int]
     TEMPERATURE_FIELD_NUMBER: _ClassVar[int]
+    MAX_CONCURRENCY_FIELD_NUMBER: _ClassVar[int]
     base_url: str
     api_key: str
     model: str
     timeout_seconds: int
     temperature: float
-    def __init__(self, base_url: _Optional[str] = ..., api_key: _Optional[str] = ..., model: _Optional[str] = ..., timeout_seconds: _Optional[int] = ..., temperature: _Optional[float] = ...) -> None: ...
+    max_concurrency: int
+    def __init__(self, base_url: _Optional[str] = ..., api_key: _Optional[str] = ..., model: _Optional[str] = ..., timeout_seconds: _Optional[int] = ..., temperature: _Optional[float] = ..., max_concurrency: _Optional[int] = ...) -> None: ...
 
 class SetDatabaseResourceRequest(_message.Message):
     __slots__ = ("resource_id", "name", "config")

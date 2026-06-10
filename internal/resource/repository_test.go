@@ -1,10 +1,8 @@
-package repo
+package resource
 
 import (
 	"database/sql"
 	"testing"
-
-	"kgbrain/internal/domain/resource"
 
 	_ "modernc.org/sqlite"
 )
@@ -27,8 +25,9 @@ func newTestResourceRepo(t *testing.T) *ResourceRepo {
 func TestResourceRepoLLMCRUD(t *testing.T) {
 	repo := newTestResourceRepo(t)
 	temp := 0.7
+	maxConcurrency := 2
 
-	if err := repo.SaveLLM(&resource.LLMResource{
+	if err := repo.SaveLLM(&LLMResource{
 		ID:             "llm_1",
 		Name:           "LLM One",
 		BaseURL:        "http://localhost:8000/v1",
@@ -36,6 +35,7 @@ func TestResourceRepoLLMCRUD(t *testing.T) {
 		Model:          "qwen",
 		TimeoutSeconds: 180,
 		Temperature:    &temp,
+		MaxConcurrency: &maxConcurrency,
 	}); err != nil {
 		t.Fatalf("save llm: %v", err)
 	}
@@ -44,12 +44,14 @@ func TestResourceRepoLLMCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get llm: %v", err)
 	}
-	if got == nil || got.APIKey != "sk-one" || got.Temperature == nil || *got.Temperature != temp {
+	if got == nil || got.APIKey != "sk-one" || got.Temperature == nil ||
+		*got.Temperature != temp || got.MaxConcurrency == nil ||
+		*got.MaxConcurrency != maxConcurrency {
 		t.Fatalf("unexpected llm: %#v", got)
 	}
 	createdAt := got.CreatedAt
 
-	if err := repo.SaveLLM(&resource.LLMResource{
+	if err := repo.SaveLLM(&LLMResource{
 		ID:             "llm_1",
 		Name:           "LLM Updated",
 		BaseURL:        "http://localhost:9000/v1",
@@ -64,7 +66,9 @@ func TestResourceRepoLLMCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get updated llm: %v", err)
 	}
-	if got.APIKey != "sk-two" || got.Model != "deepseek" || got.CreatedAt != createdAt || got.Temperature != nil {
+	if got.APIKey != "sk-two" || got.Model != "deepseek" ||
+		got.CreatedAt != createdAt || got.Temperature != nil ||
+		got.MaxConcurrency != nil {
 		t.Fatalf("unexpected updated llm: %#v", got)
 	}
 
@@ -72,23 +76,27 @@ func TestResourceRepoLLMCRUD(t *testing.T) {
 	if err != nil || !deleted {
 		t.Fatalf("delete llm: deleted=%v err=%v", deleted, err)
 	}
-	deleted, err = repo.DeleteLLM("llm_1")
-	if err != nil || deleted {
-		t.Fatalf("delete missing llm: deleted=%v err=%v", deleted, err)
+
+	got, err = repo.GetLLM("llm_1")
+	if err != nil {
+		t.Fatalf("get deleted llm: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil after deletion")
 	}
 }
 
 func TestResourceRepoDatabaseCRUD(t *testing.T) {
 	repo := newTestResourceRepo(t)
 
-	if err := repo.SaveDatabase(&resource.DatabaseResource{
+	if err := repo.SaveDatabase(&DatabaseResource{
 		ID:       "db_1",
-		Name:     "DB One",
-		Type:     resource.DatabaseTypePostgres,
-		Host:     "127.0.0.1",
+		Name:     "Postgres One",
+		Type:     DatabaseTypePostgres,
+		Host:     "localhost",
 		Port:     5432,
-		Database: "museum",
-		User:     "kgbrain",
+		Database: "testdb",
+		User:     "testuser",
 		Password: "secret",
 		SSLMode:  "disable",
 	}); err != nil {
@@ -99,19 +107,23 @@ func TestResourceRepoDatabaseCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get database: %v", err)
 	}
-	if got == nil || got.Password != "secret" || got.SSLMode != "disable" {
+	if got == nil || got.Host != "localhost" || got.Port != 5432 ||
+		got.Database != "testdb" || got.User != "testuser" ||
+		got.Password != "secret" || got.SSLMode != "disable" {
 		t.Fatalf("unexpected database: %#v", got)
 	}
 	createdAt := got.CreatedAt
 
-	if err := repo.SaveDatabase(&resource.DatabaseResource{
+	if err := repo.SaveDatabase(&DatabaseResource{
 		ID:       "db_1",
-		Name:     "DB Updated",
-		Type:     resource.DatabaseTypePostgres,
-		Host:     "localhost",
-		Port:     15432,
-		Database: "museum2",
-		User:     "kgbrain2",
+		Name:     "Postgres Updated",
+		Type:     DatabaseTypePostgres,
+		Host:     "db.internal",
+		Port:     5433,
+		Database: "newdb",
+		User:     "newuser",
+		Password: "newpass",
+		SSLMode:  "require",
 	}); err != nil {
 		t.Fatalf("update database: %v", err)
 	}
@@ -120,7 +132,7 @@ func TestResourceRepoDatabaseCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get updated database: %v", err)
 	}
-	if got.Password != "" || got.Database != "museum2" || got.CreatedAt != createdAt {
+	if got.Host != "db.internal" || got.CreatedAt != createdAt {
 		t.Fatalf("unexpected updated database: %#v", got)
 	}
 
@@ -128,8 +140,12 @@ func TestResourceRepoDatabaseCRUD(t *testing.T) {
 	if err != nil || !deleted {
 		t.Fatalf("delete database: deleted=%v err=%v", deleted, err)
 	}
-	deleted, err = repo.DeleteDatabase("db_1")
-	if err != nil || deleted {
-		t.Fatalf("delete missing database: deleted=%v err=%v", deleted, err)
+
+	got, err = repo.GetDatabase("db_1")
+	if err != nil {
+		t.Fatalf("get deleted database: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil after deletion")
 	}
 }

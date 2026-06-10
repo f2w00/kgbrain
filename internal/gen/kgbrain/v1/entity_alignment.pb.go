@@ -84,6 +84,9 @@ type StartEntityAlignmentRequest struct {
 	OutputTable        string                  `protobuf:"bytes,4,opt,name=output_table,json=outputTable,proto3" json:"output_table,omitempty"`
 	ReuseMapping       *bool                   `protobuf:"varint,5,opt,name=reuse_mapping,json=reuseMapping,proto3,oneof" json:"reuse_mapping,omitempty"`
 	Fields             []*EntityAlignmentField `protobuf:"bytes,6,rep,name=fields,proto3" json:"fields,omitempty"`
+	KeyField           string                  `protobuf:"bytes,7,opt,name=key_field,json=keyField,proto3" json:"key_field,omitempty"`
+	StartId            *int64                  `protobuf:"varint,8,opt,name=start_id,json=startId,proto3,oneof" json:"start_id,omitempty"`
+	EndId              *int64                  `protobuf:"varint,9,opt,name=end_id,json=endId,proto3,oneof" json:"end_id,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -160,13 +163,35 @@ func (x *StartEntityAlignmentRequest) GetFields() []*EntityAlignmentField {
 	return nil
 }
 
+func (x *StartEntityAlignmentRequest) GetKeyField() string {
+	if x != nil {
+		return x.KeyField
+	}
+	return ""
+}
+
+func (x *StartEntityAlignmentRequest) GetStartId() int64 {
+	if x != nil && x.StartId != nil {
+		return *x.StartId
+	}
+	return 0
+}
+
+func (x *StartEntityAlignmentRequest) GetEndId() int64 {
+	if x != nil && x.EndId != nil {
+		return *x.EndId
+	}
+	return 0
+}
+
 type EntityAlignmentField struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Targets       []string               `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
-	BatchSize     *int32                 `protobuf:"varint,3,opt,name=batch_size,json=batchSize,proto3,oneof" json:"batch_size,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Name             string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Targets          []string               `protobuf:"bytes,2,rep,name=targets,proto3" json:"targets,omitempty"`
+	BatchSize        *int32                 `protobuf:"varint,3,opt,name=batch_size,json=batchSize,proto3,oneof" json:"batch_size,omitempty"`
+	BatchConcurrency *int32                 `protobuf:"varint,4,opt,name=batch_concurrency,json=batchConcurrency,proto3,oneof" json:"batch_concurrency,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EntityAlignmentField) Reset() {
@@ -216,6 +241,13 @@ func (x *EntityAlignmentField) GetTargets() []string {
 func (x *EntityAlignmentField) GetBatchSize() int32 {
 	if x != nil && x.BatchSize != nil {
 		return *x.BatchSize
+	}
+	return 0
+}
+
+func (x *EntityAlignmentField) GetBatchConcurrency() int32 {
+	if x != nil && x.BatchConcurrency != nil {
+		return *x.BatchConcurrency
 	}
 	return 0
 }
@@ -437,21 +469,28 @@ var File_kgbrain_v1_entity_alignment_proto protoreflect.FileDescriptor
 const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\n" +
 	"!kgbrain/v1/entity_alignment.proto\x12\n" +
-	"kgbrain.v1\"\xb3\x02\n" +
+	"kgbrain.v1\"\xa4\x03\n" +
 	"\x1bStartEntityAlignmentRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
 	"\fsource_table\x18\x03 \x01(\tR\vsourceTable\x12!\n" +
 	"\foutput_table\x18\x04 \x01(\tR\voutputTable\x12(\n" +
 	"\rreuse_mapping\x18\x05 \x01(\bH\x00R\freuseMapping\x88\x01\x01\x128\n" +
-	"\x06fields\x18\x06 \x03(\v2 .kgbrain.v1.EntityAlignmentFieldR\x06fieldsB\x10\n" +
-	"\x0e_reuse_mapping\"w\n" +
+	"\x06fields\x18\x06 \x03(\v2 .kgbrain.v1.EntityAlignmentFieldR\x06fields\x12\x1b\n" +
+	"\tkey_field\x18\a \x01(\tR\bkeyField\x12\x1e\n" +
+	"\bstart_id\x18\b \x01(\x03H\x01R\astartId\x88\x01\x01\x12\x1a\n" +
+	"\x06end_id\x18\t \x01(\x03H\x02R\x05endId\x88\x01\x01B\x10\n" +
+	"\x0e_reuse_mappingB\v\n" +
+	"\t_start_idB\t\n" +
+	"\a_end_id\"\xbf\x01\n" +
 	"\x14EntityAlignmentField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\atargets\x18\x02 \x03(\tR\atargets\x12\"\n" +
 	"\n" +
-	"batch_size\x18\x03 \x01(\x05H\x00R\tbatchSize\x88\x01\x01B\r\n" +
-	"\v_batch_size\"s\n" +
+	"batch_size\x18\x03 \x01(\x05H\x00R\tbatchSize\x88\x01\x01\x120\n" +
+	"\x11batch_concurrency\x18\x04 \x01(\x05H\x01R\x10batchConcurrency\x88\x01\x01B\r\n" +
+	"\v_batch_sizeB\x14\n" +
+	"\x12_batch_concurrency\"s\n" +
 	"\x1cStartEntityAlignmentResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12<\n" +
 	"\x06status\x18\x02 \x01(\x0e2$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\"5\n" +

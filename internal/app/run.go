@@ -11,10 +11,10 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/spf13/cobra"
 
+	"kgbrain/internal/alignment"
 	"kgbrain/internal/application/kgc"
 	"kgbrain/internal/application/mapping"
 	"kgbrain/internal/application/profile"
-	appresource "kgbrain/internal/application/resource"
 	"kgbrain/internal/application/xform"
 	appxforminterfaces "kgbrain/internal/application/xform/interfaces"
 	"kgbrain/internal/config"
@@ -32,6 +32,7 @@ import (
 	"kgbrain/internal/infra/store"
 	xforminfra "kgbrain/internal/infra/xform"
 	"kgbrain/internal/logger"
+	"kgbrain/internal/resource"
 
 	"go.uber.org/zap"
 )
@@ -79,10 +80,6 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("init cache repo: %w", err)
 	}
-	resourceRepo, err := repo.NewResourceRepo(sqlDB)
-	if err != nil {
-		return fmt.Errorf("init resource repo: %w", err)
-	}
 
 	// 4. 领域层: 创建 Service 实例
 	mappingDomainSvc := domainmapping.NewService(cacheRepo)
@@ -102,7 +99,27 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	profileAppSvc := profile.NewService(profileRepo)
 	mappingAppSvc := mapping.NewService(profileRepo, mappingDomainSvc, contentMappingDomainSvc, mappingLLMFactory)
 	kgcAppSvc := kgc.NewService(profileRepo, kgcEnrichSvc, kgcAutofillSvc, kgcLLMFactory)
-	resourceAppSvc := appresource.NewService(resourceRepo)
+	resourceModule, err := resource.NewModule(resource.ModuleDeps{StoreDB: sqlDB})
+	if err != nil {
+		return fmt.Errorf("init resource module: %w", err)
+	}
+	entityAlignmentModule, err := alignment.NewModule(alignment.ModuleDeps{
+		StoreDB:   sqlDB,
+		Resources: alignment.NewResourceReader(resourceModule.Service),
+		LLMFactory: func(r *resource.LLMResource) (alignment.LLMClient, error) {
+			return llm.NewResourceClient(
+				r.ID,
+				r.BaseURL,
+				r.APIKey,
+				r.Model,
+				r.MaxConcurrency,
+			)
+		},
+		DBOpener: store.OpenPostgres,
+	})
+	if err != nil {
+		return fmt.Errorf("init entity alignment module: %w", err)
+	}
 
 	// 7. 接口层: 参数校验器 (基于 OpenRPC YAML)
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
@@ -177,8 +194,12 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 
 	// 10. 接口层: 创建 Connect RPC 服务器, 注册 Connect 协议服务
 	connectServer := connect.New(connect.NewHealthChecker())
-	resourcePath, resourceHTTPHandler := kgbrainv1connect.NewResourceServiceHandler(connect.NewResourceHandler(resourceAppSvc))
+	resourcePath, resourceHTTPHandler := kgbrainv1connect.NewResourceServiceHandler(resourceModule.Handler)
 	connectServer.Register(resourcePath, resourceHTTPHandler)
+	entityAlignmentPath, entityAlignmentHTTPHandler := kgbrainv1connect.NewEntityAlignmentServiceHandler(
+		entityAlignmentModule.Handler,
+	)
+	connectServer.Register(entityAlignmentPath, entityAlignmentHTTPHandler)
 
 	// 11. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
 	// 中间件现在挂载到 JSON-RPC 与 Connect 两个 Server 上, 后续组合入口统一应用一次

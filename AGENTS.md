@@ -6,7 +6,8 @@
 * 优先理解问题和影响范围，不要直接编码。
 * 保持最小修改原则，不修改无关代码。
 * 不确定时先提问，不要猜测需求。
-* 代码尽量不要超过 100 列，超长表达式优先拆分换行，不要为了省事硬塞成一行。
+* 代码尽量不要超过 100 列，超长表达式优先拆分换行。
+* 新增代码注释使用中文编写。
 
 ## 代码检索
 
@@ -33,44 +34,31 @@
 
 ## Git 规范
 
-中大型任务优先使用独立分支。
+中大型任务优先使用独立分支或 Worktree。
+分支命名使用 `feat/`、`fix/`、`refactor/`、`docs/`、`test/`、`chore/`
+前缀。
 
-分支名称规范：
-
-```text
-feat/<topic>
-fix/<topic>
-refactor/<topic>
-docs/<topic>
-test/<topic>
-chore/<topic>
-```
-
-示例：
-
-```text
-feat/codegraph-index
-fix/entity-dedup
-refactor/graph-storage
-```
-
-大型任务优先使用 Worktree：
-
-```bash
-git worktree add ../feat-codegraph-index -b feat/codegraph-index
-```
-
-避免长期在主分支开发。
+未经明确要求不要自动提交。
 
 ## Commit
 
-完成后先汇报：
+Commit message 必须包含简短 subject 和 body。body 中需要逐条列出本次提交
+实际包含的主要改动，不能只写一行 subject。
+Commit message 使用中文编写。
 
-* 修改内容
-* 影响文件
-* 测试结果
+推荐格式：
 
-未经明确要求不要自动提交。
+```text
+<type>(<scope>): <中文摘要>
+
+变更:
+- <改动 1>
+- <改动 2>
+- <改动 3>
+
+测试:
+- <测试命令或未测试原因>
+```
 
 ## 测试
 
@@ -87,6 +75,6 @@ git worktree add ../feat-codegraph-index -b feat/codegraph-index
 完成任务时说明：
 
 * 做了什么
-* 为什么这么做
+* 影响文件
+* 测试结果或未测试原因
 * 风险点
-* 验证方式

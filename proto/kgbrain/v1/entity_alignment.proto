@@ -16,12 +16,16 @@ message StartEntityAlignmentRequest {
   string output_table = 4;
   optional bool reuse_mapping = 5;
   repeated EntityAlignmentField fields = 6;
+  string key_field = 7;
+  optional int64 start_id = 8;
+  optional int64 end_id = 9;
 }
 
 message EntityAlignmentField {
   string name = 1;
   repeated string targets = 2;
   optional int32 batch_size = 3;
+  optional int32 batch_concurrency = 4;
 }
 
 message StartEntityAlignmentResponse {

@@ -20,30 +20,38 @@ ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED: EntityAlignmentJobStatus
 ENTITY_ALIGNMENT_JOB_STATUS_FAILED: EntityAlignmentJobStatus
 
 class StartEntityAlignmentRequest(_message.Message):
-    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "reuse_mapping", "fields")
+    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "reuse_mapping", "fields", "key_field", "start_id", "end_id")
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     SOURCE_TABLE_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_TABLE_FIELD_NUMBER: _ClassVar[int]
     REUSE_MAPPING_FIELD_NUMBER: _ClassVar[int]
     FIELDS_FIELD_NUMBER: _ClassVar[int]
+    KEY_FIELD_FIELD_NUMBER: _ClassVar[int]
+    START_ID_FIELD_NUMBER: _ClassVar[int]
+    END_ID_FIELD_NUMBER: _ClassVar[int]
     llm_resource_id: str
     database_resource_id: str
     source_table: str
     output_table: str
     reuse_mapping: bool
     fields: _containers.RepeatedCompositeFieldContainer[EntityAlignmentField]
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., reuse_mapping: bool = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ...) -> None: ...
+    key_field: str
+    start_id: int
+    end_id: int
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., reuse_mapping: bool = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ..., key_field: _Optional[str] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ...) -> None: ...
 
 class EntityAlignmentField(_message.Message):
-    __slots__ = ("name", "targets", "batch_size")
+    __slots__ = ("name", "targets", "batch_size", "batch_concurrency")
     NAME_FIELD_NUMBER: _ClassVar[int]
     TARGETS_FIELD_NUMBER: _ClassVar[int]
     BATCH_SIZE_FIELD_NUMBER: _ClassVar[int]
+    BATCH_CONCURRENCY_FIELD_NUMBER: _ClassVar[int]
     name: str
     targets: _containers.RepeatedScalarFieldContainer[str]
     batch_size: int
-    def __init__(self, name: _Optional[str] = ..., targets: _Optional[_Iterable[str]] = ..., batch_size: _Optional[int] = ...) -> None: ...
+    batch_concurrency: int
+    def __init__(self, name: _Optional[str] = ..., targets: _Optional[_Iterable[str]] = ..., batch_size: _Optional[int] = ..., batch_concurrency: _Optional[int] = ...) -> None: ...
 
 class StartEntityAlignmentResponse(_message.Message):
     __slots__ = ("job_id", "status")
