@@ -1,107 +1,178 @@
+// LLM 与数据库资源配置的增删改查服务。
+// 资源是系统依赖的外部服务（如 LLM API、PostgreSQL）的连接配置，
+// 其他服务（如 EnrichExtract、EntityAlignment）通过资源 ID 引用配置。
+
 syntax = "proto3";
 
 package kgbrain.v1;
 
 option go_package = "kgbrain/internal/gen/kgbrain/v1;kgbrainv1";
 
+// ResourceService 提供 LLM 和数据库资源的 CRUD 操作。
 service ResourceService {
+  // 创建或更新 LLM 资源配置。
   rpc SetLLMResource(SetLLMResourceRequest) returns (SetLLMResourceResponse);
+  // 查询 LLM 资源配置。
   rpc GetLLMResource(GetLLMResourceRequest) returns (GetLLMResourceResponse);
+  // 删除 LLM 资源配置。
   rpc DeleteLLMResource(DeleteLLMResourceRequest) returns (DeleteLLMResourceResponse);
 
+  // 创建或更新数据库资源配置。
   rpc SetDatabaseResource(SetDatabaseResourceRequest) returns (SetDatabaseResourceResponse);
+  // 查询数据库资源配置。
   rpc GetDatabaseResource(GetDatabaseResourceRequest) returns (GetDatabaseResourceResponse);
+  // 删除数据库资源配置。
   rpc DeleteDatabaseResource(DeleteDatabaseResourceRequest) returns (DeleteDatabaseResourceResponse);
 }
 
+// 创建或更新 LLM 资源的请求。
 message SetLLMResourceRequest {
+  // 资源唯一标识，用户自定义。
   string resource_id = 1;
+  // 资源名称，便于辨识。
   string name = 2;
+  // LLM 连接配置。
   LLMResourceConfig config = 3;
 }
 
+// 创建或更新 LLM 资源的响应。
 message SetLLMResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 操作状态描述。
   string status = 2;
 }
 
+// 查询 LLM 资源的请求。
 message GetLLMResourceRequest {
+  // 资源唯一标识。
   string resource_id = 1;
 }
 
+// 查询 LLM 资源的响应。
 message GetLLMResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 资源名称。
   string name = 2;
+  // LLM 连接配置。
   LLMResourceConfig config = 3;
+  // 创建时间（Unix 时间戳，秒）。
   int64 created_at_unix = 4;
+  // 更新时间（Unix 时间戳，秒）。
   int64 updated_at_unix = 5;
 }
 
+// 删除 LLM 资源的请求。
 message DeleteLLMResourceRequest {
+  // 资源唯一标识。
   string resource_id = 1;
 }
 
+// 删除 LLM 资源的响应。
 message DeleteLLMResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 操作状态描述。
   string status = 2;
 }
 
+// LLM 服务连接配置。
 message LLMResourceConfig {
+  // LLM API 的 Base URL。
   string base_url = 1;
+  // API 密钥。
   string api_key = 2;
+  // 模型名称，如 gpt-4、qwen-plus 等。
   string model = 3;
+  // HTTP 请求超时时间（秒）。
   int32 timeout_seconds = 4;
+  // 模型温度参数，控制生成随机性。
   optional double temperature = 5;
+  // 最大并发请求数，为空则使用默认值。
   optional int32 max_concurrency = 6;
 }
 
+// 创建或更新数据库资源的请求。
 message SetDatabaseResourceRequest {
+  // 资源唯一标识，用户自定义。
   string resource_id = 1;
+  // 资源名称。
   string name = 2;
+  // 数据库连接配置。
   DatabaseResourceConfig config = 3;
 }
 
+// 创建或更新数据库资源的响应。
 message SetDatabaseResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 操作状态描述。
   string status = 2;
 }
 
+// 查询数据库资源的请求。
 message GetDatabaseResourceRequest {
+  // 资源唯一标识。
   string resource_id = 1;
 }
 
+// 查询数据库资源的响应。
 message GetDatabaseResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 资源名称。
   string name = 2;
+  // 数据库连接配置。
   DatabaseResourceConfig config = 3;
+  // 创建时间（Unix 时间戳，秒）。
   int64 created_at_unix = 4;
+  // 更新时间（Unix 时间戳，秒）。
   int64 updated_at_unix = 5;
 }
 
+// 删除数据库资源的请求。
 message DeleteDatabaseResourceRequest {
+  // 资源唯一标识。
   string resource_id = 1;
 }
 
+// 删除数据库资源的响应。
 message DeleteDatabaseResourceResponse {
+  // 资源唯一标识。
   string resource_id = 1;
+  // 操作状态描述。
   string status = 2;
 }
 
+// 数据库连接配置，支持多种数据库类型。
 message DatabaseResourceConfig {
+  // 数据库类型。
   DatabaseType type = 1;
+  // PostgreSQL 连接配置（当 type 为 POSTGRES 时使用）。
   PostgresResourceConfig postgres = 2;
 }
 
+// PostgreSQL 数据库连接参数。
 message PostgresResourceConfig {
+  // 主机地址。
   string host = 1;
+  // 端口号。
   int32 port = 2;
+  // 数据库名。
   string database = 3;
+  // 用户名。
   string user = 4;
+  // 密码。
   string password = 5;
+  // SSL 模式（disable / require / verify-ca / verify-full 等）。
   string sslmode = 6;
 }
 
+// 支持的数据库类型。
 enum DatabaseType {
+  // 未指定，不应使用。
   DATABASE_TYPE_UNSPECIFIED = 0;
+  // PostgreSQL。
   DATABASE_TYPE_POSTGRES = 1;
 }

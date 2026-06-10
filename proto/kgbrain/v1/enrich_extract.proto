@@ -1,0 +1,113 @@
+// 基于 LLM 对源表数据执行信息提取与补全。
+// 用户指定 LLM 资源、数据库资源、源表与目标表后，
+// 服务逐行读取源表数据，调用 LLM 提取/补全字段并写入目标表。
+
+syntax = "proto3";
+
+package kgbrain.v1;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "kgbrain/internal/gen/kgbrain/v1;kgbrainv1";
+
+// EnrichExtractService 提供信息提取与补全任务的启停与状态查询。
+service EnrichExtractService {
+  // 启动一个新的提取补全任务。
+  rpc StartEnrichExtract(StartEnrichExtractRequest) returns (StartEnrichExtractResponse);
+  // 查询指定任务的当前状态与进度。
+  rpc GetEnrichExtractJob(GetEnrichExtractJobRequest) returns (GetEnrichExtractJobResponse);
+}
+
+// 启动提取补全任务的请求参数。
+message StartEnrichExtractRequest {
+  // LLM 资源标识，引用已配置的 LLM 资源。
+  string llm_resource_id = 1;
+  // 数据库资源标识，引用已配置的数据库资源。
+  string database_resource_id = 2;
+  // 源表名，读取原始数据的表。
+  string source_table = 3;
+  // 输出表名，写入提取/补全结果的表。
+  string output_table = 4;
+  // 主键字段名，用于逐行遍历源表。
+  string key_field = 5;
+  // 目标输出结构示例，供 LLM 了解期望的字段格式。
+  repeated google.protobuf.Struct target_example = 6;
+  // 起始主键值（含），为空则从表头开始。
+  optional int64 start_id = 7;
+  // 结束主键值（含），为空则直到表尾。
+  optional int64 end_id = 8;
+  // LLM 请求并发数。
+  optional int32 concurrency = 9;
+  // 是否覆盖输出表中已有的记录。
+  optional bool overwrite = 10;
+  // 每页读取的记录数。
+  optional int32 page_size = 11;
+  // 单行 LLM 调用最大重试次数。
+  optional int32 max_retries = 12;
+  // 源表中包含待提取 JSON 数据的字段名。为空时整行数据作为输入。
+  optional string source_json_field = 13;
+}
+
+// 启动任务的响应。
+message StartEnrichExtractResponse {
+  // 任务唯一标识。
+  string job_id = 1;
+  // 任务初始状态。
+  EnrichExtractJobStatus status = 2;
+}
+
+// 查询任务状态的请求。
+message GetEnrichExtractJobRequest {
+  // 任务唯一标识。
+  string job_id = 1;
+}
+
+// 查询任务状态的响应。
+message GetEnrichExtractJobResponse {
+  // 任务唯一标识。
+  string job_id = 1;
+  // LLM 资源标识。
+  string llm_resource_id = 2;
+  // 数据库资源标识。
+  string database_resource_id = 3;
+  // 源表名。
+  string source_table = 4;
+  // 输出表名。
+  string output_table = 5;
+  // 主键字段名。
+  string key_field = 6;
+  // 源 JSON 数据字段名。
+  string source_json_field = 7;
+  // 任务当前状态。
+  EnrichExtractJobStatus status = 8;
+  // 错误信息，任务失败时提供详细原因。
+  string error_message = 9;
+  // 最后处理的主键值，可用于断点续传。
+  int64 last_key = 10;
+  // 已处理的记录总数。
+  int64 processed_rows = 11;
+  // 成功处理的记录数。
+  int64 succeeded_rows = 12;
+  // 处理失败的记录数。
+  int64 failed_rows = 13;
+  // 任务创建时间（Unix 时间戳，秒）。
+  int64 created_at_unix = 14;
+  // 任务开始执行时间（Unix 时间戳，秒）。
+  int64 started_at_unix = 15;
+  // 任务完成时间（Unix 时间戳，秒）。
+  int64 finished_at_unix = 16;
+}
+
+// 提取补全任务的生命周期状态。
+enum EnrichExtractJobStatus {
+  // 未指定（默认值），不应使用。
+  ENRICH_EXTRACT_JOB_STATUS_UNSPECIFIED = 0;
+  // 等待执行。
+  ENRICH_EXTRACT_JOB_STATUS_PENDING = 1;
+  // 执行中。
+  ENRICH_EXTRACT_JOB_STATUS_RUNNING = 2;
+  // 执行成功。
+  ENRICH_EXTRACT_JOB_STATUS_SUCCEEDED = 3;
+  // 执行失败。
+  ENRICH_EXTRACT_JOB_STATUS_FAILED = 4;
+}
