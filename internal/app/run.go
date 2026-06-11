@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -115,7 +116,8 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	)
 	connectServer.Register(enrichExtractPath, enrichExtractHTTPHandler)
 
-	// 5. 中间件: 请求解压 + 响应压缩
+	// 5. 中间件: panic recovery + 请求解压 + 响应压缩
+	connectServer.Use(chimiddleware.Recoverer)
 	connectServer.Use(middleware.DecompressBody)
 
 	gzWrapper, err := gzhttp.NewWrapper(
