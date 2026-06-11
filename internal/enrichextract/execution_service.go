@@ -162,7 +162,12 @@ func (s *DomainService) processOneRow(
 				ErrorMessage: err.Error(),
 			}}
 		}
-		msgs := BuildMessages(source, req.TargetExample, req.TargetFields)
+		msgs := BuildMessages(
+			source,
+			req.TargetExample,
+			req.OutputSchema,
+			req.PriorityFieldHints,
+		)
 		resp, err := llm.GenerateStructuredMessages(ctx, msgs)
 		if err != nil {
 			lastErr = fmt.Errorf("llm generate: %w", err)
@@ -183,8 +188,13 @@ func (s *DomainService) processOneRow(
 			lastErr = fmt.Errorf("llm output must be json object")
 			continue
 		}
-		aligned := AlignOutputFields(StripKey(obj, req.KeyField), req.TargetFields)
-		return rowProcessResult{Output: OutputRow{Key: row.Key, Values: aligned}}
+		aligned := AlignOutputFields(StripKey(obj, req.KeyField), OutputFieldNames(req.OutputSchema))
+		normalized, err := NormalizeOutputValues(aligned, req.OutputSchema)
+		if err != nil {
+			lastErr = fmt.Errorf("validate llm output: %w", err)
+			continue
+		}
+		return rowProcessResult{Output: OutputRow{Key: row.Key, Values: normalized}}
 	}
 	return rowProcessResult{Err: &RowError{
 		SourceKey:    row.Key,

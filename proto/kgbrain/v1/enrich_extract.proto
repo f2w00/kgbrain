@@ -26,22 +26,46 @@ message StartEnrichExtractRequest {
   string output_table = 4;
   // 主键字段名，用于逐行遍历源表。
   string key_field = 5;
+  // 输出表字段结构，作为校验、建表和 LLM 输出字段的唯一来源。
+  repeated EnrichExtractOutputColumn output_schema = 6;
   // 目标输出结构示例，供 LLM 了解期望的字段格式。
-  repeated google.protobuf.Struct target_example = 6;
+  repeated google.protobuf.Struct target_example = 7;
   // 起始主键值（含），为空则从表头开始。
-  optional int64 start_id = 7;
+  optional int64 start_id = 8;
   // 结束主键值（含），为空则直到表尾。
-  optional int64 end_id = 8;
+  optional int64 end_id = 9;
   // LLM 请求并发数。
-  optional int32 concurrency = 9;
+  optional int32 concurrency = 10;
   // 是否覆盖输出表中已有的记录。
-  optional bool overwrite = 10;
+  optional bool overwrite = 11;
   // 每页读取的记录数。
-  optional int32 page_size = 11;
+  optional int32 page_size = 12;
   // 单行 LLM 调用最大重试次数。
-  optional int32 max_retries = 12;
+  optional int32 max_retries = 13;
   // 源表中包含待提取 JSON 数据的字段名。为空时默认使用 raw_data。
-  optional string source_json_field = 13;
+  optional string source_json_field = 14;
+  // 重点字段说明。key 必须是目标字段名，value 描述该字段的抽取/推断规则。
+  map<string, string> priority_field_hints = 15;
+  // 输出表不存在时是否按 output_schema 自动创建。
+  optional bool auto_create_output_table = 16;
+}
+
+// 输出表字段定义。
+message EnrichExtractOutputColumn {
+  // 字段名，不包含 key_field。
+  string name = 1;
+  // 字段类型，初版仅支持 TEXT 和 BIGINT。
+  EnrichExtractOutputColumnType type = 2;
+}
+
+// 输出表字段类型。
+enum EnrichExtractOutputColumnType {
+  // 未指定（默认值），不应使用。
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED = 0;
+  // PostgreSQL TEXT。
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT = 1;
+  // PostgreSQL BIGINT。
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT = 2;
 }
 
 // 启动任务的响应。
@@ -92,6 +116,10 @@ message GetEnrichExtractJobResponse {
   int64 started_at_unix = 15;
   // 任务完成时间（Unix 时间戳，秒）。
   int64 finished_at_unix = 16;
+  // 输出表字段结构。
+  repeated EnrichExtractOutputColumn output_schema = 17;
+  // 输出表不存在时是否按 output_schema 自动创建。
+  bool auto_create_output_table = 18;
 }
 
 // 提取补全任务的生命周期状态。

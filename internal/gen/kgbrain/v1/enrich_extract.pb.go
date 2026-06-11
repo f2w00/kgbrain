@@ -22,6 +22,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// 输出表字段类型。
+type EnrichExtractOutputColumnType int32
+
+const (
+	// 未指定（默认值），不应使用。
+	EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED EnrichExtractOutputColumnType = 0
+	// PostgreSQL TEXT。
+	EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT EnrichExtractOutputColumnType = 1
+	// PostgreSQL BIGINT。
+	EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT EnrichExtractOutputColumnType = 2
+)
+
+// Enum value maps for EnrichExtractOutputColumnType.
+var (
+	EnrichExtractOutputColumnType_name = map[int32]string{
+		0: "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED",
+		1: "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT",
+		2: "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT",
+	}
+	EnrichExtractOutputColumnType_value = map[string]int32{
+		"ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED": 0,
+		"ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT":        1,
+		"ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT":      2,
+	}
+)
+
+func (x EnrichExtractOutputColumnType) Enum() *EnrichExtractOutputColumnType {
+	p := new(EnrichExtractOutputColumnType)
+	*p = x
+	return p
+}
+
+func (x EnrichExtractOutputColumnType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EnrichExtractOutputColumnType) Descriptor() protoreflect.EnumDescriptor {
+	return file_kgbrain_v1_enrich_extract_proto_enumTypes[0].Descriptor()
+}
+
+func (EnrichExtractOutputColumnType) Type() protoreflect.EnumType {
+	return &file_kgbrain_v1_enrich_extract_proto_enumTypes[0]
+}
+
+func (x EnrichExtractOutputColumnType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EnrichExtractOutputColumnType.Descriptor instead.
+func (EnrichExtractOutputColumnType) EnumDescriptor() ([]byte, []int) {
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{0}
+}
+
 // 提取补全任务的生命周期状态。
 type EnrichExtractJobStatus int32
 
@@ -71,11 +124,11 @@ func (x EnrichExtractJobStatus) String() string {
 }
 
 func (EnrichExtractJobStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_kgbrain_v1_enrich_extract_proto_enumTypes[0].Descriptor()
+	return file_kgbrain_v1_enrich_extract_proto_enumTypes[1].Descriptor()
 }
 
 func (EnrichExtractJobStatus) Type() protoreflect.EnumType {
-	return &file_kgbrain_v1_enrich_extract_proto_enumTypes[0]
+	return &file_kgbrain_v1_enrich_extract_proto_enumTypes[1]
 }
 
 func (x EnrichExtractJobStatus) Number() protoreflect.EnumNumber {
@@ -84,7 +137,7 @@ func (x EnrichExtractJobStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use EnrichExtractJobStatus.Descriptor instead.
 func (EnrichExtractJobStatus) EnumDescriptor() ([]byte, []int) {
-	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{0}
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{1}
 }
 
 // 启动提取补全任务的请求参数。
@@ -100,24 +153,30 @@ type StartEnrichExtractRequest struct {
 	OutputTable string `protobuf:"bytes,4,opt,name=output_table,json=outputTable,proto3" json:"output_table,omitempty"`
 	// 主键字段名，用于逐行遍历源表。
 	KeyField string `protobuf:"bytes,5,opt,name=key_field,json=keyField,proto3" json:"key_field,omitempty"`
+	// 输出表字段结构，作为校验、建表和 LLM 输出字段的唯一来源。
+	OutputSchema []*EnrichExtractOutputColumn `protobuf:"bytes,6,rep,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
 	// 目标输出结构示例，供 LLM 了解期望的字段格式。
-	TargetExample []*structpb.Struct `protobuf:"bytes,6,rep,name=target_example,json=targetExample,proto3" json:"target_example,omitempty"`
+	TargetExample []*structpb.Struct `protobuf:"bytes,7,rep,name=target_example,json=targetExample,proto3" json:"target_example,omitempty"`
 	// 起始主键值（含），为空则从表头开始。
-	StartId *int64 `protobuf:"varint,7,opt,name=start_id,json=startId,proto3,oneof" json:"start_id,omitempty"`
+	StartId *int64 `protobuf:"varint,8,opt,name=start_id,json=startId,proto3,oneof" json:"start_id,omitempty"`
 	// 结束主键值（含），为空则直到表尾。
-	EndId *int64 `protobuf:"varint,8,opt,name=end_id,json=endId,proto3,oneof" json:"end_id,omitempty"`
+	EndId *int64 `protobuf:"varint,9,opt,name=end_id,json=endId,proto3,oneof" json:"end_id,omitempty"`
 	// LLM 请求并发数。
-	Concurrency *int32 `protobuf:"varint,9,opt,name=concurrency,proto3,oneof" json:"concurrency,omitempty"`
+	Concurrency *int32 `protobuf:"varint,10,opt,name=concurrency,proto3,oneof" json:"concurrency,omitempty"`
 	// 是否覆盖输出表中已有的记录。
-	Overwrite *bool `protobuf:"varint,10,opt,name=overwrite,proto3,oneof" json:"overwrite,omitempty"`
+	Overwrite *bool `protobuf:"varint,11,opt,name=overwrite,proto3,oneof" json:"overwrite,omitempty"`
 	// 每页读取的记录数。
-	PageSize *int32 `protobuf:"varint,11,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
+	PageSize *int32 `protobuf:"varint,12,opt,name=page_size,json=pageSize,proto3,oneof" json:"page_size,omitempty"`
 	// 单行 LLM 调用最大重试次数。
-	MaxRetries *int32 `protobuf:"varint,12,opt,name=max_retries,json=maxRetries,proto3,oneof" json:"max_retries,omitempty"`
+	MaxRetries *int32 `protobuf:"varint,13,opt,name=max_retries,json=maxRetries,proto3,oneof" json:"max_retries,omitempty"`
 	// 源表中包含待提取 JSON 数据的字段名。为空时默认使用 raw_data。
-	SourceJsonField *string `protobuf:"bytes,13,opt,name=source_json_field,json=sourceJsonField,proto3,oneof" json:"source_json_field,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	SourceJsonField *string `protobuf:"bytes,14,opt,name=source_json_field,json=sourceJsonField,proto3,oneof" json:"source_json_field,omitempty"`
+	// 重点字段说明。key 必须是目标字段名，value 描述该字段的抽取/推断规则。
+	PriorityFieldHints map[string]string `protobuf:"bytes,15,rep,name=priority_field_hints,json=priorityFieldHints,proto3" json:"priority_field_hints,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// 输出表不存在时是否按 output_schema 自动创建。
+	AutoCreateOutputTable *bool `protobuf:"varint,16,opt,name=auto_create_output_table,json=autoCreateOutputTable,proto3,oneof" json:"auto_create_output_table,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *StartEnrichExtractRequest) Reset() {
@@ -185,6 +244,13 @@ func (x *StartEnrichExtractRequest) GetKeyField() string {
 	return ""
 }
 
+func (x *StartEnrichExtractRequest) GetOutputSchema() []*EnrichExtractOutputColumn {
+	if x != nil {
+		return x.OutputSchema
+	}
+	return nil
+}
+
 func (x *StartEnrichExtractRequest) GetTargetExample() []*structpb.Struct {
 	if x != nil {
 		return x.TargetExample
@@ -241,6 +307,75 @@ func (x *StartEnrichExtractRequest) GetSourceJsonField() string {
 	return ""
 }
 
+func (x *StartEnrichExtractRequest) GetPriorityFieldHints() map[string]string {
+	if x != nil {
+		return x.PriorityFieldHints
+	}
+	return nil
+}
+
+func (x *StartEnrichExtractRequest) GetAutoCreateOutputTable() bool {
+	if x != nil && x.AutoCreateOutputTable != nil {
+		return *x.AutoCreateOutputTable
+	}
+	return false
+}
+
+// 输出表字段定义。
+type EnrichExtractOutputColumn struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 字段名，不包含 key_field。
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// 字段类型，初版仅支持 TEXT 和 BIGINT。
+	Type          EnrichExtractOutputColumnType `protobuf:"varint,2,opt,name=type,proto3,enum=kgbrain.v1.EnrichExtractOutputColumnType" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnrichExtractOutputColumn) Reset() {
+	*x = EnrichExtractOutputColumn{}
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnrichExtractOutputColumn) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnrichExtractOutputColumn) ProtoMessage() {}
+
+func (x *EnrichExtractOutputColumn) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnrichExtractOutputColumn.ProtoReflect.Descriptor instead.
+func (*EnrichExtractOutputColumn) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *EnrichExtractOutputColumn) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *EnrichExtractOutputColumn) GetType() EnrichExtractOutputColumnType {
+	if x != nil {
+		return x.Type
+	}
+	return EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED
+}
+
 // 启动任务的响应。
 type StartEnrichExtractResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -254,7 +389,7 @@ type StartEnrichExtractResponse struct {
 
 func (x *StartEnrichExtractResponse) Reset() {
 	*x = StartEnrichExtractResponse{}
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[1]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -266,7 +401,7 @@ func (x *StartEnrichExtractResponse) String() string {
 func (*StartEnrichExtractResponse) ProtoMessage() {}
 
 func (x *StartEnrichExtractResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[1]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -279,7 +414,7 @@ func (x *StartEnrichExtractResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartEnrichExtractResponse.ProtoReflect.Descriptor instead.
 func (*StartEnrichExtractResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{1}
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StartEnrichExtractResponse) GetJobId() string {
@@ -307,7 +442,7 @@ type GetEnrichExtractJobRequest struct {
 
 func (x *GetEnrichExtractJobRequest) Reset() {
 	*x = GetEnrichExtractJobRequest{}
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[2]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -319,7 +454,7 @@ func (x *GetEnrichExtractJobRequest) String() string {
 func (*GetEnrichExtractJobRequest) ProtoMessage() {}
 
 func (x *GetEnrichExtractJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[2]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -332,7 +467,7 @@ func (x *GetEnrichExtractJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEnrichExtractJobRequest.ProtoReflect.Descriptor instead.
 func (*GetEnrichExtractJobRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{2}
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetEnrichExtractJobRequest) GetJobId() string {
@@ -377,13 +512,17 @@ type GetEnrichExtractJobResponse struct {
 	StartedAtUnix int64 `protobuf:"varint,15,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
 	// 任务完成时间（Unix 时间戳，秒）。
 	FinishedAtUnix int64 `protobuf:"varint,16,opt,name=finished_at_unix,json=finishedAtUnix,proto3" json:"finished_at_unix,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 输出表字段结构。
+	OutputSchema []*EnrichExtractOutputColumn `protobuf:"bytes,17,rep,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
+	// 输出表不存在时是否按 output_schema 自动创建。
+	AutoCreateOutputTable bool `protobuf:"varint,18,opt,name=auto_create_output_table,json=autoCreateOutputTable,proto3" json:"auto_create_output_table,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GetEnrichExtractJobResponse) Reset() {
 	*x = GetEnrichExtractJobResponse{}
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[3]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -395,7 +534,7 @@ func (x *GetEnrichExtractJobResponse) String() string {
 func (*GetEnrichExtractJobResponse) ProtoMessage() {}
 
 func (x *GetEnrichExtractJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[3]
+	mi := &file_kgbrain_v1_enrich_extract_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -408,7 +547,7 @@ func (x *GetEnrichExtractJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEnrichExtractJobResponse.ProtoReflect.Descriptor instead.
 func (*GetEnrichExtractJobResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{3}
+	return file_kgbrain_v1_enrich_extract_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GetEnrichExtractJobResponse) GetJobId() string {
@@ -523,28 +662,48 @@ func (x *GetEnrichExtractJobResponse) GetFinishedAtUnix() int64 {
 	return 0
 }
 
+func (x *GetEnrichExtractJobResponse) GetOutputSchema() []*EnrichExtractOutputColumn {
+	if x != nil {
+		return x.OutputSchema
+	}
+	return nil
+}
+
+func (x *GetEnrichExtractJobResponse) GetAutoCreateOutputTable() bool {
+	if x != nil {
+		return x.AutoCreateOutputTable
+	}
+	return false
+}
+
 var File_kgbrain_v1_enrich_extract_proto protoreflect.FileDescriptor
 
 const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\n" +
 	"\x1fkgbrain/v1/enrich_extract.proto\x12\n" +
-	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x81\x05\n" +
+	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\xe0\a\n" +
 	"\x19StartEnrichExtractRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
 	"\fsource_table\x18\x03 \x01(\tR\vsourceTable\x12!\n" +
 	"\foutput_table\x18\x04 \x01(\tR\voutputTable\x12\x1b\n" +
-	"\tkey_field\x18\x05 \x01(\tR\bkeyField\x12>\n" +
-	"\x0etarget_example\x18\x06 \x03(\v2\x17.google.protobuf.StructR\rtargetExample\x12\x1e\n" +
-	"\bstart_id\x18\a \x01(\x03H\x00R\astartId\x88\x01\x01\x12\x1a\n" +
-	"\x06end_id\x18\b \x01(\x03H\x01R\x05endId\x88\x01\x01\x12%\n" +
-	"\vconcurrency\x18\t \x01(\x05H\x02R\vconcurrency\x88\x01\x01\x12!\n" +
-	"\toverwrite\x18\n" +
-	" \x01(\bH\x03R\toverwrite\x88\x01\x01\x12 \n" +
-	"\tpage_size\x18\v \x01(\x05H\x04R\bpageSize\x88\x01\x01\x12$\n" +
-	"\vmax_retries\x18\f \x01(\x05H\x05R\n" +
+	"\tkey_field\x18\x05 \x01(\tR\bkeyField\x12J\n" +
+	"\routput_schema\x18\x06 \x03(\v2%.kgbrain.v1.EnrichExtractOutputColumnR\foutputSchema\x12>\n" +
+	"\x0etarget_example\x18\a \x03(\v2\x17.google.protobuf.StructR\rtargetExample\x12\x1e\n" +
+	"\bstart_id\x18\b \x01(\x03H\x00R\astartId\x88\x01\x01\x12\x1a\n" +
+	"\x06end_id\x18\t \x01(\x03H\x01R\x05endId\x88\x01\x01\x12%\n" +
+	"\vconcurrency\x18\n" +
+	" \x01(\x05H\x02R\vconcurrency\x88\x01\x01\x12!\n" +
+	"\toverwrite\x18\v \x01(\bH\x03R\toverwrite\x88\x01\x01\x12 \n" +
+	"\tpage_size\x18\f \x01(\x05H\x04R\bpageSize\x88\x01\x01\x12$\n" +
+	"\vmax_retries\x18\r \x01(\x05H\x05R\n" +
 	"maxRetries\x88\x01\x01\x12/\n" +
-	"\x11source_json_field\x18\r \x01(\tH\x06R\x0fsourceJsonField\x88\x01\x01B\v\n" +
+	"\x11source_json_field\x18\x0e \x01(\tH\x06R\x0fsourceJsonField\x88\x01\x01\x12o\n" +
+	"\x14priority_field_hints\x18\x0f \x03(\v2=.kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntryR\x12priorityFieldHints\x12<\n" +
+	"\x18auto_create_output_table\x18\x10 \x01(\bH\aR\x15autoCreateOutputTable\x88\x01\x01\x1aE\n" +
+	"\x17PriorityFieldHintsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\v\n" +
 	"\t_start_idB\t\n" +
 	"\a_end_idB\x0e\n" +
 	"\f_concurrencyB\f\n" +
@@ -553,12 +712,16 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\n" +
 	"_page_sizeB\x0e\n" +
 	"\f_max_retriesB\x14\n" +
-	"\x12_source_json_field\"o\n" +
+	"\x12_source_json_fieldB\x1b\n" +
+	"\x19_auto_create_output_table\"n\n" +
+	"\x19EnrichExtractOutputColumn\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12=\n" +
+	"\x04type\x18\x02 \x01(\x0e2).kgbrain.v1.EnrichExtractOutputColumnTypeR\x04type\"o\n" +
 	"\x1aStartEnrichExtractResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12:\n" +
 	"\x06status\x18\x02 \x01(\x0e2\".kgbrain.v1.EnrichExtractJobStatusR\x06status\"3\n" +
 	"\x1aGetEnrichExtractJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\x82\x05\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\x87\x06\n" +
 	"\x1bGetEnrichExtractJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12&\n" +
 	"\x0fllm_resource_id\x18\x02 \x01(\tR\rllmResourceId\x120\n" +
@@ -577,7 +740,13 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"failedRows\x12&\n" +
 	"\x0fcreated_at_unix\x18\x0e \x01(\x03R\rcreatedAtUnix\x12&\n" +
 	"\x0fstarted_at_unix\x18\x0f \x01(\x03R\rstartedAtUnix\x12(\n" +
-	"\x10finished_at_unix\x18\x10 \x01(\x03R\x0efinishedAtUnix*\x87\x02\n" +
+	"\x10finished_at_unix\x18\x10 \x01(\x03R\x0efinishedAtUnix\x12J\n" +
+	"\routput_schema\x18\x11 \x03(\v2%.kgbrain.v1.EnrichExtractOutputColumnR\foutputSchema\x127\n" +
+	"\x18auto_create_output_table\x18\x12 \x01(\bR\x15autoCreateOutputTable*\xac\x01\n" +
+	"\x1dEnrichExtractOutputColumnType\x121\n" +
+	"-ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED\x10\x00\x12*\n" +
+	"&ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT\x10\x01\x12,\n" +
+	"(ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT\x10\x02*\x87\x02\n" +
 	"\x16EnrichExtractJobStatus\x12)\n" +
 	"%ENRICH_EXTRACT_JOB_STATUS_UNSPECIFIED\x10\x00\x12%\n" +
 	"!ENRICH_EXTRACT_JOB_STATUS_PENDING\x10\x01\x12%\n" +
@@ -601,29 +770,36 @@ func file_kgbrain_v1_enrich_extract_proto_rawDescGZIP() []byte {
 	return file_kgbrain_v1_enrich_extract_proto_rawDescData
 }
 
-var file_kgbrain_v1_enrich_extract_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kgbrain_v1_enrich_extract_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_kgbrain_v1_enrich_extract_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_kgbrain_v1_enrich_extract_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_kgbrain_v1_enrich_extract_proto_goTypes = []any{
-	(EnrichExtractJobStatus)(0),         // 0: kgbrain.v1.EnrichExtractJobStatus
-	(*StartEnrichExtractRequest)(nil),   // 1: kgbrain.v1.StartEnrichExtractRequest
-	(*StartEnrichExtractResponse)(nil),  // 2: kgbrain.v1.StartEnrichExtractResponse
-	(*GetEnrichExtractJobRequest)(nil),  // 3: kgbrain.v1.GetEnrichExtractJobRequest
-	(*GetEnrichExtractJobResponse)(nil), // 4: kgbrain.v1.GetEnrichExtractJobResponse
-	(*structpb.Struct)(nil),             // 5: google.protobuf.Struct
+	(EnrichExtractOutputColumnType)(0),  // 0: kgbrain.v1.EnrichExtractOutputColumnType
+	(EnrichExtractJobStatus)(0),         // 1: kgbrain.v1.EnrichExtractJobStatus
+	(*StartEnrichExtractRequest)(nil),   // 2: kgbrain.v1.StartEnrichExtractRequest
+	(*EnrichExtractOutputColumn)(nil),   // 3: kgbrain.v1.EnrichExtractOutputColumn
+	(*StartEnrichExtractResponse)(nil),  // 4: kgbrain.v1.StartEnrichExtractResponse
+	(*GetEnrichExtractJobRequest)(nil),  // 5: kgbrain.v1.GetEnrichExtractJobRequest
+	(*GetEnrichExtractJobResponse)(nil), // 6: kgbrain.v1.GetEnrichExtractJobResponse
+	nil,                                 // 7: kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntry
+	(*structpb.Struct)(nil),             // 8: google.protobuf.Struct
 }
 var file_kgbrain_v1_enrich_extract_proto_depIdxs = []int32{
-	5, // 0: kgbrain.v1.StartEnrichExtractRequest.target_example:type_name -> google.protobuf.Struct
-	0, // 1: kgbrain.v1.StartEnrichExtractResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
-	0, // 2: kgbrain.v1.GetEnrichExtractJobResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
-	1, // 3: kgbrain.v1.EnrichExtractService.StartEnrichExtract:input_type -> kgbrain.v1.StartEnrichExtractRequest
-	3, // 4: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:input_type -> kgbrain.v1.GetEnrichExtractJobRequest
-	2, // 5: kgbrain.v1.EnrichExtractService.StartEnrichExtract:output_type -> kgbrain.v1.StartEnrichExtractResponse
-	4, // 6: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:output_type -> kgbrain.v1.GetEnrichExtractJobResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 0: kgbrain.v1.StartEnrichExtractRequest.output_schema:type_name -> kgbrain.v1.EnrichExtractOutputColumn
+	8, // 1: kgbrain.v1.StartEnrichExtractRequest.target_example:type_name -> google.protobuf.Struct
+	7, // 2: kgbrain.v1.StartEnrichExtractRequest.priority_field_hints:type_name -> kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntry
+	0, // 3: kgbrain.v1.EnrichExtractOutputColumn.type:type_name -> kgbrain.v1.EnrichExtractOutputColumnType
+	1, // 4: kgbrain.v1.StartEnrichExtractResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
+	1, // 5: kgbrain.v1.GetEnrichExtractJobResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
+	3, // 6: kgbrain.v1.GetEnrichExtractJobResponse.output_schema:type_name -> kgbrain.v1.EnrichExtractOutputColumn
+	2, // 7: kgbrain.v1.EnrichExtractService.StartEnrichExtract:input_type -> kgbrain.v1.StartEnrichExtractRequest
+	5, // 8: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:input_type -> kgbrain.v1.GetEnrichExtractJobRequest
+	4, // 9: kgbrain.v1.EnrichExtractService.StartEnrichExtract:output_type -> kgbrain.v1.StartEnrichExtractResponse
+	6, // 10: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:output_type -> kgbrain.v1.GetEnrichExtractJobResponse
+	9, // [9:11] is the sub-list for method output_type
+	7, // [7:9] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_kgbrain_v1_enrich_extract_proto_init() }
@@ -637,8 +813,8 @@ func file_kgbrain_v1_enrich_extract_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kgbrain_v1_enrich_extract_proto_rawDesc), len(file_kgbrain_v1_enrich_extract_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      2,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

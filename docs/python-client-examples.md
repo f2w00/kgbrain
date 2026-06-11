@@ -261,6 +261,8 @@ from kgbrain.v1.enrich_extract_pb2 import (
     ENRICH_EXTRACT_JOB_STATUS_FAILED,
     ENRICH_EXTRACT_JOB_STATUS_PARTIAL,
     ENRICH_EXTRACT_JOB_STATUS_SUCCEEDED,
+    ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
+    EnrichExtractOutputColumn,
     GetEnrichExtractJobRequest,
     StartEnrichExtractRequest,
 )
@@ -287,10 +289,27 @@ with httpx.Client(base_url=BASE_URL) as http_client:
             output_table="public.artifact_extract",
             key_field="id",
             source_json_field="raw_data",
+            output_schema=[
+                EnrichExtractOutputColumn(
+                    name="standard_name",
+                    type=ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
+                ),
+                EnrichExtractOutputColumn(
+                    name="dynasty",
+                    type=ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
+                ),
+                EnrichExtractOutputColumn(
+                    name="material",
+                    type=ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
+                ),
+                EnrichExtractOutputColumn(
+                    name="category",
+                    type=ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
+                ),
+            ],
             target_example=[
                 make_struct(
                     {
-                        "id": 1,
                         "standard_name": "青花瓷盘",
                         "dynasty": "明代",
                         "material": "瓷",
@@ -298,12 +317,23 @@ with httpx.Client(base_url=BASE_URL) as http_client:
                     }
                 )
             ],
+            priority_field_hints={
+                "dynasty": (
+                    "朝代信息。优先从名称、标题、描述、年代、分类等字段中提取，"
+                    "例如“明代青花瓷盘”应提取为“明代”。"
+                ),
+                "material": (
+                    "材质信息。优先从名称、描述、工艺、材质字段中提取，"
+                    "例如瓷、铜、玉、纸本等。"
+                ),
+            },
             start_id=1000,
             end_id=2000,
             concurrency=30,
             page_size=300,
             max_retries=2,
             overwrite=False,
+            auto_create_output_table=True,
         )
     )
 
@@ -339,10 +369,16 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 
 - `source_table` 需要包含整数主键列 `key_field`
 - `source_json_field` 默认为 `raw_data`，推荐使用 `jsonb`
-- `output_table` 需要提前建好，包含 `key_field` 和目标输出列
-- `target_example` 只用于定义目标字段结构，不会原样写入输出表
+- `output_schema` 是必填输出结构，服务按它校验、建表、写库和约束 LLM 输出字段
+- `auto_create_output_table=True` 时，`output_table` 不存在会按 `output_schema` 自动创建
+- `auto_create_output_table=False` 时，`output_table` 需要提前建好，包含 `key_field` 和目标输出列
+- 已存在的 `output_table` 不会被自动补列或改类型，只会校验结构
+- `target_example` 只用于展示 LLM 输出格式，不会原样写入输出表，也不再用于推导字段
 - `target_example` 在 proto 中是 `google.protobuf.Struct`，需要显式把 Python `dict`
   转成 `Struct`
+- `priority_field_hints` 可选，用于按 `字段名 -> 说明` 强化重点字段抽取；key 必须属于
+  `output_schema` 定义的目标字段
+- `priority_field_hints` 只影响 prompt，不会新增输出列，也不会强制字段非空
 - 当 `overwrite=False` 时，服务会跳过 `output_table` 中已存在的主键记录
 
 ## 三、实体对齐（entity-alignment）
