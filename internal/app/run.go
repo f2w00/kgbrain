@@ -24,6 +24,7 @@ import (
 	domainkgc "kgbrain/internal/domain/kgc"
 	domainmapping "kgbrain/internal/domain/mapping"
 	domainprofile "kgbrain/internal/domain/profile"
+	"kgbrain/internal/enrichextract"
 	"kgbrain/internal/gen/kgbrain/v1/kgbrainv1connect"
 	"kgbrain/internal/infra/llm"
 	"kgbrain/internal/infra/middleware"
@@ -120,6 +121,23 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("init entity alignment module: %w", err)
 	}
+	enrichExtractModule, err := enrichextract.NewModule(enrichextract.ModuleDeps{
+		StoreDB:   sqlDB,
+		Resources: enrichextract.NewResourceReader(resourceModule.Service),
+		LLMFactory: func(r *resource.LLMResource) (enrichextract.LLMClient, error) {
+			return llm.NewResourceClient(
+				r.ID,
+				r.BaseURL,
+				r.APIKey,
+				r.Model,
+				r.MaxConcurrency,
+			)
+		},
+		DBOpener: store.OpenPostgres,
+	})
+	if err != nil {
+		return fmt.Errorf("init enrich extract module: %w", err)
+	}
 
 	// 7. 接口层: 参数校验器 (基于 OpenRPC YAML)
 	validator, err := rpc.NewParamsValidator("docs/openrpc.yaml")
@@ -177,7 +195,14 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
-			xformAppSvc.CleanupExpiredTasks(ctx)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logger.L().Error("cleanup panic", zap.Any("panic", r))
+					}
+				}()
+				xformAppSvc.CleanupExpiredTasks(ctx)
+			}()
 		}
 	}()
 
@@ -200,6 +225,10 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 		entityAlignmentModule.Handler,
 	)
 	connectServer.Register(entityAlignmentPath, entityAlignmentHTTPHandler)
+	enrichExtractPath, enrichExtractHTTPHandler := kgbrainv1connect.NewEnrichExtractServiceHandler(
+		enrichExtractModule.Handler,
+	)
+	connectServer.Register(enrichExtractPath, enrichExtractHTTPHandler)
 
 	// 11. 中间件: 请求解压 (自写) + 响应压缩 (gzhttp: sync.Pool + q-value 协商 + MinSize)
 	// 中间件现在挂载到 JSON-RPC 与 Connect 两个 Server 上, 后续组合入口统一应用一次
@@ -221,6 +250,9 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	// 12. 服务重启恢复: 重建已有活跃任务的 WorkerPool
 	if err := xformAppSvc.RecoverActiveTasks(ctx); err != nil {
 		logger.L().Warn("recover active tasks failed", zap.Error(err))
+	}
+	if err := enrichExtractModule.Service.RecoverActiveJobs(ctx); err != nil {
+		logger.L().Warn("recover enrich extract jobs failed", zap.Error(err))
 	}
 
 	// 13. 启动组合服务: JSON-RPC + Connect 共享 :8848 端口与中间件链,

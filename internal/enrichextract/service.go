@@ -111,6 +111,11 @@ func (s *Service) RecoverActiveJobs(_ context.Context) error {
 // runJob 在后台 goroutine 中执行 job：标记运行 → 加载快照 → 调用 executor → 标记终态。
 // 执行完成后根据 failed_rows 决定标记 succeeded 还是 failed。
 func (s *Service) runJob(ctx context.Context, jobID string) {
+	defer func() {
+		if r := recover(); r != nil {
+			_ = s.repo.MarkFailed(jobID, fmt.Sprintf("panic: %v", r))
+		}
+	}()
 	if err := s.repo.MarkRunning(jobID); err != nil {
 		return
 	}
