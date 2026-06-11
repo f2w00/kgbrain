@@ -1,7 +1,11 @@
 // module.go 提供实体对齐 feature 的装配入口和依赖声明。
 package alignment
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"kgbrain/internal/processrecord"
+)
 
 // Module 封装 alignment feature 对外暴露的主要组件。
 type Module struct {
@@ -29,6 +33,9 @@ func NewModule(deps ModuleDeps) (*Module, error) {
 		deps.DBOpener,
 		func(db *sql.DB) BusinessRepository {
 			return NewEntityAlignmentBusinessRepo(db)
+		},
+		func(db *sql.DB) (ProcessRecorder, error) {
+			return processrecord.NewRepository(db)
 		},
 	)
 	service := NewService(repo, deps.Resources, WithExecutor(executor))

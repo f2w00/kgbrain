@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
+	"kgbrain/internal/processrecord"
 	"kgbrain/internal/resource"
 )
 
@@ -55,3 +56,11 @@ type BusinessRepository interface {
 
 // BusinessRepositoryFactory 根据业务数据库连接创建 BusinessRepository。
 type BusinessRepositoryFactory func(db *sql.DB) BusinessRepository
+
+// ProcessRecorder 记录业务数据在结构化抽取处理上的最终状态。
+type ProcessRecorder interface {
+	UpsertMany(ctx context.Context, records []processrecord.Record) error
+}
+
+// ProcessRecorderFactory 基于业务库连接创建处理状态记录器。
+type ProcessRecorderFactory func(db *sql.DB) (ProcessRecorder, error)

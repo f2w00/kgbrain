@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 
+	"kgbrain/internal/processrecord"
 	"kgbrain/internal/resource"
 )
 
@@ -89,3 +90,11 @@ type BusinessRepository interface {
 		fields []PreparedField,
 	) error
 }
+
+// ProcessRecorder 记录业务数据在实体对齐处理上的最终状态。
+type ProcessRecorder interface {
+	UpsertSourceRange(ctx context.Context, record processrecord.SourceRangeRecord) error
+}
+
+// ProcessRecorderFactory 基于业务库连接创建处理状态记录器。
+type ProcessRecorderFactory func(db *sql.DB) (ProcessRecorder, error)

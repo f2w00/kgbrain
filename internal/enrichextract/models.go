@@ -10,14 +10,15 @@ const (
 	StatusPartial   = "partial"
 	StatusFailed    = "failed"
 
-	DefaultSourceJSONField = "raw_data"
-	DefaultConcurrency     = 1
-	DefaultMaxRetries      = 2
-	MinPageSize            = 100
-	MaxPageSize            = 1000
-	MaxConcurrency         = 128
-	MaxRetries             = 5
-	WriteBatchSize         = 100
+	DefaultSourceJSONField   = "raw_data"
+	DefaultConcurrency       = 1
+	DefaultMaxRetries        = 2
+	MinPageSize              = 100
+	MaxPageSize              = 1000
+	MaxConcurrency           = 128
+	MaxRetries               = 5
+	WriteBatchSize           = 100
+	ProcessTypeEnrichExtract = "enrich_extract"
 )
 
 // Job 记录一次结构化抽取异步任务的参数快照、状态和进度。

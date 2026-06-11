@@ -10,6 +10,8 @@ const (
 	StatusSucceeded = "succeeded"
 	// StatusFailed 表示后台任务执行失败。
 	StatusFailed = "failed"
+	// ProcessTypeEntityAlignment 表示实体对齐处理类型。
+	ProcessTypeEntityAlignment = "entity_alignment"
 )
 
 // Job 记录一次实体对齐异步任务的基础状态。

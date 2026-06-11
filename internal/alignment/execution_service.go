@@ -1,17 +1,30 @@
 // execution_service.go 提供实体对齐领域执行服务，编排字段对齐全流程。
 package alignment
 
-import "context"
+import (
+	"context"
+
+	"kgbrain/internal/processrecord"
+)
 
 // DomainService 承载实体对齐的核心业务流程。
 type DomainService struct {
 	repo             BusinessRepository
 	defaultBatchSize int
+	processRecorder  ProcessRecorder
 }
 
 // NewDomainService 创建实体对齐领域执行服务。
-func NewDomainService(repo BusinessRepository, defaultBatchSize int) *DomainService {
-	return &DomainService{repo: repo, defaultBatchSize: defaultBatchSize}
+func NewDomainService(
+	repo BusinessRepository,
+	defaultBatchSize int,
+	processRecorder ProcessRecorder,
+) *DomainService {
+	return &DomainService{
+		repo:             repo,
+		defaultBatchSize: defaultBatchSize,
+		processRecorder:  processRecorder,
+	}
 }
 
 // Execute 串行执行实体对齐流程。
@@ -82,5 +95,15 @@ func (s *DomainService) Execute(
 			}
 		}
 	}
-	return s.repo.WriteOutputRows(ctx, req, sourceColumns, preparedFields)
+	if err := s.repo.WriteOutputRows(ctx, req, sourceColumns, preparedFields); err != nil {
+		return err
+	}
+	return s.processRecorder.UpsertSourceRange(ctx, processrecord.SourceRangeRecord{
+		SourceTable: req.SourceTable,
+		KeyField:    req.KeyField,
+		StartID:     req.StartID,
+		EndID:       req.EndID,
+		ProcessType: ProcessTypeEntityAlignment,
+		Status:      processrecord.StatusSucceeded,
+	})
 }

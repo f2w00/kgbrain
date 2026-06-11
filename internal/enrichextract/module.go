@@ -1,7 +1,11 @@
 // module.go 提供 enrichextract feature 的装配入口和依赖声明。
 package enrichextract
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"kgbrain/internal/processrecord"
+)
 
 // Module 封装 enrichextract feature 对外暴露的服务和 handler。
 type Module struct {
@@ -29,6 +33,9 @@ func NewModule(deps ModuleDeps) (*Module, error) {
 		deps.DBOpener,
 		func(db *sql.DB) BusinessRepository {
 			return NewEnrichExtractBusinessRepo(db)
+		},
+		func(db *sql.DB) (ProcessRecorder, error) {
+			return processrecord.NewRepository(db)
 		},
 	)
 	service := NewService(repo, deps.Resources, WithExecutor(executor))

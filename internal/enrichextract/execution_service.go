@@ -7,19 +7,31 @@ import (
 	"fmt"
 	"time"
 
+	"kgbrain/internal/processrecord"
 	"kgbrain/pkg/extract"
 )
 
 // DomainService 是领域执行服务，负责单 job 的完整执行流程。
 type DomainService struct {
-	repo    BusinessRepository
-	jobRepo Repository
-	jobID   string
+	repo            BusinessRepository
+	jobRepo         Repository
+	jobID           string
+	processRecorder ProcessRecorder
 }
 
 // NewDomainService 创建领域执行服务。
-func NewDomainService(repo BusinessRepository, jobRepo Repository, jobID string) *DomainService {
-	return &DomainService{repo: repo, jobRepo: jobRepo, jobID: jobID}
+func NewDomainService(
+	repo BusinessRepository,
+	jobRepo Repository,
+	jobID string,
+	processRecorder ProcessRecorder,
+) *DomainService {
+	return &DomainService{
+		repo:            repo,
+		jobRepo:         jobRepo,
+		jobID:           jobID,
+		processRecorder: processRecorder,
+	}
 }
 
 // Execute 执行完整的结构化抽取流程：校验 → 分页循环 → 逐页处理 → 进度更新。
@@ -40,15 +52,19 @@ func (s *DomainService) Execute(ctx context.Context, llm LLMClient, req ExecuteR
 			return nil
 		}
 		pageResult := s.processPage(ctx, llm, req, rows)
-		writeErrors := s.writeSuccessRows(ctx, req, pageResult.Successes)
-		pageResult.Errors = append(pageResult.Errors, writeErrors...)
+		writeResult := s.writeSuccessRows(ctx, req, pageResult.Successes)
+		pageResult.Errors = append(pageResult.Errors, writeResult.Errors...)
+		processRecords := buildProcessRecords(req, writeResult.Successes, pageResult.Errors)
+		if err := s.processRecorder.UpsertMany(ctx, processRecords); err != nil {
+			return fmt.Errorf("save process records: %w", err)
+		}
 		if err := s.jobRepo.AddErrors(s.jobID, pageResult.Errors); err != nil {
 			return fmt.Errorf("save row errors: %w", err)
 		}
 
 		maxKey := rows[len(rows)-1].Key
 		processed := int64(len(rows))
-		succeeded := int64(len(pageResult.Successes) - len(writeErrors))
+		succeeded := int64(len(writeResult.Successes))
 		failed := int64(len(pageResult.Errors))
 		if err := s.jobRepo.UpdateProgress(s.jobID, ProgressUpdate{
 			LastKey:       maxKey,
@@ -178,30 +194,65 @@ func (s *DomainService) processOneRow(
 	}}
 }
 
-// writeSuccessRows 批量写入成功行；批量失败时降级为逐行写入，返回写入失败的错误列表。
+// writeSuccessRows 批量写入成功行；批量失败时降级为逐行写入，返回最终写入结果。
 func (s *DomainService) writeSuccessRows(
 	ctx context.Context,
 	req ExecuteRequest,
 	rows []OutputRow,
-) []RowError {
+) writeResult {
 	if len(rows) == 0 {
-		return nil
+		return writeResult{}
 	}
 	if err := s.repo.BatchWriteOutputRows(ctx, req, rows); err == nil {
-		return nil
+		return writeResult{Successes: rows}
 	}
-	errors := make([]RowError, 0)
+	result := writeResult{
+		Successes: make([]OutputRow, 0, len(rows)),
+		Errors:    make([]RowError, 0),
+	}
 	for _, row := range rows {
 		if err := s.repo.WriteOutputRow(ctx, req, row); err != nil {
-			errors = append(errors, RowError{
+			result.Errors = append(result.Errors, RowError{
 				SourceKey:    row.Key,
 				Stage:        "write_output",
 				Attempts:     1,
 				ErrorMessage: err.Error(),
 			})
+			continue
 		}
+		result.Successes = append(result.Successes, row)
 	}
-	return errors
+	return result
+}
+
+type writeResult struct {
+	Successes []OutputRow
+	Errors    []RowError
+}
+
+func buildProcessRecords(
+	req ExecuteRequest,
+	successes []OutputRow,
+	errors []RowError,
+) []processrecord.Record {
+	records := make([]processrecord.Record, 0, len(successes)+len(errors))
+	for _, row := range successes {
+		records = append(records, processrecord.Record{
+			SourceTable: req.SourceTable,
+			SourceKey:   row.Key,
+			ProcessType: ProcessTypeEnrichExtract,
+			Status:      processrecord.StatusSucceeded,
+		})
+	}
+	for _, rowErr := range errors {
+		records = append(records, processrecord.Record{
+			SourceTable: req.SourceTable,
+			SourceKey:   rowErr.SourceKey,
+			ProcessType: ProcessTypeEnrichExtract,
+			Status:      processrecord.StatusFailed,
+		})
+	}
+	return records
 }
 
 // backoff 返回指数退避等待时间，最大 8 秒。
