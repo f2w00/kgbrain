@@ -18,7 +18,7 @@ type ResourceReader interface {
 
 // LLMClient 封装 LLM 会话级调用，一次请求多个消息并获取字符串响应。
 type LLMClient interface {
-	GenerateXformMessages(ctx context.Context, msgs []*schema.Message) (string, error)
+	GenerateStructuredMessages(ctx context.Context, msgs []*schema.Message) (string, error)
 }
 
 // LLMFactory 根据 LLMResource 配置创建 LLMClient。
@@ -38,6 +38,7 @@ type Repository interface {
 	GetJob(jobID string) (*Job, error)
 	ListActiveJobs() ([]*Job, error)
 	MarkRunning(jobID string) error
+	MarkPartial(jobID string, errorMessage string) error
 	MarkSucceeded(jobID string) error
 	MarkFailed(jobID string, errorMessage string) error
 	UpdateProgress(jobID string, update ProgressUpdate) error

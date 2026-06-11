@@ -75,7 +75,21 @@ func (s *DomainService) processPage(
 	for i := 0; i < workerCount; i++ {
 		go func() {
 			for row := range jobs {
-				results <- s.processOneRow(ctx, llm, req, row)
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							results <- rowProcessResult{
+								Err: &RowError{
+									SourceKey:    row.Key,
+									Stage:        "panic",
+									Attempts:     1,
+									ErrorMessage: fmt.Sprintf("panic: %v", r),
+								},
+							}
+						}
+					}()
+					results <- s.processOneRow(ctx, llm, req, row)
+				}()
 			}
 		}()
 	}
@@ -133,7 +147,7 @@ func (s *DomainService) processOneRow(
 			}}
 		}
 		msgs := BuildMessages(source, req.TargetExample, req.TargetFields)
-		resp, err := llm.GenerateXformMessages(ctx, msgs)
+		resp, err := llm.GenerateStructuredMessages(ctx, msgs)
 		if err != nil {
 			lastErr = fmt.Errorf("llm generate: %w", err)
 			continue
