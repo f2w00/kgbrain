@@ -19,6 +19,17 @@
 - [ ] **ResourceService 权限控制与审计** — 当前无资源级权限控制和读取审计。
   后续需补充访问控制、敏感配置读取日志和操作审计。
 
+## 中间件
+
+- [ ] **Request ID 中间件** — `internal/infra/middleware/`
+  当前 HTTP 入口仅接入 `chi/middleware.Recoverer`、请求解压和响应压缩。
+  后续需为每个请求分配或透传 `X-Request-ID`，并写入响应头与上下文，
+  便于排障和后续日志串联。
+- [ ] **Access Log 中间件** — `internal/infra/middleware/`
+  当前缺少统一的 HTTP 入口访问日志。
+  后续需记录 method、path、status、duration、bytes、request_id 等字段，
+  并对 `/health` 做降噪或采样处理。
+
 ## 优化
 
 - [ ] **ChatModel 缓存增加 LRU 淘汰** — `internal/infra/llm/openai.go`
