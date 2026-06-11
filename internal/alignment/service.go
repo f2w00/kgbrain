@@ -85,6 +85,11 @@ func (s *Service) GetJob(jobID string) (*Job, error) {
 
 // runJob 在后台 goroutine 中执行实体对齐：先标记 running，再委派 executor 执行，最终标记 succeeded/failed。
 func (s *Service) runJob(ctx context.Context, jobID string) {
+	defer func() {
+		if r := recover(); r != nil {
+			_ = s.repo.MarkFailed(jobID, fmt.Sprintf("panic: %v", r))
+		}
+	}()
 	if err := s.repo.MarkRunning(jobID); err != nil {
 		return
 	}

@@ -21,8 +21,7 @@ var (
 	globalCMMu    sync.RWMutex
 )
 
-// openaiClient 封装 OpenAI 兼容的 LLM 客户端
-// 同时实现 mapping.LLMClient 和 kgc.LLMClient 两个接口
+// openaiClient 封装 OpenAI 兼容的 LLM 客户端。
 type openaiClient struct {
 	resourceID     string
 	baseURL        string
@@ -58,8 +57,7 @@ func NewResourceClient(
 	}, nil
 }
 
-// Generate 实现 mapping.LLMClient 接口
-// 内部使用 json_object 约束, 确保 LLM 返回合法 JSON 对象
+// Generate 生成 JSON 对象结果，适合字段映射等结构化场景。
 func (c *openaiClient) Generate(ctx context.Context, prompt string) (string, error) {
 	msgs := []*schema.Message{
 		schema.SystemMessage(prompt),
@@ -72,21 +70,18 @@ func (c *openaiClient) Generate(ctx context.Context, prompt string) (string, err
 	)
 }
 
-// GenerateMessages 实现 kgc.LLMClient 接口
-// 接收完整的消息列表 (支持多模态), 无 response_format 约束, 可返回 JSON 数组
+// GenerateMessages 使用完整消息列表生成回复。
 func (c *openaiClient) GenerateMessages(ctx context.Context, msgs []*schema.Message) (string, error) {
 	return c.generateWithOpts(ctx, msgs)
 }
 
-// GenerateMessagesWithOptions 实现 kgc.LLMClient 接口
-// 在 GenerateMessages 基础上支持按请求指定 temperature
+// GenerateMessagesWithOptions 在 GenerateMessages 基础上支持按请求指定 temperature。
 func (c *openaiClient) GenerateMessagesWithOptions(ctx context.Context, msgs []*schema.Message, temp float32) (string, error) {
 	return c.generateWithOpts(ctx, msgs, model.WithTemperature(temp))
 }
 
-// GenerateXformMessages 为 xform 域专用方法
-// 自动注入 json_object 约束和关闭 thinking 的 extra_body
-func (c *openaiClient) GenerateXformMessages(ctx context.Context, msgs []*schema.Message) (string, error) {
+// GenerateStructuredMessages 生成严格 JSON 结果，并关闭额外 thinking 输出。
+func (c *openaiClient) GenerateStructuredMessages(ctx context.Context, msgs []*schema.Message) (string, error) {
 	return c.generateWithOpts(ctx, msgs,
 		openai.WithExtraFields(map[string]any{
 			"response_format": map[string]string{"type": "json_object"},

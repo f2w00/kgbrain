@@ -17,8 +17,7 @@ import (
 // 而不影响 connect.Server 的装配代码.
 type HealthChecker grpchealth.Checker
 
-// Server 持有 Connect RPC 子 mux 与中间件链.
-// Mux() / WrapMiddleware() 与 internal/delivery/rpc.Server 保持对称,
+// Server 持有 Connect RPC 子 mux 与中间件链,
 // 便于 app 层在组合入口统一应用一次中间件.
 type Server struct {
 	checker    HealthChecker

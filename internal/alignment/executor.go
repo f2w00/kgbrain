@@ -7,10 +7,11 @@ import (
 )
 
 type executor struct {
-	defaultBatchSize int
-	llmFactory       LLMFactory
-	dbOpener         BusinessDBOpener
-	repoFactory      BusinessRepositoryFactory
+	defaultBatchSize       int
+	llmFactory             LLMFactory
+	dbOpener               BusinessDBOpener
+	repoFactory            BusinessRepositoryFactory
+	processRecorderFactory ProcessRecorderFactory
 }
 
 // NewExecutor 创建实体对齐应用层执行器。
@@ -19,12 +20,14 @@ func NewExecutor(
 	llmFactory LLMFactory,
 	dbOpener BusinessDBOpener,
 	repoFactory BusinessRepositoryFactory,
+	processRecorderFactory ProcessRecorderFactory,
 ) Executor {
 	return &executor{
-		defaultBatchSize: defaultBatchSize,
-		llmFactory:       llmFactory,
-		dbOpener:         dbOpener,
-		repoFactory:      repoFactory,
+		defaultBatchSize:       defaultBatchSize,
+		llmFactory:             llmFactory,
+		dbOpener:               dbOpener,
+		repoFactory:            repoFactory,
+		processRecorderFactory: processRecorderFactory,
 	}
 }
 
@@ -41,7 +44,7 @@ func (e *executor) Execute(
 	resources ResourceReader,
 ) error {
 	if e == nil || e.llmFactory == nil ||
-		e.dbOpener == nil || e.repoFactory == nil {
+		e.dbOpener == nil || e.repoFactory == nil || e.processRecorderFactory == nil {
 		return fmt.Errorf("entity alignment executor dependencies are not configured")
 	}
 	llmResource, err := resources.GetLLM(job.LLMResourceID)
@@ -61,7 +64,11 @@ func (e *executor) Execute(
 		return fmt.Errorf("open business database: %w", err)
 	}
 	defer bizDB.Close()
-	domainSvc := NewDomainService(e.repoFactory(bizDB), e.defaultBatchSize)
+	processRecorder, err := e.processRecorderFactory(bizDB)
+	if err != nil {
+		return fmt.Errorf("create process recorder: %w", err)
+	}
+	domainSvc := NewDomainService(e.repoFactory(bizDB), e.defaultBatchSize, processRecorder)
 	return domainSvc.Execute(ctx, llmClient, ExecuteRequest{
 		SourceTable:  req.SourceTable,
 		OutputTable:  req.OutputTable,
