@@ -160,12 +160,23 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 		_ = s.repo.MarkFailed(jobID, err.Error())
 		return
 	}
-	if finalJob != nil && finalJob.FailedRows > 0 {
-		msg := fmt.Sprintf(
-			"completed with row errors: succeeded_rows=%d failed_rows=%d",
-			finalJob.SucceededRows,
-			finalJob.FailedRows,
-		)
+	if finalJob != nil {
+		if finalJob.FailedRows == 0 {
+			if err := s.repo.MarkSucceeded(jobID); err != nil {
+				_ = s.repo.MarkFailed(jobID, err.Error())
+			}
+			return
+		}
+		if finalJob.SucceededRows > 0 {
+			msg := fmt.Sprintf(
+				"completed with row errors: succeeded_rows=%d failed_rows=%d",
+				finalJob.SucceededRows,
+				finalJob.FailedRows,
+			)
+			_ = s.repo.MarkPartial(jobID, msg)
+			return
+		}
+		msg := fmt.Sprintf("all rows failed: failed_rows=%d", finalJob.FailedRows)
 		_ = s.repo.MarkFailed(jobID, msg)
 		return
 	}

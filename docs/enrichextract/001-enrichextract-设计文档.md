@@ -840,7 +840,6 @@ internal/enrichextract/
 
 - 默认 `concurrency` 和 `page_size` 的具体数值。
 - 默认 `max_retries` 的具体数值，当前建议为 2。
-- `failed` 状态是否应仅用于初始化失败和全部失败，还是任意行失败都可标记。
 - 行级错误是否需要提供分页查询 API。
 - 是否需要在 job 查询响应中返回 `processed_rows`、`succeeded_rows`、`failed_rows`。
 - 后续“重点关注字段”是否通过 `focus_target_fields` 显式配置。

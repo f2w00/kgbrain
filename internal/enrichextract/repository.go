@@ -130,6 +130,14 @@ func (r *EnrichExtractRepo) MarkSucceeded(jobID string) error {
 	return err
 }
 
+func (r *EnrichExtractRepo) MarkPartial(jobID string, errorMessage string) error {
+	now := nowString()
+	_, err := r.db.Exec(`UPDATE enrich_extract_jobs
+		SET status = ?, finished_at = ?, updated_at = ?, error_message = ?
+		WHERE job_id = ?`, StatusPartial, now, now, errorMessage, jobID)
+	return err
+}
+
 // MarkFailed 将 job 状态置为 failed，记录错误信息并设置完成时间。
 func (r *EnrichExtractRepo) MarkFailed(jobID string, errorMessage string) error {
 	now := nowString()

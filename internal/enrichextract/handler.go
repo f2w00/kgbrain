@@ -125,6 +125,8 @@ func protoStatus(status string) kgbrainv1.EnrichExtractJobStatus {
 		return kgbrainv1.EnrichExtractJobStatus_ENRICH_EXTRACT_JOB_STATUS_RUNNING
 	case StatusSucceeded:
 		return kgbrainv1.EnrichExtractJobStatus_ENRICH_EXTRACT_JOB_STATUS_SUCCEEDED
+	case StatusPartial:
+		return kgbrainv1.EnrichExtractJobStatus_ENRICH_EXTRACT_JOB_STATUS_PARTIAL
 	case StatusFailed:
 		return kgbrainv1.EnrichExtractJobStatus_ENRICH_EXTRACT_JOB_STATUS_FAILED
 	default:

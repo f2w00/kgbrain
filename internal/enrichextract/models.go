@@ -7,6 +7,7 @@ const (
 	StatusPending   = "pending"
 	StatusRunning   = "running"
 	StatusSucceeded = "succeeded"
+	StatusPartial   = "partial"
 	StatusFailed    = "failed"
 
 	DefaultSourceJSONField = "raw_data"

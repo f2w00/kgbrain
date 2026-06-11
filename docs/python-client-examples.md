@@ -1,348 +1,495 @@
-# Python 客户端示例
+# Python 客户端示例（Connect）
 
-> 所有 Python 示例基于 `requests` 库，适用于 kgbrain JSON-RPC 2.0 接口。
+> 当前 kgbrain 仅保留 Connect RPC 接口。历史 JSON-RPC 示例已下线，相关历史文档保留在
+> `docs/deprecated/` 目录。
 
-## 快速开始
+本文示例覆盖当前仍可用的三类能力：
+
+- `resource`：管理 LLM / 数据库资源配置
+- `enrichextract`：结构化抽取与补全任务
+- `entity-alignment`：实体值对齐任务
+
+## 安装依赖
 
 ```bash
-pip install requests
+pip install connectrpc protobuf httpx
 ```
 
-## 完整示例
+## 目录准备
 
-```python
-import requests
+以下示例默认你已经生成并能导入 Python 客户端代码，例如：
 
-BASE_URL = "http://localhost:8848/rpc"
-
-def rpc(method, params):
-    resp = requests.post(
-        BASE_URL,
-        json={"jsonrpc": "2.0", "method": method, "params": params, "id": "req_001"}
-    )
-    return resp.json()
-
-# ======================== Profile 管理 ========================
-
-# 创建/更新配置
-rpc("profile.set", {
-    "profile_id": "demo",
-    "llm": {
-        "base_url": "http://localhost:11434/v1",
-        "api_key": "",
-        "model": "qwen3",
-        "timeout_seconds": 180
-    }
-})
-
-# 查询配置
-resp = rpc("profile.get", {"profile_id": "demo"})
-print(resp)
-
-# 删除配置
-rpc("profile.delete", {"profile_id": "demo"})
-
-# ======================== 字段映射 ========================
-
-# 生成字段映射关系
-resp = rpc("mapping.field", {
-    "profile_id": "demo",
-    "example": {"title": "青花瓷瓶", "era": "明代"},
-    "target_fields": [{"product_name": "青花瓷瓶", "dynasty": "明代"}],
-    "refresh": False
-})
-mapping = resp["result"]["mapping"]
-# 输出: {"product_name": ["title"], "dynasty": ["era"]}
-
-# 批量应用映射
-rows = [
-    {"title": "青花瓷瓶", "era": "明代"},
-    {"title": "铜鼎", "era": "商代"}
-]
-output = [{tgt: row.get(srcs[0], "") for tgt, srcs in mapping.items()} for row in rows]
-print(output)
-# [{'product_name': '青花瓷瓶', 'dynasty': '明代'}, {'product_name': '铜鼎', 'dynasty': '商代'}]
-
-# ======================== 内容映射 ========================
-
-# 设置目标值
-rpc("mapping.content.targets.set", {
-    "profile_id": "demo",
-    "topic": "dynasty",
-    "targets": ["唐", "宋", "明", "清"]
-})
-
-# 查询映射（未命中的值自动调 LLM 映射并缓存）
-resp = rpc("mapping.content", {
-    "profile_id": "demo",
-    "topic": "dynasty",
-    "values": ["唐朝", "宋朝", "元朝"]
-})
-content_mapping = resp["result"]["mapping"]
-# 输出: {"唐朝": "唐", "宋朝": "宋", "元朝": "元"}
-
-# 设置内容映射表
-rpc("mapping.content.set", {
-    "profile_id": "demo",
-    "topic": "location",
-    "mapping": {"长安": "西安", "汴京": "开封"}
-})
-
-# 获取目标值
-resp = rpc("mapping.content.targets.get", {
-    "profile_id": "demo",
-    "topic": "dynasty"
-})
-print(resp["result"]["targets"])
-# ['唐', '宋', '明', '清']
-
-# ======================== 数据补全 (enrich) ========================
-
-# 需要明确定义 tasks: 指定源字段和目标字段
-resp = rpc("kgc.enrich", {
-    "profile_id": "demo",
-    "data": [
-        {
-            "title": "青花瓷瓶",
-            "dynasty": "",
-            "material": "",
-            "remark": ""
-        }
-    ],
-    "examples": [
-        {
-            "title": "明代青花山水纹瓶",
-            "dynasty": "明代",
-            "material": "陶瓷",
-            "remark": "瓶身绘有山水图案"
-        }
-    ],
-    "tasks": [
-        {"source_type": "text", "source_fields": ["title"], "targets": ["dynasty", "material", "remark"]}
-    ]
-})
-result = resp["result"]
-print(f"补全了 {result['enriched_count']} 个字段")
-print(result["data"])
-# [{'title': '青花瓷瓶', 'dynasty': '明代', 'material': '陶瓷', 'remark': '...'}]
-
-# ======================== 智能补全 (autofill) ========================
-
-# 不需要定义 tasks，传入目标结构示例，LLM 自主推断映射关系
-resp = rpc("kgc.autofill", {
-    "profile_id": "demo",
-    "data": [
-        {"title": "青花瓷瓶", "era": "明代"},
-        {"title": "唐三彩马", "era": "唐代"}
-    ],
-    "targets_example": [
-        {"product_name": "青花瓷瓶", "dynasty": "明代"}
-    ]
-})
-
-result = resp["result"]
-
-# 提取补全结果
-for row in result["data"]:
-    print(row)
-
-# ======================== 错误处理 ========================
-
-def safe_rpc(method, params):
-    """带错误处理的 RPC 调用"""
-    resp = requests.post(
-        BASE_URL,
-        json={"jsonrpc": "2.0", "method": method, "params": params, "id": "req"}
-    )
-    data = resp.json()
-    if "error" in data:
-        err = data["error"]
-        print(f"请求失败: code={err['code']}, message={err['message']}")
-        if err.get("data"):
-            print(f"  详情: {err['data']}")
-        return None
-    return data
-
+```text
+gen/py/kgbrain/v1/
+  enrich_extract_connect.py
+  enrich_extract_pb2.py
+  entity_alignment_connect.py
+  entity_alignment_pb2.py
+  resource_connect.py
+  resource_pb2.py
 ```
 
-## 异步版本 (aiohttp)
+运行示例前，请确保 `gen/py` 已在 `PYTHONPATH` 中，例如：
 
-```python
-import aiohttp
-import asyncio
-
-BASE_URL = "http://localhost:8848/rpc"
-
-async def async_rpc(session, method, params):
-    resp = await session.post(
-        BASE_URL,
-        json={"jsonrpc": "2.0", "method": method, "params": params, "id": "req"}
-    )
-    return await resp.json()
-
-async def main():
-    async with aiohttp.ClientSession() as session:
-        # 批量调用
-        resp = await async_rpc(session, "kgc.autofill", {
-            "profile_id": "demo",
-            "data": [
-                {"title": "青花瓷瓶", "era": "明代"},
-                {"title": "唐三彩马", "era": "唐代"}
-            ],
-            "targets_example": [
-                {"product_name": "青花瓷瓶", "dynasty": "明代"}
-            ]
-        })
-        print(resp)
-
-asyncio.run(main())
+```bash
+export PYTHONPATH="$PWD/gen/py:$PYTHONPATH"
 ```
 
-## 异步大规模数据转换 (xform)
-
-适用于大批量数据（数千到数百万行）的流式异步处理。
+## 通用辅助函数
 
 ```python
-import requests
 import time
-import json
+import httpx
 
-BASE_URL = "http://localhost:8848/rpc"
+from google.protobuf import struct_pb2
 
-def rpc(method, params, req_id="req"):
-    """发送 JSON-RPC 请求"""
-    resp = requests.post(
-        BASE_URL,
-        json={"jsonrpc": "2.0", "method": method, "params": params, "id": req_id}
+
+BASE_URL = "http://localhost:8848"
+
+
+def make_struct(data: dict) -> struct_pb2.Struct:
+    msg = struct_pb2.Struct()
+    msg.update(data)
+    return msg
+
+
+def wait_until(done, interval_seconds: int = 2):
+    while True:
+        result = done()
+        if result is not None:
+            return result
+        time.sleep(interval_seconds)
+```
+
+## 一、资源管理（resource）
+
+资源是其他任务的前置依赖。`enrichextract` 和 `entity-alignment` 都通过资源 ID
+引用 LLM 和数据库连接配置。
+
+### 1.1 创建或更新 LLM 资源
+
+```python
+import httpx
+
+from kgbrain.v1.resource_pb2 import LLMResourceConfig
+from kgbrain.v1.resource_pb2 import SetLLMResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = ResourceServiceClientSync(http_client)
+
+    resp = client.set_l_l_m_resource(
+        SetLLMResourceRequest(
+            resource_id="qwen_local",
+            name="本地 Qwen 模型",
+            config=LLMResourceConfig(
+                base_url="http://localhost:11434/v1",
+                api_key="dummy",
+                model="qwen3:latest",
+                timeout_seconds=180,
+                temperature=0.2,
+                max_concurrency=8,
+            ),
+        )
     )
-    data = resp.json()
-    if "error" in data:
-        raise Exception(f"RPC Error: {data['error']}")
-    return data["result"]
 
-# ======================== 1. 提交任务 ========================
-
-# 方式 A：自定义 task_id（推荐，便于追踪）
-result = rpc("xform.submit", {
-    "task_id": "my_batch_20260601_001",
-    "profile_id": "demo",
-    "targets_example": [
-        {"product_name": "青花瓷瓶", "dynasty": "明代", "category": "陶瓷"}
-    ],
-    "primary_key": "relic_id",
-    "pool_size": 10,
-    "max_retries": 2,
-    "ttl_hours": 24
-})
-
-# 方式 B：不传 task_id，服务端自动生成
-# result = rpc("xform.submit", {
-#     "profile_id": "demo",
-#     "targets_example": [
-#         {"product_name": "青花瓷瓶", "dynasty": "明代", "category": "陶瓷"}
-#     ],
-#     "primary_key": "relic_id",
-#     "pool_size": 10,
-#     "max_retries": 2,
-#     "ttl_hours": 24
-# })
-
-task_id = result["task_id"]
-print(f"任务已创建: {task_id}")
-
-# ======================== 2. 持续追加数据 ========================
-
-# 第一批数据
-rpc("xform.append", {
-    "task_id": task_id,
-    "data": [
-        {"relic_id": "R001", "title": "青花山水纹瓶", "era": "明代"},
-        {"relic_id": "R002", "title": "唐三彩马", "era": "唐代"}
-    ]
-})
-
-# 第二批数据（可随时追加）
-rpc("xform.append", {
-    "task_id": task_id,
-    "data": [
-        {"relic_id": "R003", "title": "商代青铜鼎", "era": "商代"},
-        {"relic_id": "R004", "title": "宋代汝窑茶盏", "era": "宋代"}
-    ]
-})
-
-print("数据已追加")
-
-# ======================== 3. 轮询状态 ========================
-
-while True:
-    status = rpc("xform.get_status", {"task_id": task_id})
-    print(f"状态: {status['status']}, 待消费: {status['pending_input']}, "
-          f"待取结果: {status['pending_output']}, 待取错误: {status['pending_errors']}")
-
-    if status["status"] in ("completed", "partial", "failed"):
-        break
-
-    time.sleep(1)
-
-# ======================== 4. 关闭任务 ========================
-
-rpc("xform.close", {"task_id": task_id})
-print("任务已关闭，Worker 正在处理剩余数据...")
-
-# 等待最终完成
-while True:
-    status = rpc("xform.get_status", {"task_id": task_id})
-    if status["status"] in ("completed", "partial", "failed"):
-        break
-    time.sleep(1)
-
-# ======================== 5. 拉取结果（消费即删）========================
-
-all_results = []
-while True:
-    result = rpc("xform.get_result", {
-        "task_id": task_id,
-        "limit": 100
-    })
-
-    if result["results"]:
-        all_results.extend(result["results"])
-
-    if result["errors"]:
-        print(f"发现 {len(result['errors'])} 条错误:")
-        for err in result["errors"]:
-            print(f"  {err['pk_value']}: {err['_error']}")
-
-    if not result["results"] and result["pending_output"] == 0 and result["pending_errors"] == 0:
-        break
-
-    time.sleep(0.5)
-
-print(f"共获取 {len(all_results)} 条结果")
-for row in all_results[:3]:
-    print(json.dumps(row, ensure_ascii=False, indent=2))
-
-# ======================== 6. 清理任务 ========================
-
-rpc("xform.delete", {"task_id": task_id})
-print("任务已删除")
+    print(resp.resource_id, resp.status)
 ```
 
-### xform 接口说明
+### 1.2 查询 LLM 资源
 
-| 方法 | 说明 | 请求参数 | 返回 |
-|------|------|---------|------|
-| `xform.submit` | 提交任务 | task_id (可选), profile_id, targets_example, primary_key, pool_size, max_retries, ttl_hours | task_id |
-| `xform.append` | 追加数据 | task_id, data | appended |
-| `xform.close` | 关闭任务 | task_id | status |
-| `xform.get_status` | 查询状态 | task_id | status, pending_input, pending_output, pending_errors |
-| `xform.get_result` | 拉取结果 | task_id, limit | results, errors, pending_output, pending_errors |
-| `xform.delete` | 删除任务 | task_id | deleted |
+```python
+import httpx
 
-### 状态流转
+from kgbrain.v1.resource_pb2 import GetLLMResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
 
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = ResourceServiceClientSync(http_client)
+
+    resp = client.get_l_l_m_resource(
+        GetLLMResourceRequest(resource_id="qwen_local")
+    )
+
+    print("resource_id:", resp.resource_id)
+    print("name:", resp.name)
+    print("base_url:", resp.config.base_url)
+    print("model:", resp.config.model)
+    print("timeout_seconds:", resp.config.timeout_seconds)
 ```
-submit → open → processing → closing → completed/partial/failed
-                                    ↓
-                               deleted (随时可删除)
+
+### 1.3 创建或更新数据库资源
+
+```python
+import httpx
+
+from kgbrain.v1.resource_pb2 import DATABASE_TYPE_POSTGRES
+from kgbrain.v1.resource_pb2 import DatabaseResourceConfig
+from kgbrain.v1.resource_pb2 import PostgresResourceConfig
+from kgbrain.v1.resource_pb2 import SetDatabaseResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = ResourceServiceClientSync(http_client)
+
+    resp = client.set_database_resource(
+        SetDatabaseResourceRequest(
+            resource_id="museum_pg",
+            name="博物馆业务库",
+            config=DatabaseResourceConfig(
+                type=DATABASE_TYPE_POSTGRES,
+                postgres=PostgresResourceConfig(
+                    host="127.0.0.1",
+                    port=5432,
+                    database="museum",
+                    user="postgres",
+                    password="postgres",
+                    sslmode="disable",
+                ),
+            ),
+        )
+    )
+
+    print(resp.resource_id, resp.status)
 ```
+
+### 1.4 查询数据库资源
+
+```python
+import httpx
+
+from kgbrain.v1.resource_pb2 import GetDatabaseResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = ResourceServiceClientSync(http_client)
+
+    resp = client.get_database_resource(
+        GetDatabaseResourceRequest(resource_id="museum_pg")
+    )
+
+    print("resource_id:", resp.resource_id)
+    print("name:", resp.name)
+    print("host:", resp.config.postgres.host)
+    print("database:", resp.config.postgres.database)
+    print("user:", resp.config.postgres.user)
+```
+
+### 1.5 删除资源
+
+```python
+import httpx
+
+from kgbrain.v1.resource_pb2 import DeleteDatabaseResourceRequest
+from kgbrain.v1.resource_pb2 import DeleteLLMResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = ResourceServiceClientSync(http_client)
+
+    llm_resp = client.delete_l_l_m_resource(
+        DeleteLLMResourceRequest(resource_id="qwen_local")
+    )
+    print("delete llm:", llm_resp.resource_id, llm_resp.status)
+
+    db_resp = client.delete_database_resource(
+        DeleteDatabaseResourceRequest(resource_id="museum_pg")
+    )
+    print("delete db:", db_resp.resource_id, db_resp.status)
+```
+
+## 二、结构化抽取与补全（enrichextract）
+
+`enrichextract` 适用于：
+
+- 从源表 JSON 字段中抽取结构化字段
+- 用 LLM 对目标字段做轻量补全
+- 后台异步批处理整张表
+
+### 2.1 示例表结构
+
+源表：
+
+```sql
+CREATE TABLE public.artifact_raw (
+  id BIGINT PRIMARY KEY,
+  raw_data JSONB NOT NULL
+);
+```
+
+输出表：
+
+```sql
+CREATE TABLE public.artifact_extract (
+  id BIGINT PRIMARY KEY,
+  standard_name TEXT,
+  dynasty TEXT,
+  material TEXT,
+  category TEXT
+);
+```
+
+### 2.2 启动任务并轮询状态
+
+```python
+import time
+import httpx
+
+from google.protobuf import struct_pb2
+
+from kgbrain.v1.enrich_extract_pb2 import (
+    ENRICH_EXTRACT_JOB_STATUS_FAILED,
+    ENRICH_EXTRACT_JOB_STATUS_PARTIAL,
+    ENRICH_EXTRACT_JOB_STATUS_SUCCEEDED,
+    GetEnrichExtractJobRequest,
+    StartEnrichExtractRequest,
+)
+from kgbrain.v1.enrich_extract_connect import EnrichExtractServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+def make_struct(data: dict) -> struct_pb2.Struct:
+    msg = struct_pb2.Struct()
+    msg.update(data)
+    return msg
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = EnrichExtractServiceClientSync(http_client)
+
+    start_resp = client.start_enrich_extract(
+        StartEnrichExtractRequest(
+            llm_resource_id="qwen_local",
+            database_resource_id="museum_pg",
+            source_table="public.artifact_raw",
+            output_table="public.artifact_extract",
+            key_field="id",
+            source_json_field="raw_data",
+            target_example=[
+                make_struct(
+                    {
+                        "id": 1,
+                        "standard_name": "青花瓷盘",
+                        "dynasty": "明代",
+                        "material": "瓷",
+                        "category": "瓷器",
+                    }
+                )
+            ],
+            start_id=1000,
+            end_id=2000,
+            concurrency=30,
+            page_size=300,
+            max_retries=2,
+            overwrite=False,
+        )
+    )
+
+    job_id = start_resp.job_id
+    print(f"任务已创建: {job_id}, status={start_resp.status}")
+
+    while True:
+        job_resp = client.get_enrich_extract_job(
+            GetEnrichExtractJobRequest(job_id=job_id)
+        )
+
+        print(
+            f"status={job_resp.status}, "
+            f"last_key={job_resp.last_key}, "
+            f"processed={job_resp.processed_rows}, "
+            f"succeeded={job_resp.succeeded_rows}, "
+            f"failed={job_resp.failed_rows}"
+        )
+
+        if job_resp.status in (
+            ENRICH_EXTRACT_JOB_STATUS_SUCCEEDED,
+            ENRICH_EXTRACT_JOB_STATUS_PARTIAL,
+            ENRICH_EXTRACT_JOB_STATUS_FAILED,
+        ):
+            if job_resp.error_message:
+                print("error_message:", job_resp.error_message)
+            break
+
+        time.sleep(2)
+```
+
+### 2.3 使用说明
+
+- `source_table` 需要包含整数主键列 `key_field`
+- `source_json_field` 默认为 `raw_data`，推荐使用 `jsonb`
+- `output_table` 需要提前建好，包含 `key_field` 和目标输出列
+- `target_example` 只用于定义目标字段结构，不会原样写入输出表
+- `target_example` 在 proto 中是 `google.protobuf.Struct`，需要显式把 Python `dict`
+  转成 `Struct`
+- 当 `overwrite=False` 时，服务会跳过 `output_table` 中已存在的主键记录
+
+## 三、实体对齐（entity-alignment）
+
+`entity-alignment` 适用于：
+
+- 对单个或多个字段做标准值对齐
+- 将自由文本映射到固定目标值集合
+- 按字段分别配置批大小和并发度
+
+### 3.1 示例场景
+
+假设源表里有 `city_name`、`museum_level` 这类自由填写字段，希望对齐为固定标准值。
+
+### 3.2 启动任务并轮询状态
+
+```python
+import time
+import httpx
+
+from kgbrain.v1.entity_alignment_pb2 import (
+    ENTITY_ALIGNMENT_JOB_STATUS_FAILED,
+    ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED,
+    EntityAlignmentField,
+    GetEntityAlignmentJobRequest,
+    StartEntityAlignmentRequest,
+)
+from kgbrain.v1.entity_alignment_connect import EntityAlignmentServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = EntityAlignmentServiceClientSync(http_client)
+
+    start_resp = client.start_entity_alignment(
+        StartEntityAlignmentRequest(
+            llm_resource_id="qwen_local",
+            database_resource_id="museum_pg",
+            source_table="public.museum_raw",
+            output_table="public.museum_aligned",
+            key_field="id",
+            reuse_mapping=True,
+            start_id=1,
+            end_id=50000,
+            fields=[
+                EntityAlignmentField(
+                    name="city_name",
+                    targets=["北京市", "上海市", "广州市", "西安市"],
+                    batch_size=200,
+                    batch_concurrency=8,
+                ),
+                EntityAlignmentField(
+                    name="museum_level",
+                    targets=["一级", "二级", "三级", "未评级"],
+                    batch_size=100,
+                    batch_concurrency=4,
+                ),
+            ],
+        )
+    )
+
+    job_id = start_resp.job_id
+    print(f"任务已创建: {job_id}, status={start_resp.status}")
+
+    while True:
+        job_resp = client.get_entity_alignment_job(
+            GetEntityAlignmentJobRequest(job_id=job_id)
+        )
+
+        print(
+            f"status={job_resp.status}, "
+            f"source_table={job_resp.source_table}, "
+            f"output_table={job_resp.output_table}"
+        )
+
+        if job_resp.status in (
+            ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED,
+            ENTITY_ALIGNMENT_JOB_STATUS_FAILED,
+        ):
+            if job_resp.error_message:
+                print("error_message:", job_resp.error_message)
+            break
+
+        time.sleep(2)
+```
+
+### 3.3 使用说明
+
+- `fields` 是核心配置，每个字段都要给出一组标准目标值 `targets`
+- `reuse_mapping=True` 时，服务会优先复用已有映射缓存
+- `batch_size` 决定一次送给 LLM 的源值数量
+- `batch_concurrency` 决定该字段的并发批处理请求数
+- `output_table` 需要提前准备好可写结构
+
+## 四、统一错误处理示例
+
+```python
+import httpx
+from connectrpc.errors import ConnectError
+
+
+def run_request(callable_):
+    try:
+        return callable_()
+    except ConnectError as err:
+        print("Connect 调用失败")
+        print("code:", err.code)
+        print("message:", err.message)
+        raise
+    except httpx.HTTPError as err:
+        print("HTTP 请求失败:", err)
+        raise
+```
+
+使用方式：
+
+```python
+resp = run_request(
+    lambda: client.get_l_l_m_resource(
+        GetLLMResourceRequest(resource_id="qwen_local")
+    )
+)
+print(resp)
+```
+
+## 五、建议调用顺序
+
+在真实项目里，建议按这个顺序使用：
+
+1. 先配置资源
+   - 创建 LLM 资源
+   - 创建数据库资源
+
+2. 再启动任务
+   - 表结构准备完成后调用 `enrichextract` 或 `entity-alignment`
+
+3. 最后轮询任务状态
+   - 成功时检查输出表
+   - 失败时读取 `error_message`
+
+## 六、当前可用服务清单
+
+| 服务 | 方法 | 用途 |
+|------|------|------|
+| `ResourceService` | `SetLLMResource` / `GetLLMResource` / `DeleteLLMResource` | 管理 LLM 资源 |
+| `ResourceService` | `SetDatabaseResource` / `GetDatabaseResource` / `DeleteDatabaseResource` | 管理数据库资源 |
+| `EnrichExtractService` | `StartEnrichExtract` / `GetEnrichExtractJob` | 结构化抽取与补全 |
+| `EntityAlignmentService` | `StartEntityAlignment` / `GetEntityAlignmentJob` | 实体值对齐 |
