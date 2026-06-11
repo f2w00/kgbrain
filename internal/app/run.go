@@ -1,3 +1,5 @@
+// Package app 装配 kgbrain 服务启动流程，仅加载保留的 Connect 新模块。
+// 废弃的 JSON-RPC 模块（kgc、mapping、profile、xform）已在启动流程中移除。
 package app
 
 import (
@@ -21,6 +23,8 @@ import (
 	"kgbrain/internal/resource"
 )
 
+// Run 是 kgbrain 服务 CLI 入口，由 main.go 调用。
+// 使用 cobra 解析命令行参数，委托 runWithConfig 启动服务。
 func Run(args []string) error {
 	cfgFile := "configs/config.toml"
 
@@ -55,7 +59,8 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 		return fmt.Errorf("open store: %w", err)
 	}
 
-	// 3. 应用层: 组装保留的新模块依赖
+	// 3. 应用层: 依次初始化 resource → entity-alignment → enrich-extract 模块
+	//    每个模块通过 ModuleDeps 注入共享的 SQLite、ResourceReader、LLM 工厂和数据库连接器。
 	resourceModule, err := resource.NewModule(resource.ModuleDeps{StoreDB: sqlDB})
 	if err != nil {
 		return fmt.Errorf("init resource module: %w", err)
@@ -63,6 +68,7 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	entityAlignmentModule, err := alignment.NewModule(alignment.ModuleDeps{
 		StoreDB:   sqlDB,
 		Resources: alignment.NewResourceReader(resourceModule.Service),
+		// 根据 resource 配置创建 LLM 客户端，自带 resource 级全局并发限流。
 		LLMFactory: func(r *resource.LLMResource) (alignment.LLMClient, error) {
 			return llm.NewResourceClient(
 				r.ID,
@@ -80,6 +86,7 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	enrichExtractModule, err := enrichextract.NewModule(enrichextract.ModuleDeps{
 		StoreDB:   sqlDB,
 		Resources: enrichextract.NewResourceReader(resourceModule.Service),
+		// 根据 resource 配置创建 LLM 客户端，自带 resource 级全局并发限流。
 		LLMFactory: func(r *resource.LLMResource) (enrichextract.LLMClient, error) {
 			return llm.NewResourceClient(
 				r.ID,
@@ -122,7 +129,8 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 		connectServer.Use(gzMW)
 	}
 
-	// 6. 服务重启恢复: 重建保留模块的后台作业
+	// 6. 服务重启恢复: 唤醒 enrich-extract 中 pending/running 状态的 job，
+	//    从断点继续处理未完成的分页数据。
 	if err := enrichExtractModule.Service.RecoverActiveJobs(ctx); err != nil {
 		logger.L().Warn("recover enrich extract jobs failed", zap.Error(err))
 	}
