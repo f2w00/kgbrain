@@ -14,11 +14,11 @@ import (
 func BuildMessages(
 	source map[string]any,
 	targetExample map[string]any,
-	targetFields []string,
+	outputSchema []OutputColumn,
 	priorityFieldHints map[string]string,
 ) []*schema.Message {
 	return []*schema.Message{
-		schema.SystemMessage(BuildSystemPrompt(targetExample, targetFields, priorityFieldHints)),
+		schema.SystemMessage(BuildSystemPrompt(targetExample, outputSchema, priorityFieldHints)),
 		schema.UserMessage(BuildUserMessage(source)),
 	}
 }
@@ -26,13 +26,14 @@ func BuildMessages(
 // BuildSystemPrompt 构造 system prompt，包含目标字段列表、输出规则和目标结构示例。
 func BuildSystemPrompt(
 	targetExample map[string]any,
-	targetFields []string,
+	outputSchema []OutputColumn,
 	priorityFieldHints map[string]string,
 ) string {
-	lines := make([]string, 0, len(targetFields))
-	for _, field := range targetFields {
-		lines = append(lines, fmt.Sprintf("  - %s", field))
+	lines := make([]string, 0, len(outputSchema))
+	for _, column := range outputSchema {
+		lines = append(lines, fmt.Sprintf("  - %s: %s", column.Name, column.Type))
 	}
+	targetFields := OutputFieldNames(outputSchema)
 	filteredExample := make(map[string]any, len(targetFields))
 	for _, field := range targetFields {
 		filteredExample[field] = targetExample[field]

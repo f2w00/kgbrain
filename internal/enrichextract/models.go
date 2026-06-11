@@ -21,34 +21,48 @@ const (
 	ProcessTypeEnrichExtract = "enrich_extract"
 )
 
+const (
+	// OutputColumnTypeText 表示 PostgreSQL TEXT 输出列。
+	OutputColumnTypeText = "text"
+	// OutputColumnTypeBigInt 表示 PostgreSQL BIGINT 输出列。
+	OutputColumnTypeBigInt = "bigint"
+)
+
+// OutputColumn 表示输出表字段结构，不包含 key_field。
+type OutputColumn struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
 // Job 记录一次结构化抽取异步任务的参数快照、状态和进度。
 type Job struct {
-	JobID              string
-	Status             string
-	LLMResourceID      string
-	DatabaseResourceID string
-	SourceTable        string
-	OutputTable        string
-	KeyField           string
-	SourceJSONField    string
-	TargetExample      []map[string]any
-	TargetFields       []string
-	PriorityFieldHints map[string]string
-	StartID            *int64
-	EndID              *int64
-	Overwrite          bool
-	Concurrency        int
-	PageSize           int
-	MaxRetries         int
-	LastKey            *int64
-	ProcessedRows      int64
-	SucceededRows      int64
-	FailedRows         int64
-	CreatedAt          string
-	StartedAt          string
-	UpdatedAt          string
-	FinishedAt         string
-	ErrorMessage       string
+	JobID                 string
+	Status                string
+	LLMResourceID         string
+	DatabaseResourceID    string
+	SourceTable           string
+	OutputTable           string
+	KeyField              string
+	SourceJSONField       string
+	OutputSchema          []OutputColumn
+	TargetExample         []map[string]any
+	PriorityFieldHints    map[string]string
+	AutoCreateOutputTable bool
+	StartID               *int64
+	EndID                 *int64
+	Overwrite             bool
+	Concurrency           int
+	PageSize              int
+	MaxRetries            int
+	LastKey               *int64
+	ProcessedRows         int64
+	SucceededRows         int64
+	FailedRows            int64
+	CreatedAt             string
+	StartedAt             string
+	UpdatedAt             string
+	FinishedAt            string
+	ErrorMessage          string
 }
 
 // SourceRow 表示从业务数据库读取的一行源数据。

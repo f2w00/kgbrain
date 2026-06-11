@@ -75,7 +75,16 @@ func (r *EnrichExtractBusinessRepo) EnsureExecutionReady(
 		return err
 	}
 	if len(outputColumns) == 0 {
-		return fmt.Errorf("output_table does not exist")
+		if !req.AutoCreateOutputTable {
+			return fmt.Errorf("output_table does not exist")
+		}
+		if err := r.createOutputTable(ctx, outputTable, req.KeyField, req.OutputSchema); err != nil {
+			return err
+		}
+		outputColumns, err = r.loadColumns(ctx, outputTable)
+		if err != nil {
+			return err
+		}
 	}
 	outputKey, err := requireColumn(outputColumns, req.KeyField)
 	if err != nil {
@@ -87,9 +96,17 @@ func (r *EnrichExtractBusinessRepo) EnsureExecutionReady(
 	if err := r.ensureUniqueKey(ctx, outputTable, req.KeyField); err != nil {
 		return fmt.Errorf("output_table: %w", err)
 	}
-	for _, field := range req.TargetFields {
-		if _, err := requireColumn(outputColumns, field); err != nil {
+	for _, column := range req.OutputSchema {
+		outputColumn, err := requireColumn(outputColumns, column.Name)
+		if err != nil {
 			return fmt.Errorf("output_table: %w", err)
+		}
+		if !isExpectedColumnType(outputColumn, column.Type) {
+			return fmt.Errorf(
+				"output_table: column %q must be %s",
+				column.Name,
+				column.Type,
+			)
 		}
 	}
 	return nil
@@ -218,7 +235,8 @@ func (r *EnrichExtractBusinessRepo) writeOutputRows(
 	if err != nil {
 		return fmt.Errorf("parse output_table: %w", err)
 	}
-	columns := append([]string{req.KeyField}, req.TargetFields...)
+	targetFields := OutputFieldNames(req.OutputSchema)
+	columns := append([]string{req.KeyField}, targetFields...)
 	quotedColumns := make([]string, 0, len(columns))
 	for _, column := range columns {
 		quotedColumns = append(quotedColumns, quoteIdent(column))
@@ -229,15 +247,15 @@ func (r *EnrichExtractBusinessRepo) writeOutputRows(
 	for _, row := range rows {
 		valueRows = append(valueRows, rowPlaceholders(argIndex, len(columns)))
 		args = append(args, row.Key)
-		for _, field := range req.TargetFields {
+		for _, field := range targetFields {
 			args = append(args, row.Values[field])
 		}
 		argIndex += len(columns)
 	}
 	conflict := "DO NOTHING"
 	if req.Overwrite {
-		sets := make([]string, 0, len(req.TargetFields))
-		for _, field := range req.TargetFields {
+		sets := make([]string, 0, len(targetFields))
+		for _, field := range targetFields {
 			sets = append(sets, fmt.Sprintf("%s = EXCLUDED.%s", quoteIdent(field), quoteIdent(field)))
 		}
 		conflict = "DO UPDATE SET " + strings.Join(sets, ", ")
@@ -254,6 +272,37 @@ func (r *EnrichExtractBusinessRepo) writeOutputRows(
 	)
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("write output rows: %w", err)
+	}
+	return nil
+}
+
+func (r *EnrichExtractBusinessRepo) createOutputTable(
+	ctx context.Context,
+	table qualifiedName,
+	keyField string,
+	outputSchema []OutputColumn,
+) error {
+	if !identPattern.MatchString(keyField) {
+		return fmt.Errorf("output_table: invalid key_field %q", keyField)
+	}
+	columns := []string{fmt.Sprintf("%s BIGINT PRIMARY KEY", quoteIdent(keyField))}
+	for _, column := range outputSchema {
+		if !identPattern.MatchString(column.Name) {
+			return fmt.Errorf("output_table: invalid column name %q", column.Name)
+		}
+		columns = append(columns, fmt.Sprintf(
+			"%s %s",
+			quoteIdent(column.Name),
+			postgresColumnType(column.Type),
+		))
+	}
+	query := fmt.Sprintf(
+		"CREATE TABLE IF NOT EXISTS %s (\n%s\n)",
+		fullTableName(table),
+		"\t"+strings.Join(columns, ",\n\t"),
+	)
+	if _, err := r.db.ExecContext(ctx, query); err != nil {
+		return fmt.Errorf("create output_table: %w", err)
 	}
 	return nil
 }
@@ -348,6 +397,26 @@ func isIntegerColumn(column ColumnMeta) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func isExpectedColumnType(column ColumnMeta, expected string) bool {
+	switch expected {
+	case OutputColumnTypeText:
+		return column.UDTName == "text"
+	case OutputColumnTypeBigInt:
+		return column.UDTName == "int8"
+	default:
+		return false
+	}
+}
+
+func postgresColumnType(columnType string) string {
+	switch columnType {
+	case OutputColumnTypeBigInt:
+		return "BIGINT"
+	default:
+		return "TEXT"
 	}
 }
 

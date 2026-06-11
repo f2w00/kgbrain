@@ -37,20 +37,24 @@ func TestEnrichExtractRepoPersistsPriorityFieldHints(t *testing.T) {
 		OutputTable:        "public.output",
 		KeyField:           "id",
 		SourceJSONField:    "raw_data",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+			{Name: "material", Type: OutputColumnTypeText},
+		},
 		TargetExample: []map[string]any{{
 			"dynasty":  "",
 			"material": "",
 		}},
-		TargetFields: []string{"dynasty", "material"},
 		PriorityFieldHints: map[string]string{
 			"dynasty":  "朝代信息",
 			"material": "材质信息",
 		},
-		Overwrite:   false,
-		Concurrency: 1,
-		PageSize:    100,
-		MaxRetries:  2,
-		CreatedAt:   "2026-06-11T00:00:00Z",
+		AutoCreateOutputTable: true,
+		Overwrite:             false,
+		Concurrency:           1,
+		PageSize:              100,
+		MaxRetries:            2,
+		CreatedAt:             "2026-06-11T00:00:00Z",
 	}
 	if err := repo.CreateJob(job); err != nil {
 		t.Fatalf("create job: %v", err)
@@ -67,6 +71,12 @@ func TestEnrichExtractRepoPersistsPriorityFieldHints(t *testing.T) {
 	}
 	if got.PriorityFieldHints["material"] != "材质信息" {
 		t.Fatalf("unexpected material hint: %#v", got.PriorityFieldHints)
+	}
+	if !got.AutoCreateOutputTable {
+		t.Fatal("expected auto_create_output_table to be persisted")
+	}
+	if len(got.OutputSchema) != 2 || got.OutputSchema[0].Name != "dynasty" {
+		t.Fatalf("unexpected output schema: %#v", got.OutputSchema)
 	}
 }
 
@@ -120,7 +130,9 @@ func TestNewEnrichExtractRepoMigratesPriorityFieldHintsColumn(t *testing.T) {
 		t.Fatalf("inspect jobs table: %v", err)
 	}
 	defer rows.Close()
-	found := false
+	foundPriorityHints := false
+	foundOutputSchema := false
+	foundAutoCreateOutputTable := false
 	for rows.Next() {
 		var cid int
 		var name, columnType string
@@ -130,14 +142,25 @@ func TestNewEnrichExtractRepoMigratesPriorityFieldHintsColumn(t *testing.T) {
 			t.Fatalf("scan table info: %v", err)
 		}
 		if name == "priority_field_hints_json" {
-			found = true
-			break
+			foundPriorityHints = true
+		}
+		if name == "output_schema_json" {
+			foundOutputSchema = true
+		}
+		if name == "auto_create_output_table" {
+			foundAutoCreateOutputTable = true
 		}
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate table info: %v", err)
 	}
-	if !found {
+	if !foundPriorityHints {
 		t.Fatal("expected priority_field_hints_json column to be added")
+	}
+	if !foundOutputSchema {
+		t.Fatal("expected output_schema_json column to be added")
+	}
+	if !foundAutoCreateOutputTable {
+		t.Fatal("expected auto_create_output_table column to be added")
 	}
 }

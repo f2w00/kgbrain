@@ -31,20 +31,22 @@ func (h *EnrichExtractHandler) StartEnrichExtract(
 		targetExample = append(targetExample, example.AsMap())
 	}
 	result, err := h.svc.Start(ctx, StartRequest{
-		LLMResourceID:      req.Msg.GetLlmResourceId(),
-		DatabaseResourceID: req.Msg.GetDatabaseResourceId(),
-		SourceTable:        req.Msg.GetSourceTable(),
-		OutputTable:        req.Msg.GetOutputTable(),
-		KeyField:           req.Msg.GetKeyField(),
-		SourceJSONField:    optionalString(req.Msg.SourceJsonField),
-		TargetExample:      targetExample,
-		PriorityFieldHints: cloneStringMap(req.Msg.GetPriorityFieldHints()),
-		StartID:            req.Msg.StartId,
-		EndID:              req.Msg.EndId,
-		Concurrency:        optionalInt(req.Msg.Concurrency),
-		Overwrite:          req.Msg.Overwrite,
-		PageSize:           optionalInt(req.Msg.PageSize),
-		MaxRetries:         optionalInt(req.Msg.MaxRetries),
+		LLMResourceID:         req.Msg.GetLlmResourceId(),
+		DatabaseResourceID:    req.Msg.GetDatabaseResourceId(),
+		SourceTable:           req.Msg.GetSourceTable(),
+		OutputTable:           req.Msg.GetOutputTable(),
+		KeyField:              req.Msg.GetKeyField(),
+		SourceJSONField:       optionalString(req.Msg.SourceJsonField),
+		OutputSchema:          protoOutputSchema(req.Msg.GetOutputSchema()),
+		TargetExample:         targetExample,
+		PriorityFieldHints:    cloneStringMap(req.Msg.GetPriorityFieldHints()),
+		AutoCreateOutputTable: req.Msg.AutoCreateOutputTable,
+		StartID:               req.Msg.StartId,
+		EndID:                 req.Msg.EndId,
+		Concurrency:           optionalInt(req.Msg.Concurrency),
+		Overwrite:             req.Msg.Overwrite,
+		PageSize:              optionalInt(req.Msg.PageSize),
+		MaxRetries:            optionalInt(req.Msg.MaxRetries),
 	})
 	if err != nil {
 		return nil, enrichExtractError(err)
@@ -70,23 +72,72 @@ func (h *EnrichExtractHandler) GetEnrichExtractJob(
 		lastKey = *job.LastKey
 	}
 	return connectrpc.NewResponse(&kgbrainv1.GetEnrichExtractJobResponse{
-		JobId:              job.JobID,
-		LlmResourceId:      job.LLMResourceID,
-		DatabaseResourceId: job.DatabaseResourceID,
-		SourceTable:        job.SourceTable,
-		OutputTable:        job.OutputTable,
-		KeyField:           job.KeyField,
-		SourceJsonField:    job.SourceJSONField,
-		Status:             protoStatus(job.Status),
-		ErrorMessage:       job.ErrorMessage,
-		LastKey:            lastKey,
-		ProcessedRows:      job.ProcessedRows,
-		SucceededRows:      job.SucceededRows,
-		FailedRows:         job.FailedRows,
-		CreatedAtUnix:      parseUnix(job.CreatedAt),
-		StartedAtUnix:      parseUnix(job.StartedAt),
-		FinishedAtUnix:     parseUnix(job.FinishedAt),
+		JobId:                 job.JobID,
+		LlmResourceId:         job.LLMResourceID,
+		DatabaseResourceId:    job.DatabaseResourceID,
+		SourceTable:           job.SourceTable,
+		OutputTable:           job.OutputTable,
+		KeyField:              job.KeyField,
+		SourceJsonField:       job.SourceJSONField,
+		OutputSchema:          internalOutputSchema(job.OutputSchema),
+		AutoCreateOutputTable: job.AutoCreateOutputTable,
+		Status:                protoStatus(job.Status),
+		ErrorMessage:          job.ErrorMessage,
+		LastKey:               lastKey,
+		ProcessedRows:         job.ProcessedRows,
+		SucceededRows:         job.SucceededRows,
+		FailedRows:            job.FailedRows,
+		CreatedAtUnix:         parseUnix(job.CreatedAt),
+		StartedAtUnix:         parseUnix(job.StartedAt),
+		FinishedAtUnix:        parseUnix(job.FinishedAt),
 	}), nil
+}
+
+func protoOutputSchema(columns []*kgbrainv1.EnrichExtractOutputColumn) []OutputColumn {
+	result := make([]OutputColumn, 0, len(columns))
+	for _, column := range columns {
+		if column == nil {
+			continue
+		}
+		result = append(result, OutputColumn{
+			Name: column.GetName(),
+			Type: outputColumnType(column.GetType()),
+		})
+	}
+	return result
+}
+
+func outputColumnType(t kgbrainv1.EnrichExtractOutputColumnType) string {
+	switch t {
+	case kgbrainv1.EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT:
+		return OutputColumnTypeText
+	case kgbrainv1.EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT:
+		return OutputColumnTypeBigInt
+	default:
+		return ""
+	}
+}
+
+func internalOutputSchema(columns []OutputColumn) []*kgbrainv1.EnrichExtractOutputColumn {
+	result := make([]*kgbrainv1.EnrichExtractOutputColumn, 0, len(columns))
+	for _, column := range columns {
+		result = append(result, &kgbrainv1.EnrichExtractOutputColumn{
+			Name: column.Name,
+			Type: protoOutputColumnType(column.Type),
+		})
+	}
+	return result
+}
+
+func protoOutputColumnType(t string) kgbrainv1.EnrichExtractOutputColumnType {
+	switch t {
+	case OutputColumnTypeText:
+		return kgbrainv1.EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT
+	case OutputColumnTypeBigInt:
+		return kgbrainv1.EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT
+	default:
+		return kgbrainv1.EnrichExtractOutputColumnType_ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED
+	}
 }
 
 // optionalInt 将 proto int32 指针转换为 Go *int，nil 保持 nil。

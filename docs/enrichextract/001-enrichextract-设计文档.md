@@ -33,8 +33,10 @@ source_table -> 逐行 LLM 抽取/补全 -> output_table
 - 通过 `database_resource_id` 选择业务数据库连接。
 - 从一个 `source_table` 读取数据，source 表使用 JSONB 字段保存原始 payload。
 - 将结果写入一个调用者指定的 `output_table`。
-- `output_table` 必须由用户提前创建，服务不自动建表、不修改表结构。
-- `output_table` 仅写入 `key_field` 和 `target_example` 推导出的目标字段。
+- 输出字段结构由必填的 `output_schema` 显式定义，不从 `target_example` 推导。
+- `auto_create_output_table=true` 时，服务可在 `output_table` 不存在时按
+  `output_schema` 自动建表；已存在表只校验，不自动改结构。
+- `output_table` 仅写入 `key_field` 和 `output_schema` 定义的目标字段。
 - `source_table` 中的 JSONB 原始 payload 只作为 LLM 输入，不直接复制到 output 表。
 - 不写入 `ext_info` 或其他系统元数据字段。
 - `key_field` 仅支持整数类型，并支持 `start_id` / `end_id` 范围处理。
@@ -54,8 +56,8 @@ source_table -> 逐行 LLM 抽取/补全 -> output_table
 
 复用思路：
 
-- `target_example` 表达目标结构。
-- 从 `target_example[0]` 提取目标字段集合。
+- `target_example` 表达 LLM 输出示例。
+- `output_schema` 显式定义目标字段集合和字段类型。
 - LLM 逐行处理。
 - LLM 输出必须对齐到目标字段集合。
 - 主键不交给 LLM 决定，服务端强制注入原始主键。
@@ -108,17 +110,30 @@ message StartEnrichExtractRequest {
   string output_table = 4;
   string key_field = 5;
 
-  repeated google.protobuf.Struct target_example = 6;
+  repeated EnrichExtractOutputColumn output_schema = 6;
+  repeated google.protobuf.Struct target_example = 7;
 
-  optional int64 start_id = 7;
-  optional int64 end_id = 8;
+  optional int64 start_id = 8;
+  optional int64 end_id = 9;
 
-  optional int32 concurrency = 9;
-  optional bool overwrite = 10;
-  optional int32 page_size = 11;
-  optional int32 max_retries = 12;
-  optional string source_json_field = 13;
-  map<string, string> priority_field_hints = 14;
+  optional int32 concurrency = 10;
+  optional bool overwrite = 11;
+  optional int32 page_size = 12;
+  optional int32 max_retries = 13;
+  optional string source_json_field = 14;
+  map<string, string> priority_field_hints = 15;
+  optional bool auto_create_output_table = 16;
+}
+
+message EnrichExtractOutputColumn {
+  string name = 1;
+  EnrichExtractOutputColumnType type = 2;
+}
+
+enum EnrichExtractOutputColumnType {
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED = 0;
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT = 1;
+  ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_BIGINT = 2;
 }
 ```
 
@@ -129,9 +144,10 @@ message StartEnrichExtractRequest {
 | `llm_resource_id` | string | 是 | 用于读取 LLM Resource 配置 |
 | `database_resource_id` | string | 是 | 用于读取 Database Resource 配置 |
 | `source_table` | string | 是 | 原始数据来源表，支持 `schema.table` |
-| `output_table` | string | 是 | 结果写入表，必须由用户提前创建 |
+| `output_table` | string | 是 | 结果写入表，支持 `schema.table` |
 | `key_field` | string | 是 | 整数主键字段，用于分页、去重和 upsert |
-| `target_example` | Struct[] | 是 | 目标结构示例，用于推导目标字段和构造 prompt |
+| `output_schema` | EnrichExtractOutputColumn[] | 是 | 输出字段结构，是校验、建表、写库和 prompt 字段列表的唯一来源 |
+| `target_example` | Struct[] | 是 | LLM 输出结构示例，字段集合必须与 `output_schema` 一致 |
 | `start_id` | int64 | 否 | 基于 `key_field` 的处理范围下界 |
 | `end_id` | int64 | 否 | 基于 `key_field` 的处理范围上界 |
 | `concurrency` | int32 | 否 | LLM 逐行调用并发数，默认保守值 |
@@ -140,6 +156,7 @@ message StartEnrichExtractRequest {
 | `max_retries` | int32 | 否 | 单行 LLM 最大重试次数，默认保守值 |
 | `source_json_field` | string | 否 | source 表中保存原始 payload 的 JSONB 字段，默认 `raw_data` |
 | `priority_field_hints` | map<string, string> | 否 | 重点字段说明，key 必须是目标字段名，value 是该字段的抽取/推断说明 |
+| `auto_create_output_table` | bool | 否 | 输出表不存在时是否按 `output_schema` 自动建表，默认 false |
 
 请求示例：
 
@@ -150,9 +167,13 @@ message StartEnrichExtractRequest {
   "source_table": "public.artifact_raw",
   "output_table": "public.artifact_extract",
   "key_field": "id",
+  "output_schema": [
+    {"name": "standard_name", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"},
+    {"name": "dynasty", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"},
+    {"name": "material", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"}
+  ],
   "target_example": [
     {
-      "id": 1,
       "standard_name": "青花瓷盘",
       "dynasty": "明代",
       "material": "瓷"
@@ -165,6 +186,7 @@ message StartEnrichExtractRequest {
   "page_size": 100,
   "max_retries": 2,
   "source_json_field": "raw_data",
+  "auto_create_output_table": true,
   "priority_field_hints": {
     "dynasty": "朝代信息。优先从名称、标题、描述、年代、分类等字段中提取，例如“明代青花瓷盘”应提取为“明代”。",
     "material": "材质信息。优先从名称、描述、工艺、材质字段中提取，例如瓷、铜、玉、纸本等。"
@@ -172,16 +194,22 @@ message StartEnrichExtractRequest {
 }
 ```
 
+`output_schema` 处理规则：
+
+- `output_schema` 必填且不能为空。
+- `output_schema.name` 不能为空、不能重复、不能等于 `key_field`。
+- `output_schema.type` 不能为 `UNSPECIFIED`；初版仅支持 `TEXT` 和 `BIGINT`。
+- 服务按字段名排序后作为 prompt 目标字段、LLM 输出裁剪和写库字段列表。
+
 `target_example` 处理规则：
 
-- 服务从 `target_example[0]` 提取字段名。
-- 如果示例包含 `key_field`，服务会剥离该字段，不让 LLM 输出主键。
-- `target_fields = keys(target_example[0]) - key_field`。
-- `target_fields` 用于 prompt 目标字段说明、LLM 输出裁剪和写库字段列表。
+- `target_example` 必填，用于展示 LLM 输出格式，不参与数据库 DDL 推断。
+- `target_example[0]` 的字段集合必须与 `output_schema.name` 完全一致。
+- 示例不应包含 `key_field`；如果 LLM 输出中包含 `key_field`，服务仍会删除。
 
 `priority_field_hints` 处理规则：
 
-- `key` 必须属于 `target_example[0]` 推导出的目标字段。
+- `key` 必须属于 `output_schema` 定义的目标字段。
 - `key` 不允许等于 `key_field`。
 - `value` 不能为空字符串。
 - 该字段只影响 prompt，不新增输出列，也不强制非空。
@@ -245,15 +273,17 @@ source_table.raw_data = {"id": 999, "title": "明代青花瓷盘"}
 
 ### 5.3 output_table 规则
 
-`output_table` 必须由调用者提前创建。
+`output_table` 默认必须由调用者提前创建；如果 `auto_create_output_table=true`，
+且输出表不存在，服务会按 `key_field` 和 `output_schema` 自动创建。
 
 服务启动 job 前执行以下校验：
 
-- `output_table` 存在。
+- `output_table` 存在；或 `auto_create_output_table=true` 且有权限创建。
 - `output_table.key_field` 存在且是整数类型。
 - `output_table.key_field` 存在 primary key 或 unique 约束。
-- `target_fields` 在 `output_table` 中全部存在。
-- `target_fields` 不允许包含 `key_field`。
+- `output_schema` 中的列在 `output_table` 中全部存在。
+- `output_schema` 中的列类型与定义一致。
+- `output_schema` 不允许包含 `key_field`。
 - `target_example` 不能为空。
 - `start_id <= end_id`，如果二者都传入。
 
@@ -268,9 +298,19 @@ CREATE TABLE artifact_extract (
 );
 ```
 
+自动建表时生成的结构：
+
+```sql
+CREATE TABLE IF NOT EXISTS artifact_extract (
+  id BIGINT PRIMARY KEY,
+  standard_name TEXT,
+  dynasty TEXT,
+  material TEXT
+);
+```
+
 服务不会：
 
-- 创建 `output_table`。
 - 添加缺失列。
 - 修改字段类型。
 - 添加索引或约束。
@@ -323,7 +363,7 @@ ON CONFLICT (key_field) DO UPDATE SET
 2. 应用服务校验请求参数并创建 job。
 3. 后台 goroutine 标记 job 为 running。
 4. executor 根据 resource_id 获取 LLM 客户端和业务数据库连接。
-5. business repository 校验 source_table / output_table / key_field / source_json_field / target_fields。
+5. business repository 校验 source_table / output_table / key_field / source_json_field / output_schema。
 6. 领域执行服务按 key_field 做 keyset pagination。
 7. overwrite=false 时，分页查询阶段排除 output_table 已存在 key 的行。
 8. 对当前 page 的每一行单独调用 LLM，可按 concurrency 并发。
@@ -470,22 +510,15 @@ error
 - 无法判断的目标字段输出 JSON null。
 - 所有目标字段都必须输出。
 
-目标字段来自 `target_example`。
+目标字段来自 `output_schema`，prompt 同时展示字段类型。`target_example` 只作为
+输出格式示例，不参与目标字段推导。
 
 用户消息中的源数据来自 `source_json_field` 对应 JSONB 值。构造 prompt 前，
 如果源 JSON object 中存在与 `key_field` 同名的字段，服务会先剥离该字段，
 避免 LLM 看到不可信主键。
 
-第一阶段不增加单独的重点字段配置。所有 `target_example` 中的目标字段都视为
-LLM 需要关注和输出的字段。
-
-后续如果需要表达“重点关注字段”，建议新增显式字段，例如：
-
-```proto
-repeated string focus_target_fields = 12;
-```
-
-不要通过 `target_example` 中的特殊值约定表达重点字段，避免污染业务示例。
+`priority_field_hints` 可用于表达重点字段说明。不要通过 `target_example` 中的
+特殊值约定表达重点字段，避免污染业务示例。
 
 ### 10.2 LLM 输出校验
 
@@ -495,15 +528,16 @@ LLM 单行返回后执行以下校验和归一：
 1. 从 LLM 响应中提取 JSON。
 2. JSON 必须是 object，不接受 array/string/number。
 3. 删除 key_field，LLM 返回的主键一律不可信。
-4. 只保留 target_fields 中的字段。
-5. target_fields 中缺失的字段补 null。
+4. 只保留 output_schema 中的字段。
+5. output_schema 中缺失的字段补 null。
 6. 删除所有非目标字段。
-7. 注入 source row 的原始 key_field。
-8. 写入 output_table。
+7. 按 output_schema 归一化字段类型，TEXT 转字符串，BIGINT 转 int64。
+8. 注入 source row 的原始 key_field。
+9. 写入 output_table。
 ```
 
-字段类型由 `output_table` 的数据库列类型兜底校验。如果写库失败，该行记录为
-失败，不中断整个 job。
+字段类型会先在 Go 侧按 `output_schema` 校验和归一化，再由 `output_table` 的
+数据库列类型兜底校验。如果写库失败，该行记录为失败，不中断整个 job。
 
 ### 10.3 source JSON 校验
 
@@ -582,6 +616,7 @@ max_retries = 2
 - Resource 不存在。
 - 表结构校验失败。
 - `key_field` 非整数。
+- `output_schema` 缺失、字段重复或类型不支持。
 - `target_example` 为空。
 - `output_table` 缺目标字段。
 - context 已取消。
@@ -662,8 +697,9 @@ source_table
 output_table
 key_field
 source_json_field
+output_schema_json
 target_example_json
-target_fields_json
+auto_create_output_table
 
 start_id
 end_id
@@ -689,7 +725,8 @@ error_message
 
 - `target_example_json` 保存原始目标示例。
 - `source_json_field` 保存 source 表原始 payload 字段名，未传时为 `raw_data`。
-- `target_fields_json` 保存从目标示例推导出的字段列表，便于恢复和查询。
+- `output_schema_json` 保存输出字段结构，便于恢复、校验和查询。
+- `auto_create_output_table` 保存是否允许自动创建输出表。
 - `last_key` 保存 page 级执行进度。
 - `processed_rows` 统计已经尝试处理的 source rows。
 - `succeeded_rows` 统计成功写入或确认成功的 rows。
@@ -709,7 +746,7 @@ status in ('pending', 'running')
 1. 读取 job 参数快照。
 2. 重新获取 LLM Resource 和 Database Resource。
 3. 重新打开业务数据库连接。
-4. 重新校验 source_table / output_table / key_field / source_json_field / target_fields。
+4. 重新校验 source_table / output_table / key_field / source_json_field / output_schema。
 5. 从 last_key 后继续分页处理。
 6. 沿用原 job 的 overwrite / concurrency / page_size / max_retries。
 ```
@@ -838,10 +875,9 @@ internal/enrichextract/
 
 ## 14. 第一阶段不做事项
 
-- 不实现自动建表。
+- 不实现自动补列或自动改列类型。
 - 不实现 `ext_info`。
 - 不实现字段级枚举约束。
-- 不实现 `focus_target_fields`。
 - 不实现人工审核。
 - 不实现 Redis Stream。
 - 不实现成功中间结果持久化。
@@ -855,4 +891,4 @@ internal/enrichextract/
 - 默认 `max_retries` 的具体数值，当前建议为 2。
 - 行级错误是否需要提供分页查询 API。
 - 是否需要在 job 查询响应中返回 `processed_rows`、`succeeded_rows`、`failed_rows`。
-- 后续“重点关注字段”是否通过 `focus_target_fields` 显式配置。
+- 后续是否需要扩展 `output_schema` 字段类型，例如 `numeric`、`boolean`、`jsonb`。

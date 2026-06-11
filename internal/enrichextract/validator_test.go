@@ -6,14 +6,19 @@ import (
 	"testing"
 )
 
-func TestExtractTargetFields(t *testing.T) {
-	fields := ExtractTargetFields(map[string]any{
-		"id":            1,
-		"standard_name": "x",
-		"dynasty":       "y",
+func TestNormalizeOutputSchema(t *testing.T) {
+	schema, fields, err := NormalizeOutputSchema([]OutputColumn{
+		{Name: " standard_name ", Type: " TEXT "},
+		{Name: "dynasty", Type: OutputColumnTypeBigInt},
 	}, "id")
+	if err != nil {
+		t.Fatalf("NormalizeOutputSchema error: %v", err)
+	}
 	if len(fields) != 2 || fields[0] != "dynasty" || fields[1] != "standard_name" {
 		t.Fatalf("unexpected target fields: %#v", fields)
+	}
+	if schema[1].Type != OutputColumnTypeText {
+		t.Fatalf("unexpected normalized schema: %#v", schema)
 	}
 }
 
@@ -64,8 +69,11 @@ func TestNormalizeStartRequestPriorityFieldHints(t *testing.T) {
 		SourceTable:        "source_items",
 		OutputTable:        "output_items",
 		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+			{Name: "material", Type: OutputColumnTypeText},
+		},
 		TargetExample: []map[string]any{{
-			"id":       1,
 			"dynasty":  "",
 			"material": "",
 		}},
@@ -95,8 +103,10 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsUnknownField(t *testing.T
 		SourceTable:        "source_items",
 		OutputTable:        "output_items",
 		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+		},
 		TargetExample: []map[string]any{{
-			"id":      1,
 			"dynasty": "",
 		}},
 		PriorityFieldHints: map[string]string{
@@ -118,8 +128,10 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsKeyField(t *testing.T) {
 		SourceTable:        "source_items",
 		OutputTable:        "output_items",
 		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+		},
 		TargetExample: []map[string]any{{
-			"id":      1,
 			"dynasty": "",
 		}},
 		PriorityFieldHints: map[string]string{
@@ -141,8 +153,10 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsEmptyHint(t *testing.T) {
 		SourceTable:        "source_items",
 		OutputTable:        "output_items",
 		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+		},
 		TargetExample: []map[string]any{{
-			"id":      1,
 			"dynasty": "",
 		}},
 		PriorityFieldHints: map[string]string{
@@ -153,6 +167,47 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsEmptyHint(t *testing.T) {
 		t.Fatal("expected error for empty priority hint")
 	}
 	if !strings.Contains(err.Error(), "must not be empty") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestNormalizeStartRequestRequiresOutputSchema(t *testing.T) {
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		TargetExample: []map[string]any{{
+			"dynasty": "",
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected error for missing output_schema")
+	}
+	if !strings.Contains(err.Error(), "output_schema is required") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestNormalizeStartRequestRejectsMismatchedTargetExample(t *testing.T) {
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+		},
+		TargetExample: []map[string]any{{
+			"material": "",
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected error for mismatched target_example")
+	}
+	if !strings.Contains(err.Error(), "target_example fields must match output_schema") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

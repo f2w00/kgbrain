@@ -9,7 +9,10 @@ func TestBuildSystemPromptOmitsKeyField(t *testing.T) {
 	prompt := BuildSystemPrompt(map[string]any{
 		"standard_name": "青花瓷盘",
 		"dynasty":       "明代",
-	}, []string{"standard_name", "dynasty"}, nil)
+	}, []OutputColumn{
+		{Name: "standard_name", Type: OutputColumnTypeText},
+		{Name: "dynasty", Type: OutputColumnTypeText},
+	}, nil)
 	if strings.Contains(prompt, "id") {
 		t.Fatalf("prompt should not mention id: %s", prompt)
 	}
@@ -26,7 +29,11 @@ func TestBuildSystemPromptIncludesPriorityFieldHints(t *testing.T) {
 		"standard_name": "青花瓷盘",
 		"dynasty":       "明代",
 		"material":      "瓷",
-	}, []string{"standard_name", "dynasty", "material"}, map[string]string{
+	}, []OutputColumn{
+		{Name: "standard_name", Type: OutputColumnTypeText},
+		{Name: "dynasty", Type: OutputColumnTypeText},
+		{Name: "material", Type: OutputColumnTypeText},
+	}, map[string]string{
 		"material": "材质信息",
 		"dynasty":  "朝代信息",
 	})

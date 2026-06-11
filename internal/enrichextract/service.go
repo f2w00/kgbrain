@@ -40,7 +40,7 @@ func NewService(repo Repository, resources ResourceReader, opts ...Option) *Serv
 
 // Start 校验并创建新 job，写入本地 SQLite 后立即启动后台 goroutine 执行。
 func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, error) {
-	normalized, targetFields, err := NormalizeStartRequest(req)
+	normalized, _, err := NormalizeStartRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -52,24 +52,25 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	job := &Job{
-		JobID:              idgen.GenerateEnrichExtractJobID(),
-		Status:             StatusPending,
-		LLMResourceID:      normalized.LLMResourceID,
-		DatabaseResourceID: normalized.DatabaseResourceID,
-		SourceTable:        normalized.SourceTable,
-		OutputTable:        normalized.OutputTable,
-		KeyField:           normalized.KeyField,
-		SourceJSONField:    normalized.SourceJSONField,
-		TargetExample:      cloneRows(normalized.TargetExample),
-		TargetFields:       append([]string(nil), targetFields...),
-		PriorityFieldHints: cloneStringMap(normalized.PriorityFieldHints),
-		StartID:            normalized.StartID,
-		EndID:              normalized.EndID,
-		Overwrite:          *normalized.Overwrite,
-		Concurrency:        *normalized.Concurrency,
-		PageSize:           *normalized.PageSize,
-		MaxRetries:         *normalized.MaxRetries,
-		CreatedAt:          now,
+		JobID:                 idgen.GenerateEnrichExtractJobID(),
+		Status:                StatusPending,
+		LLMResourceID:         normalized.LLMResourceID,
+		DatabaseResourceID:    normalized.DatabaseResourceID,
+		SourceTable:           normalized.SourceTable,
+		OutputTable:           normalized.OutputTable,
+		KeyField:              normalized.KeyField,
+		SourceJSONField:       normalized.SourceJSONField,
+		OutputSchema:          cloneOutputSchema(normalized.OutputSchema),
+		TargetExample:         cloneRows(normalized.TargetExample),
+		PriorityFieldHints:    cloneStringMap(normalized.PriorityFieldHints),
+		AutoCreateOutputTable: *normalized.AutoCreateOutputTable,
+		StartID:               normalized.StartID,
+		EndID:                 normalized.EndID,
+		Overwrite:             *normalized.Overwrite,
+		Concurrency:           *normalized.Concurrency,
+		PageSize:              *normalized.PageSize,
+		MaxRetries:            *normalized.MaxRetries,
+		CreatedAt:             now,
 	}
 	if err := s.repo.CreateJob(job); err != nil {
 		return nil, err
@@ -138,20 +139,22 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 		return
 	}
 	req := StartRequest{
-		LLMResourceID:      job.LLMResourceID,
-		DatabaseResourceID: job.DatabaseResourceID,
-		SourceTable:        job.SourceTable,
-		OutputTable:        job.OutputTable,
-		KeyField:           job.KeyField,
-		SourceJSONField:    job.SourceJSONField,
-		TargetExample:      cloneRows(job.TargetExample),
-		PriorityFieldHints: cloneStringMap(job.PriorityFieldHints),
-		StartID:            job.StartID,
-		EndID:              job.EndID,
-		Overwrite:          boolPtr(job.Overwrite),
-		Concurrency:        intPtr(job.Concurrency),
-		PageSize:           intPtr(job.PageSize),
-		MaxRetries:         intPtr(job.MaxRetries),
+		LLMResourceID:         job.LLMResourceID,
+		DatabaseResourceID:    job.DatabaseResourceID,
+		SourceTable:           job.SourceTable,
+		OutputTable:           job.OutputTable,
+		KeyField:              job.KeyField,
+		SourceJSONField:       job.SourceJSONField,
+		OutputSchema:          cloneOutputSchema(job.OutputSchema),
+		TargetExample:         cloneRows(job.TargetExample),
+		PriorityFieldHints:    cloneStringMap(job.PriorityFieldHints),
+		AutoCreateOutputTable: boolPtr(job.AutoCreateOutputTable),
+		StartID:               job.StartID,
+		EndID:                 job.EndID,
+		Overwrite:             boolPtr(job.Overwrite),
+		Concurrency:           intPtr(job.Concurrency),
+		PageSize:              intPtr(job.PageSize),
+		MaxRetries:            intPtr(job.MaxRetries),
 	}
 	if err := s.executor.Execute(ctx, job, req, s.resources); err != nil {
 		_ = s.repo.MarkFailed(jobID, err.Error())
@@ -206,6 +209,11 @@ func cloneRows(rows []map[string]any) []map[string]any {
 		cloned = append(cloned, m)
 	}
 	return cloned
+}
+
+// cloneOutputSchema 深拷贝输出字段结构，避免共享底层数组。
+func cloneOutputSchema(schema []OutputColumn) []OutputColumn {
+	return append([]OutputColumn(nil), schema...)
 }
 
 // cloneStringMap 深拷贝 map[string]string，避免共享底层引用。
