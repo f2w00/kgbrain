@@ -8,10 +8,12 @@ import (
 	"time"
 )
 
+// EnrichExtractRepo 实现 Repository 接口，基于 SQLite 存储 job 元数据和行级错误。
 type EnrichExtractRepo struct {
 	db *sql.DB
 }
 
+// NewEnrichExtractRepo 创建仓库实例，自动建表。
 func NewEnrichExtractRepo(db *sql.DB) (*EnrichExtractRepo, error) {
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS enrich_extract_jobs (
 		job_id               TEXT PRIMARY KEY,
@@ -84,12 +86,14 @@ func (r *EnrichExtractRepo) CreateJob(job *Job) error {
 	return err
 }
 
+// GetJob 按 jobID 查询单个 job。
 func (r *EnrichExtractRepo) GetJob(jobID string) (*Job, error) {
-	return r.getJobByQuery(`SELECT * FROM enrich_extract_jobs WHERE job_id = ?`, jobID)
+	return r.getJobByQuery(selectJobsSQL+` WHERE job_id = ?`, jobID)
 }
 
+// ListActiveJobs 查询所有 pending 或 running 状态的 job，用于服务重启恢复。
 func (r *EnrichExtractRepo) ListActiveJobs() ([]*Job, error) {
-	rows, err := r.db.Query(`SELECT * FROM enrich_extract_jobs WHERE status IN (?, ?)`, StatusPending, StatusRunning)
+	rows, err := r.db.Query(selectJobsSQL+` WHERE status IN (?, ?)`, StatusPending, StatusRunning)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +112,7 @@ func (r *EnrichExtractRepo) ListActiveJobs() ([]*Job, error) {
 	return jobs, nil
 }
 
+// MarkRunning 将 job 状态置为 running，设置 started_at 和 updated_at。
 func (r *EnrichExtractRepo) MarkRunning(jobID string) error {
 	now := nowString()
 	_, err := r.db.Exec(`UPDATE enrich_extract_jobs
@@ -116,6 +121,7 @@ func (r *EnrichExtractRepo) MarkRunning(jobID string) error {
 	return err
 }
 
+// MarkSucceeded 将 job 状态置为 succeeded，设置完成时间和清除错误信息。
 func (r *EnrichExtractRepo) MarkSucceeded(jobID string) error {
 	now := nowString()
 	_, err := r.db.Exec(`UPDATE enrich_extract_jobs
@@ -124,6 +130,7 @@ func (r *EnrichExtractRepo) MarkSucceeded(jobID string) error {
 	return err
 }
 
+// MarkFailed 将 job 状态置为 failed，记录错误信息并设置完成时间。
 func (r *EnrichExtractRepo) MarkFailed(jobID string, errorMessage string) error {
 	now := nowString()
 	_, err := r.db.Exec(`UPDATE enrich_extract_jobs
@@ -132,6 +139,7 @@ func (r *EnrichExtractRepo) MarkFailed(jobID string, errorMessage string) error 
 	return err
 }
 
+// UpdateProgress 更新 job 执行进度：last_key、processed/succeeded/failed_rows 计数。
 func (r *EnrichExtractRepo) UpdateProgress(jobID string, update ProgressUpdate) error {
 	_, err := r.db.Exec(`UPDATE enrich_extract_jobs
 		SET last_key = ?, processed_rows = processed_rows + ?,
@@ -142,6 +150,7 @@ func (r *EnrichExtractRepo) UpdateProgress(jobID string, update ProgressUpdate) 
 	return err
 }
 
+// AddErrors 批量持久化行级错误，使用事务保证原子写入。
 func (r *EnrichExtractRepo) AddErrors(jobID string, errors []RowError) error {
 	if len(errors) == 0 {
 		return nil
@@ -153,7 +162,7 @@ func (r *EnrichExtractRepo) AddErrors(jobID string, errors []RowError) error {
 	defer tx.Rollback()
 	stmt, err := tx.Prepare(`INSERT INTO enrich_extract_job_errors (
 		job_id, source_key, stage, attempts, error_message, created_at
-	) VALUES (?, ?, ?, ?, ?, ?)`) 
+	) VALUES (?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -181,6 +190,17 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
+// selectJobsSQL 是查询 enrich_extract_jobs 表的完整字段列表。
+const selectJobsSQL = `SELECT
+	job_id, status, llm_resource_id, database_resource_id, source_table,
+	output_table, key_field, source_json_field, target_example_json,
+	target_fields_json, start_id, end_id, overwrite, concurrency,
+	page_size, max_retries, last_key, processed_rows, succeeded_rows,
+	failed_rows, created_at, started_at, updated_at, finished_at,
+	error_message
+FROM enrich_extract_jobs`
+
+// scanJob 将一行查询结果扫描为 *Job，处理 NULL 字段和 JSON 反序列化。
 func scanJob(s scanner) (*Job, error) {
 	job := &Job{}
 	var overwrite int
@@ -221,6 +241,7 @@ func scanJob(s scanner) (*Job, error) {
 	return job, nil
 }
 
+// boolToInt 将 bool 转为 SQLite 整数（0/1）。
 func boolToInt(v bool) int {
 	if v {
 		return 1
@@ -228,6 +249,7 @@ func boolToInt(v bool) int {
 	return 0
 }
 
+// nullableInt64 将 *int64 转为 SQL 参数值，nil 对应 NULL。
 func nullableInt64(v *int64) any {
 	if v == nil {
 		return nil
@@ -235,6 +257,7 @@ func nullableInt64(v *int64) any {
 	return *v
 }
 
+// nullable 将空字符串转为 nil（SQL NULL），非空保留指针。
 func nullable(s string) *string {
 	if s == "" {
 		return nil
@@ -242,6 +265,7 @@ func nullable(s string) *string {
 	return &s
 }
 
+// nowString 返回当前 UTC 时间的 RFC3339 格式字符串。
 func nowString() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }

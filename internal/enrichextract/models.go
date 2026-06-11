@@ -48,16 +48,19 @@ type Job struct {
 	ErrorMessage       string
 }
 
+// SourceRow 表示从业务数据库读取的一行源数据。
 type SourceRow struct {
 	Key int64
 	Raw json.RawMessage
 }
 
+// OutputRow 表示写入业务数据库的一行结果数据，包含主键和 LLM 输出的目标字段。
 type OutputRow struct {
 	Key    int64
 	Values map[string]any
 }
 
+// RowError 记录单行处理中发生的错误。
 type RowError struct {
 	SourceKey    int64
 	Stage        string
@@ -65,11 +68,13 @@ type RowError struct {
 	ErrorMessage string
 }
 
+// PageResult 记录一页数据中所有成功和失败的行。
 type PageResult struct {
 	Successes []OutputRow
 	Errors    []RowError
 }
 
+// ProgressUpdate 表示一次页面处理后需要更新的进度信息。
 type ProgressUpdate struct {
 	LastKey       int64
 	ProcessedRows int64
@@ -77,6 +82,7 @@ type ProgressUpdate struct {
 	FailedRows    int64
 }
 
+// ColumnMeta 表示业务数据库中一张表的单列元信息。
 type ColumnMeta struct {
 	Name          string
 	UDTName       string

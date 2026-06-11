@@ -1,4 +1,4 @@
-// prompt.go 构建结构化抽取 LLM 消息。
+// prompt.go 构建结构化抽取 LLM 消息（system + user prompt）。
 package enrichextract
 
 import (
@@ -9,6 +9,7 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
+// BuildMessages 构造一次 LLM 调用的完整消息序列：system prompt + user message。
 func BuildMessages(source map[string]any, targetExample map[string]any, targetFields []string) []*schema.Message {
 	return []*schema.Message{
 		schema.SystemMessage(BuildSystemPrompt(targetExample, targetFields)),
@@ -16,6 +17,7 @@ func BuildMessages(source map[string]any, targetExample map[string]any, targetFi
 	}
 }
 
+// BuildSystemPrompt 构造 system prompt，包含目标字段列表、输出规则和目标结构示例。
 func BuildSystemPrompt(targetExample map[string]any, targetFields []string) string {
 	lines := make([]string, 0, len(targetFields))
 	for _, field := range targetFields {
@@ -42,6 +44,7 @@ func BuildSystemPrompt(targetExample map[string]any, targetFields []string) stri
 %s`, strings.Join(lines, "\n"), string(exampleJSON))
 }
 
+// BuildUserMessage 构造 user message，包含一行 JSON 源数据。
 func BuildUserMessage(source map[string]any) string {
 	b, _ := json.Marshal(source)
 	return fmt.Sprintf("源数据：%s", string(b))

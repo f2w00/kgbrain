@@ -15,19 +15,24 @@ const defaultSchema = "public"
 
 var identPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
+// qualifiedName 表示带 schema 的表名。
 type qualifiedName struct {
 	Schema string
 	Name   string
 }
 
+// EnrichExtractBusinessRepo 实现 BusinessRepository 接口，操作业务 Postgres 库。
 type EnrichExtractBusinessRepo struct {
 	db *sql.DB
 }
 
+// NewEnrichExtractBusinessRepo 创建业务仓库实例。
 func NewEnrichExtractBusinessRepo(db *sql.DB) *EnrichExtractBusinessRepo {
 	return &EnrichExtractBusinessRepo{db: db}
 }
 
+// EnsureExecutionReady 校验 source_table 和 output_table 的表结构，
+// 包括列存在性、主键/唯一约束、key_field 类型和 source_json_field 类型。
 func (r *EnrichExtractBusinessRepo) EnsureExecutionReady(
 	ctx context.Context,
 	req ExecuteRequest,
@@ -90,6 +95,8 @@ func (r *EnrichExtractBusinessRepo) EnsureExecutionReady(
 	return nil
 }
 
+// SelectSourcePage 按 keyset pagination 读取一页 source 数据。overwrite=false 时
+// 通过 LEFT JOIN 过滤 output_table 中已存在的行。
 func (r *EnrichExtractBusinessRepo) SelectSourcePage(
 	ctx context.Context,
 	req ExecuteRequest,
@@ -170,6 +177,8 @@ func (r *EnrichExtractBusinessRepo) SelectSourcePage(
 	return result, nil
 }
 
+// BatchWriteOutputRows 批量写入 output 行，按 WriteBatchSize 拆分为多个子批次。
+// 使用 INSERT ... ON CONFLICT 语法处理覆盖语义。批量失败时短暂等待后重试一次。
 func (r *EnrichExtractBusinessRepo) BatchWriteOutputRows(
 	ctx context.Context,
 	req ExecuteRequest,
@@ -188,6 +197,7 @@ func (r *EnrichExtractBusinessRepo) BatchWriteOutputRows(
 	return nil
 }
 
+// WriteOutputRow 逐行写入 output 表，作为批量写入失败的降级路径。
 func (r *EnrichExtractBusinessRepo) WriteOutputRow(
 	ctx context.Context,
 	req ExecuteRequest,
@@ -248,6 +258,7 @@ func (r *EnrichExtractBusinessRepo) writeOutputRows(
 	return nil
 }
 
+// loadColumns 查询指定表的所有列元信息（列名、UDT 名、格式化类型）。
 func (r *EnrichExtractBusinessRepo) loadColumns(
 	ctx context.Context,
 	table qualifiedName,
@@ -278,6 +289,7 @@ func (r *EnrichExtractBusinessRepo) loadColumns(
 	return columns, nil
 }
 
+// ensureUniqueKey 检查指定表的 key_field 是否有主键或唯一索引。
 func (r *EnrichExtractBusinessRepo) ensureUniqueKey(
 	ctx context.Context,
 	table qualifiedName,
@@ -304,6 +316,7 @@ func (r *EnrichExtractBusinessRepo) ensureUniqueKey(
 	return nil
 }
 
+// parseQualifiedName 解析 "schema.table" 或 "table" 格式的表名。
 func parseQualifiedName(raw string) (qualifiedName, error) {
 	parts := strings.Split(raw, ".")
 	if len(parts) == 1 {
@@ -318,6 +331,7 @@ func parseQualifiedName(raw string) (qualifiedName, error) {
 	return qualifiedName{Schema: parts[0], Name: parts[1]}, nil
 }
 
+// requireColumn 在列列表中查找指定名称的列，不存在时返回列不存在错误。
 func requireColumn(columns []ColumnMeta, name string) (ColumnMeta, error) {
 	for _, column := range columns {
 		if column.Name == name {
@@ -327,6 +341,7 @@ func requireColumn(columns []ColumnMeta, name string) (ColumnMeta, error) {
 	return ColumnMeta{}, fmt.Errorf("column %q does not exist", name)
 }
 
+// isIntegerColumn 判断列是否为 PostgreSQL 整数类型（int2/int4/int8）。
 func isIntegerColumn(column ColumnMeta) bool {
 	switch column.UDTName {
 	case "int2", "int4", "int8":
@@ -336,14 +351,17 @@ func isIntegerColumn(column ColumnMeta) bool {
 	}
 }
 
+// quoteIdent 对 SQL 标识符加双引号，正确处理含双引号的名称。
 func quoteIdent(ident string) string {
 	return `"` + strings.ReplaceAll(ident, `"`, `""`) + `"`
 }
 
+// fullTableName 返回 "schema"."table" 格式的完整表名。
 func fullTableName(name qualifiedName) string {
 	return quoteIdent(name.Schema) + "." + quoteIdent(name.Name)
 }
 
+// rowPlaceholders 生成一行 VALUES 的占位符，如 ($1, $2, $3)。
 func rowPlaceholders(start int, count int) string {
 	parts := make([]string, count)
 	for i := 0; i < count; i++ {

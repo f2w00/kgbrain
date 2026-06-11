@@ -10,16 +10,19 @@ import (
 	"kgbrain/pkg/extract"
 )
 
+// DomainService 是领域执行服务，负责单 job 的完整执行流程。
 type DomainService struct {
-	repo     BusinessRepository
-	jobRepo  Repository
-	jobID    string
+	repo    BusinessRepository
+	jobRepo Repository
+	jobID   string
 }
 
+// NewDomainService 创建领域执行服务。
 func NewDomainService(repo BusinessRepository, jobRepo Repository, jobID string) *DomainService {
 	return &DomainService{repo: repo, jobRepo: jobRepo, jobID: jobID}
 }
 
+// Execute 执行完整的结构化抽取流程：校验 → 分页循环 → 逐页处理 → 进度更新。
 func (s *DomainService) Execute(ctx context.Context, llm LLMClient, req ExecuteRequest) error {
 	if err := s.repo.EnsureExecutionReady(ctx, req); err != nil {
 		return err
@@ -59,6 +62,7 @@ func (s *DomainService) Execute(ctx context.Context, llm LLMClient, req ExecuteR
 	}
 }
 
+// processPage 使用 page-scoped worker pool 并发处理一批 source rows。
 func (s *DomainService) processPage(
 	ctx context.Context,
 	llm LLMClient,
@@ -99,6 +103,7 @@ type rowProcessResult struct {
 	Err    *RowError
 }
 
+// processOneRow 处理单行：解析 source JSON → 调用 LLM（含重试）→ 对齐输出字段。
 func (s *DomainService) processOneRow(
 	ctx context.Context,
 	llm LLMClient,
@@ -159,6 +164,7 @@ func (s *DomainService) processOneRow(
 	}}
 }
 
+// writeSuccessRows 批量写入成功行；批量失败时降级为逐行写入，返回写入失败的错误列表。
 func (s *DomainService) writeSuccessRows(
 	ctx context.Context,
 	req ExecuteRequest,
@@ -184,6 +190,7 @@ func (s *DomainService) writeSuccessRows(
 	return errors
 }
 
+// backoff 返回指数退避等待时间，最大 8 秒。
 func backoff(attempt int) time.Duration {
 	d := time.Duration(1<<uint(attempt-1)) * time.Second
 	if d > 8*time.Second {

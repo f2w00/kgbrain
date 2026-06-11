@@ -1,4 +1,4 @@
-// executor.go 提供 enrichextract 后台执行适配层。
+// executor.go 提供 enrichextract 后台执行适配层，串联 Resource、LLM、业务数据库和领域服务。
 package enrichextract
 
 import (
@@ -13,6 +13,7 @@ type executor struct {
 	repoFactory BusinessRepositoryFactory
 }
 
+// NewExecutor 创建后台执行器，注入依赖工厂。
 func NewExecutor(
 	jobRepo Repository,
 	llmFactory LLMFactory,
@@ -22,6 +23,7 @@ func NewExecutor(
 	return &executor{jobRepo: jobRepo, llmFactory: llmFactory, dbOpener: dbOpener, repoFactory: repoFactory}
 }
 
+// Execute 执行 job：获取 LLM/数据库资源 → 创建客户端 → 打开连接 → 委托 DomainService 处理。
 func (e *executor) Execute(
 	ctx context.Context,
 	job *Job,

@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// NormalizeStartRequest 校验并归一化启动请求参数，返回归一化后的请求和目标字段列表。
 func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	req.LLMResourceID = strings.TrimSpace(req.LLMResourceID)
 	req.DatabaseResourceID = strings.TrimSpace(req.DatabaseResourceID)
@@ -82,6 +83,7 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	return req, targetFields, nil
 }
 
+// ExtractTargetFields 从目标结构示例中提取字段名列表，自动排除 key_field。
 func ExtractTargetFields(example map[string]any, keyField string) []string {
 	fields := make([]string, 0, len(example))
 	for k := range example {
@@ -95,6 +97,7 @@ func ExtractTargetFields(example map[string]any, keyField string) []string {
 	return fields
 }
 
+// StripKey 从 map 中移除指定的 key（用于剥离主键字段）。
 func StripKey(m map[string]any, key string) map[string]any {
 	result := make(map[string]any, len(m))
 	for k, v := range m {
@@ -105,6 +108,7 @@ func StripKey(m map[string]any, key string) map[string]any {
 	return result
 }
 
+// ParseSourceJSON 解析 source JSON raw 为 map，校验其为 object 并剥离 key_field。
 func ParseSourceJSON(raw json.RawMessage, keyField string) (map[string]any, error) {
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {
@@ -117,6 +121,7 @@ func ParseSourceJSON(raw json.RawMessage, keyField string) (map[string]any, erro
 	return StripKey(obj, keyField), nil
 }
 
+// AlignOutputFields 将 LLM 输出对齐到目标字段列表，缺失字段补 null，多余字段丢弃。
 func AlignOutputFields(result map[string]any, targetFields []string) map[string]any {
 	aligned := make(map[string]any, len(targetFields))
 	for _, field := range targetFields {
@@ -129,6 +134,7 @@ func AlignOutputFields(result map[string]any, targetFields []string) map[string]
 	return aligned
 }
 
+// clamp 将值限制在 [minValue, maxValue] 范围内。
 func clamp(v int, minValue int, maxValue int) int {
 	if v < minValue {
 		return minValue
