@@ -1,6 +1,31 @@
-# kgbrain
+# kgbrain — Knowledge Graph Brain
 
-字段映射生成服务 — 通过 LLM 推导源字段到目标字段的映射关系，一次 LLM 调用，无限次程序化应用。
+从原始数据到知识图谱的一站式 LLM 处理管道。
+
+## 处理流程
+
+```
+源表 (JSONB 原始数据)
+  │
+  ▼
+EnrichExtract  ─── LLM 抽取/补全为标准字段
+  │                 入: source_table.raw_data (JSONB)
+  │                 出: output_table (结构化列)
+  ▼
+EntityAlignment ── LLM 实体对齐/标准化
+  │                 入: output_table 的源字段值
+  │                 出: 映射到标准目标值列表
+  ▼
+结构化、对齐后的数据 → 知识图谱导入
+```
+
+## 服务
+
+| 服务 | 协议 | 职责 |
+|------|------|------|
+| Resource | Connect RPC | 管理 LLM API / PostgreSQL 连接配置 |
+| EnrichExtract | Connect RPC | JSONB → 结构化字段的 LLM 抽取与补全 |
+| Entity Alignment | Connect RPC | 字段值对齐到标准目标值列表 |
 
 ## 快速开始
 
@@ -16,92 +41,55 @@ go build -o kgbrain ./cmd/server
 ./kgbrain --config configs/config.toml
 ```
 
-### 调用示例
+### 调用示例 (grpcurl)
 
 ```bash
-# 1. 创建 profile（LLM 配置）
-curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"profile.set","params":{
-    "profile_id":"demo",
-    "llm":{"base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3","timeout_seconds":180}
-  },"id":"req_001"}'
+# 1. 配置 LLM 资源
+grpcurl -plaintext -d '{
+  "resource_id": "qwen_local",
+  "name": "本地 Qwen",
+  "config": {"base_url": "http://localhost:11434/v1", "model": "qwen3"}
+}' localhost:8848 kgbrain.v1.ResourceService/SetLLMResource
 
-# 2. 生成字段映射
-curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
-    "profile_id":"demo",
-    "example":{"title":"青花瓷瓶","era":"明代","material":"陶瓷"},
-    "target_fields":[{"product_name":"青花瓷瓶","dynasty":"明代","material_type":"陶瓷"}]
-  },"id":"req_002"}'
+# 2. 配置 PostgreSQL 资源
+grpcurl -plaintext -d '{
+  "resource_id": "my_pg",
+  "name": "业务库",
+  "config": {"type": "DATABASE_TYPE_POSTGRES", "postgres": {"host": "localhost", "port": 5432, "database": "museum", "user": "app", "password": "secret", "sslmode": "disable"}}
+}' localhost:8848 kgbrain.v1.ResourceService/SetDatabaseResource
 
-# 3. 强制刷新缓存
-curl -s -X POST http://localhost:8848/rpc \
-  -d '{"jsonrpc":"2.0","method":"mapping.field","params":{
-    "profile_id":"demo",
-    "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":[{"product_name":"青花瓷瓶","dynasty":"明代"}],
-    "refresh":true
-  },"id":"req_003"}'
+# 3. 启动结构化抽取
+grpcurl -plaintext -d '{
+  "llm_resource_id": "qwen_local",
+  "database_resource_id": "my_pg",
+  "source_table": "artifact_raw",
+  "output_table": "artifact_structured",
+  "key_field": "id",
+  "target_example": [{"name": "青花瓷盘", "dynasty": "明代"}]
+}' localhost:8848 kgbrain.v1.EnrichExtractService/StartEnrichExtract
 ```
-
-### Python 客户端
-
-```python
-import requests
-
-def rpc(method, params):
-    return requests.post("http://localhost:8848/rpc",
-        json={"jsonrpc":"2.0","method":method,"params":params,"id":"req"}).json()
-
-# 创建配置
-rpc("profile.set", {"profile_id":"demo", "llm":{
-    "base_url":"http://localhost:11434/v1","api_key":"","model":"qwen3","timeout_seconds":120}})
-
-# 生成映射
-resp = rpc("mapping.field", {
-    "profile_id":"demo",
-    "example":{"title":"青花瓷瓶","era":"明代"},
-    "target_fields":[{"name":"青花瓷瓶","dynasty":"明代"}]})
-mapping = resp["result"]["mapping"]  # {"name": ["title"], "dynasty": ["era"]}
-
-# 批量应用
-rows = [{"title":"青花瓷瓶","era":"明代"}, {"title":"铜鼎","era":"商代"}]
-output = [{tgt: row[srcs[0]] for tgt, srcs in mapping.items()} for row in rows]
-```
-
-## API
-
-| 方法 | 说明 |
-|------|------|
-| `profile.set` | 创建/更新 Profile（LLM + 通知配置） |
-| `profile.get` | 查询 Profile |
-| `profile.delete` | 删除 Profile |
-| `mapping.field` | 生成字段映射关系（支持 `refresh` 参数强制刷新） |
-
-详见 [docs/api.md](docs/api.md)。
 
 ## 技术栈
 
 | 组件 | 选型 |
 |------|------|
-| 协议 | JSON-RPC 2.0 |
+| 协议 | Connect RPC (gRPC + Connect + gRPC-Web) |
 | LLM | cloudwego/eino (OpenAI 兼容) |
-| 存储 | SQLite (modernc.org/sqlite) |
+| 本地存储 | SQLite (modernc.org/sqlite) |
+| 业务数据库 | PostgreSQL |
 | 日志 | go.uber.org/zap |
-| Profile | SQLite 持久化，支持 LLM + 通知配置 |
-| 映射缓存 | SQLite `mapping_cache` 表，一致性缓存 |
-| 模型思考控制 | prompt 末尾 `/nothink` 禁用 Qwen3 思考模式 |
 
-## 特性
+## 文档
 
-- **缓存复用**：相同字段组合自动从缓存返回，不做二次 LLM 调用
-- **强制刷新**：请求参数 `refresh: true` 跳过缓存，重新生成并覆盖
-- **LLM 类型安全**：`profile.LLMConfig` 命名结构体，支持 `ParseLLMConfig()` 解析
-- **纯 JSON 输出**：`response_format: json_object` + `/nothink`，确保模型输出合法 JSON
-- **通知**：支持飞书 webhook 等渠道（通过 profile NotifyConfig 配置）
+| 路径 | 内容 |
+|------|------|
+| `docs/enrichextract/` | 结构化抽取设计 |
+| `docs/entity-alignment/` | 实体对齐设计 |
+| `docs/resource/` | 资源服务设计 |
+| `docs/deprecated/` | 已废弃模块（kgc / mapping / profile / xform） |
 
 ## 测试
 
 ```bash
-go test ./tests/... -count=1
+go test ./internal/... -count=1
 ```
