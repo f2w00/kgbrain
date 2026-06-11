@@ -10,6 +10,7 @@ type StartRequest struct {
 	KeyField           string
 	SourceJSONField    string
 	TargetExample      []map[string]any
+	PriorityFieldHints map[string]string
 	StartID            *int64
 	EndID              *int64
 	Concurrency        *int
@@ -26,17 +27,18 @@ type StartResult struct {
 
 // ExecuteRequest 是领域执行服务所需的完整参数，由 StartRequest 归一化后产生。
 type ExecuteRequest struct {
-	SourceTable     string
-	OutputTable     string
-	KeyField        string
-	SourceJSONField string
-	TargetFields    []string
-	TargetExample   map[string]any
-	StartID         *int64
-	EndID           *int64
-	Overwrite       bool
-	Concurrency     int
-	PageSize        int
-	MaxRetries      int
-	LastKey         *int64
+	SourceTable        string
+	OutputTable        string
+	KeyField           string
+	SourceJSONField    string
+	TargetFields       []string
+	TargetExample      map[string]any
+	PriorityFieldHints map[string]string
+	StartID            *int64
+	EndID              *int64
+	Overwrite          bool
+	Concurrency        int
+	PageSize           int
+	MaxRetries         int
+	LastKey            *int64
 }

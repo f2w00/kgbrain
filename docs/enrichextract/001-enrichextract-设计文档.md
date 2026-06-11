@@ -118,6 +118,7 @@ message StartEnrichExtractRequest {
   optional int32 page_size = 11;
   optional int32 max_retries = 12;
   optional string source_json_field = 13;
+  map<string, string> priority_field_hints = 14;
 }
 ```
 
@@ -138,6 +139,7 @@ message StartEnrichExtractRequest {
 | `page_size` | int32 | 否 | 数据库分页读取大小，默认保守值 |
 | `max_retries` | int32 | 否 | 单行 LLM 最大重试次数，默认保守值 |
 | `source_json_field` | string | 否 | source 表中保存原始 payload 的 JSONB 字段，默认 `raw_data` |
+| `priority_field_hints` | map<string, string> | 否 | 重点字段说明，key 必须是目标字段名，value 是该字段的抽取/推断说明 |
 
 请求示例：
 
@@ -162,7 +164,11 @@ message StartEnrichExtractRequest {
   "overwrite": false,
   "page_size": 100,
   "max_retries": 2,
-  "source_json_field": "raw_data"
+  "source_json_field": "raw_data",
+  "priority_field_hints": {
+    "dynasty": "朝代信息。优先从名称、标题、描述、年代、分类等字段中提取，例如“明代青花瓷盘”应提取为“明代”。",
+    "material": "材质信息。优先从名称、描述、工艺、材质字段中提取，例如瓷、铜、玉、纸本等。"
+  }
 }
 ```
 
@@ -172,6 +178,13 @@ message StartEnrichExtractRequest {
 - 如果示例包含 `key_field`，服务会剥离该字段，不让 LLM 输出主键。
 - `target_fields = keys(target_example[0]) - key_field`。
 - `target_fields` 用于 prompt 目标字段说明、LLM 输出裁剪和写库字段列表。
+
+`priority_field_hints` 处理规则：
+
+- `key` 必须属于 `target_example[0]` 推导出的目标字段。
+- `key` 不允许等于 `key_field`。
+- `value` 不能为空字符串。
+- 该字段只影响 prompt，不新增输出列，也不强制非空。
 
 ## 5. 输入与输出表规则
 

@@ -298,6 +298,16 @@ with httpx.Client(base_url=BASE_URL) as http_client:
                     }
                 )
             ],
+            priority_field_hints={
+                "dynasty": (
+                    "朝代信息。优先从名称、标题、描述、年代、分类等字段中提取，"
+                    "例如“明代青花瓷盘”应提取为“明代”。"
+                ),
+                "material": (
+                    "材质信息。优先从名称、描述、工艺、材质字段中提取，"
+                    "例如瓷、铜、玉、纸本等。"
+                ),
+            },
             start_id=1000,
             end_id=2000,
             concurrency=30,
@@ -343,6 +353,9 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 - `target_example` 只用于定义目标字段结构，不会原样写入输出表
 - `target_example` 在 proto 中是 `google.protobuf.Struct`，需要显式把 Python `dict`
   转成 `Struct`
+- `priority_field_hints` 可选，用于按 `字段名 -> 说明` 强化重点字段抽取；key 必须属于
+  `target_example[0]` 推导出的目标字段
+- `priority_field_hints` 只影响 prompt，不会新增输出列，也不会强制字段非空
 - 当 `overwrite=False` 时，服务会跳过 `output_table` 中已存在的主键记录
 
 ## 三、实体对齐（entity-alignment）

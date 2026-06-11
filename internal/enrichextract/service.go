@@ -62,6 +62,7 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		SourceJSONField:    normalized.SourceJSONField,
 		TargetExample:      cloneRows(normalized.TargetExample),
 		TargetFields:       append([]string(nil), targetFields...),
+		PriorityFieldHints: cloneStringMap(normalized.PriorityFieldHints),
 		StartID:            normalized.StartID,
 		EndID:              normalized.EndID,
 		Overwrite:          *normalized.Overwrite,
@@ -144,6 +145,7 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 		KeyField:           job.KeyField,
 		SourceJSONField:    job.SourceJSONField,
 		TargetExample:      cloneRows(job.TargetExample),
+		PriorityFieldHints: cloneStringMap(job.PriorityFieldHints),
 		StartID:            job.StartID,
 		EndID:              job.EndID,
 		Overwrite:          boolPtr(job.Overwrite),
@@ -202,6 +204,18 @@ func cloneRows(rows []map[string]any) []map[string]any {
 			m[k] = v
 		}
 		cloned = append(cloned, m)
+	}
+	return cloned
+}
+
+// cloneStringMap 深拷贝 map[string]string，避免共享底层引用。
+func cloneStringMap(src map[string]string) map[string]string {
+	if len(src) == 0 {
+		return nil
+	}
+	cloned := make(map[string]string, len(src))
+	for key, value := range src {
+		cloned[key] = value
 	}
 	return cloned
 }

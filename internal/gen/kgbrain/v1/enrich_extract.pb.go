@@ -116,8 +116,10 @@ type StartEnrichExtractRequest struct {
 	MaxRetries *int32 `protobuf:"varint,12,opt,name=max_retries,json=maxRetries,proto3,oneof" json:"max_retries,omitempty"`
 	// 源表中包含待提取 JSON 数据的字段名。为空时默认使用 raw_data。
 	SourceJsonField *string `protobuf:"bytes,13,opt,name=source_json_field,json=sourceJsonField,proto3,oneof" json:"source_json_field,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// 重点字段说明。key 必须是目标字段名，value 描述该字段的抽取/推断规则。
+	PriorityFieldHints map[string]string `protobuf:"bytes,14,rep,name=priority_field_hints,json=priorityFieldHints,proto3" json:"priority_field_hints,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *StartEnrichExtractRequest) Reset() {
@@ -239,6 +241,13 @@ func (x *StartEnrichExtractRequest) GetSourceJsonField() string {
 		return *x.SourceJsonField
 	}
 	return ""
+}
+
+func (x *StartEnrichExtractRequest) GetPriorityFieldHints() map[string]string {
+	if x != nil {
+		return x.PriorityFieldHints
+	}
+	return nil
 }
 
 // 启动任务的响应。
@@ -528,7 +537,7 @@ var File_kgbrain_v1_enrich_extract_proto protoreflect.FileDescriptor
 const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\n" +
 	"\x1fkgbrain/v1/enrich_extract.proto\x12\n" +
-	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x81\x05\n" +
+	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\xb9\x06\n" +
 	"\x19StartEnrichExtractRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
@@ -544,7 +553,11 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\tpage_size\x18\v \x01(\x05H\x04R\bpageSize\x88\x01\x01\x12$\n" +
 	"\vmax_retries\x18\f \x01(\x05H\x05R\n" +
 	"maxRetries\x88\x01\x01\x12/\n" +
-	"\x11source_json_field\x18\r \x01(\tH\x06R\x0fsourceJsonField\x88\x01\x01B\v\n" +
+	"\x11source_json_field\x18\r \x01(\tH\x06R\x0fsourceJsonField\x88\x01\x01\x12o\n" +
+	"\x14priority_field_hints\x18\x0e \x03(\v2=.kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntryR\x12priorityFieldHints\x1aE\n" +
+	"\x17PriorityFieldHintsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\v\n" +
 	"\t_start_idB\t\n" +
 	"\a_end_idB\x0e\n" +
 	"\f_concurrencyB\f\n" +
@@ -602,28 +615,30 @@ func file_kgbrain_v1_enrich_extract_proto_rawDescGZIP() []byte {
 }
 
 var file_kgbrain_v1_enrich_extract_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kgbrain_v1_enrich_extract_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_kgbrain_v1_enrich_extract_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_kgbrain_v1_enrich_extract_proto_goTypes = []any{
 	(EnrichExtractJobStatus)(0),         // 0: kgbrain.v1.EnrichExtractJobStatus
 	(*StartEnrichExtractRequest)(nil),   // 1: kgbrain.v1.StartEnrichExtractRequest
 	(*StartEnrichExtractResponse)(nil),  // 2: kgbrain.v1.StartEnrichExtractResponse
 	(*GetEnrichExtractJobRequest)(nil),  // 3: kgbrain.v1.GetEnrichExtractJobRequest
 	(*GetEnrichExtractJobResponse)(nil), // 4: kgbrain.v1.GetEnrichExtractJobResponse
-	(*structpb.Struct)(nil),             // 5: google.protobuf.Struct
+	nil,                                 // 5: kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntry
+	(*structpb.Struct)(nil),             // 6: google.protobuf.Struct
 }
 var file_kgbrain_v1_enrich_extract_proto_depIdxs = []int32{
-	5, // 0: kgbrain.v1.StartEnrichExtractRequest.target_example:type_name -> google.protobuf.Struct
-	0, // 1: kgbrain.v1.StartEnrichExtractResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
-	0, // 2: kgbrain.v1.GetEnrichExtractJobResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
-	1, // 3: kgbrain.v1.EnrichExtractService.StartEnrichExtract:input_type -> kgbrain.v1.StartEnrichExtractRequest
-	3, // 4: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:input_type -> kgbrain.v1.GetEnrichExtractJobRequest
-	2, // 5: kgbrain.v1.EnrichExtractService.StartEnrichExtract:output_type -> kgbrain.v1.StartEnrichExtractResponse
-	4, // 6: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:output_type -> kgbrain.v1.GetEnrichExtractJobResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 0: kgbrain.v1.StartEnrichExtractRequest.target_example:type_name -> google.protobuf.Struct
+	5, // 1: kgbrain.v1.StartEnrichExtractRequest.priority_field_hints:type_name -> kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntry
+	0, // 2: kgbrain.v1.StartEnrichExtractResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
+	0, // 3: kgbrain.v1.GetEnrichExtractJobResponse.status:type_name -> kgbrain.v1.EnrichExtractJobStatus
+	1, // 4: kgbrain.v1.EnrichExtractService.StartEnrichExtract:input_type -> kgbrain.v1.StartEnrichExtractRequest
+	3, // 5: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:input_type -> kgbrain.v1.GetEnrichExtractJobRequest
+	2, // 6: kgbrain.v1.EnrichExtractService.StartEnrichExtract:output_type -> kgbrain.v1.StartEnrichExtractResponse
+	4, // 7: kgbrain.v1.EnrichExtractService.GetEnrichExtractJob:output_type -> kgbrain.v1.GetEnrichExtractJobResponse
+	6, // [6:8] is the sub-list for method output_type
+	4, // [4:6] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_kgbrain_v1_enrich_extract_proto_init() }
@@ -638,7 +653,7 @@ func file_kgbrain_v1_enrich_extract_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kgbrain_v1_enrich_extract_proto_rawDesc), len(file_kgbrain_v1_enrich_extract_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

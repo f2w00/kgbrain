@@ -38,6 +38,7 @@ func (h *EnrichExtractHandler) StartEnrichExtract(
 		KeyField:           req.Msg.GetKeyField(),
 		SourceJSONField:    optionalString(req.Msg.SourceJsonField),
 		TargetExample:      targetExample,
+		PriorityFieldHints: cloneStringMap(req.Msg.GetPriorityFieldHints()),
 		StartID:            req.Msg.StartId,
 		EndID:              req.Msg.EndId,
 		Concurrency:        optionalInt(req.Msg.Concurrency),

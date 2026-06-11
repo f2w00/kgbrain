@@ -162,7 +162,12 @@ func (s *DomainService) processOneRow(
 				ErrorMessage: err.Error(),
 			}}
 		}
-		msgs := BuildMessages(source, req.TargetExample, req.TargetFields)
+		msgs := BuildMessages(
+			source,
+			req.TargetExample,
+			req.TargetFields,
+			req.PriorityFieldHints,
+		)
 		resp, err := llm.GenerateStructuredMessages(ctx, msgs)
 		if err != nil {
 			lastErr = fmt.Errorf("llm generate: %w", err)

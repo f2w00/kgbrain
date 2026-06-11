@@ -23,7 +23,14 @@ ENRICH_EXTRACT_JOB_STATUS_PARTIAL: EnrichExtractJobStatus
 ENRICH_EXTRACT_JOB_STATUS_FAILED: EnrichExtractJobStatus
 
 class StartEnrichExtractRequest(_message.Message):
-    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "target_example", "start_id", "end_id", "concurrency", "overwrite", "page_size", "max_retries", "source_json_field")
+    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "target_example", "start_id", "end_id", "concurrency", "overwrite", "page_size", "max_retries", "source_json_field", "priority_field_hints")
+    class PriorityFieldHintsEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     SOURCE_TABLE_FIELD_NUMBER: _ClassVar[int]
@@ -37,6 +44,7 @@ class StartEnrichExtractRequest(_message.Message):
     PAGE_SIZE_FIELD_NUMBER: _ClassVar[int]
     MAX_RETRIES_FIELD_NUMBER: _ClassVar[int]
     SOURCE_JSON_FIELD_FIELD_NUMBER: _ClassVar[int]
+    PRIORITY_FIELD_HINTS_FIELD_NUMBER: _ClassVar[int]
     llm_resource_id: str
     database_resource_id: str
     source_table: str
@@ -50,7 +58,8 @@ class StartEnrichExtractRequest(_message.Message):
     page_size: int
     max_retries: int
     source_json_field: str
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., target_example: _Optional[_Iterable[_Union[_struct_pb2.Struct, _Mapping]]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ...) -> None: ...
+    priority_field_hints: _containers.ScalarMap[str, str]
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., target_example: _Optional[_Iterable[_Union[_struct_pb2.Struct, _Mapping]]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ..., priority_field_hints: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class StartEnrichExtractResponse(_message.Message):
     __slots__ = ("job_id", "status")

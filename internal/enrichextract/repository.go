@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -26,6 +27,7 @@ func NewEnrichExtractRepo(db *sql.DB) (*EnrichExtractRepo, error) {
 		source_json_field    TEXT NOT NULL,
 		target_example_json  TEXT NOT NULL,
 		target_fields_json   TEXT NOT NULL,
+		priority_field_hints_json TEXT NOT NULL DEFAULT '{}',
 		start_id             INTEGER,
 		end_id               INTEGER,
 		overwrite            INTEGER NOT NULL,
@@ -41,8 +43,11 @@ func NewEnrichExtractRepo(db *sql.DB) (*EnrichExtractRepo, error) {
 		updated_at           TEXT,
 		finished_at          TEXT,
 		error_message        TEXT
-	)`); err != nil {
+		)`); err != nil {
 		return nil, fmt.Errorf("create enrich_extract_jobs table: %w", err)
+	}
+	if err := ensureEnrichExtractJobColumns(db); err != nil {
+		return nil, err
 	}
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS enrich_extract_job_errors (
 		id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,17 +72,22 @@ func (r *EnrichExtractRepo) CreateJob(job *Job) error {
 	if err != nil {
 		return fmt.Errorf("marshal target fields: %w", err)
 	}
+	priorityFieldHintsJSON, err := json.Marshal(job.PriorityFieldHints)
+	if err != nil {
+		return fmt.Errorf("marshal priority field hints: %w", err)
+	}
 	_, err = r.db.Exec(`INSERT INTO enrich_extract_jobs (
 		job_id, status, llm_resource_id, database_resource_id, source_table,
 		output_table, key_field, source_json_field, target_example_json,
-		target_fields_json, start_id, end_id, overwrite, concurrency,
+		target_fields_json, priority_field_hints_json, start_id, end_id, overwrite, concurrency,
 		page_size, max_retries, last_key, processed_rows, succeeded_rows,
 		failed_rows, created_at, started_at, updated_at, finished_at,
 		error_message
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.JobID, job.Status, job.LLMResourceID, job.DatabaseResourceID,
 		job.SourceTable, job.OutputTable, job.KeyField, job.SourceJSONField,
-		string(targetExampleJSON), string(targetFieldsJSON), nullableInt64(job.StartID),
+		string(targetExampleJSON), string(targetFieldsJSON), string(priorityFieldHintsJSON),
+		nullableInt64(job.StartID),
 		nullableInt64(job.EndID), boolToInt(job.Overwrite), job.Concurrency,
 		job.PageSize, job.MaxRetries, nullableInt64(job.LastKey), job.ProcessedRows,
 		job.SucceededRows, job.FailedRows, job.CreatedAt, nullable(job.StartedAt),
@@ -202,7 +212,7 @@ type scanner interface {
 const selectJobsSQL = `SELECT
 	job_id, status, llm_resource_id, database_resource_id, source_table,
 	output_table, key_field, source_json_field, target_example_json,
-	target_fields_json, start_id, end_id, overwrite, concurrency,
+	target_fields_json, priority_field_hints_json, start_id, end_id, overwrite, concurrency,
 	page_size, max_retries, last_key, processed_rows, succeeded_rows,
 	failed_rows, created_at, started_at, updated_at, finished_at,
 	error_message
@@ -212,13 +222,14 @@ FROM enrich_extract_jobs`
 func scanJob(s scanner) (*Job, error) {
 	job := &Job{}
 	var overwrite int
-	var targetExampleJSON, targetFieldsJSON string
+	var targetExampleJSON, targetFieldsJSON, priorityFieldHintsJSON string
 	var startID, endID, lastKey sql.NullInt64
 	var startedAt, updatedAt, finishedAt, errorMessage sql.NullString
 	err := s.Scan(
 		&job.JobID, &job.Status, &job.LLMResourceID, &job.DatabaseResourceID,
 		&job.SourceTable, &job.OutputTable, &job.KeyField, &job.SourceJSONField,
-		&targetExampleJSON, &targetFieldsJSON, &startID, &endID, &overwrite,
+		&targetExampleJSON, &targetFieldsJSON, &priorityFieldHintsJSON,
+		&startID, &endID, &overwrite,
 		&job.Concurrency, &job.PageSize, &job.MaxRetries, &lastKey,
 		&job.ProcessedRows, &job.SucceededRows, &job.FailedRows,
 		&job.CreatedAt, &startedAt, &updatedAt, &finishedAt, &errorMessage,
@@ -241,6 +252,12 @@ func scanJob(s scanner) (*Job, error) {
 	}
 	if err := json.Unmarshal([]byte(targetFieldsJSON), &job.TargetFields); err != nil {
 		return nil, fmt.Errorf("unmarshal target fields: %w", err)
+	}
+	if priorityFieldHintsJSON == "" {
+		priorityFieldHintsJSON = "{}"
+	}
+	if err := json.Unmarshal([]byte(priorityFieldHintsJSON), &job.PriorityFieldHints); err != nil {
+		return nil, fmt.Errorf("unmarshal priority field hints: %w", err)
 	}
 	job.StartedAt = startedAt.String
 	job.UpdatedAt = updatedAt.String
@@ -276,6 +293,39 @@ func nullable(s string) *string {
 // nowString 返回当前 UTC 时间的 RFC3339 格式字符串。
 func nowString() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+// ensureEnrichExtractJobColumns 为已存在的 SQLite 表补齐新增列，兼容旧版本库文件。
+func ensureEnrichExtractJobColumns(db *sql.DB) error {
+	rows, err := db.Query(`PRAGMA table_info(enrich_extract_jobs)`)
+	if err != nil {
+		return fmt.Errorf("inspect enrich_extract_jobs columns: %w", err)
+	}
+	defer rows.Close()
+	hasPriorityFieldHints := false
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull, pk int
+		var defaultValue sql.NullString
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &pk); err != nil {
+			return fmt.Errorf("scan enrich_extract_jobs column: %w", err)
+		}
+		if strings.EqualFold(name, "priority_field_hints_json") {
+			hasPriorityFieldHints = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate enrich_extract_jobs columns: %w", err)
+	}
+	if hasPriorityFieldHints {
+		return nil
+	}
+	if _, err := db.Exec(`ALTER TABLE enrich_extract_jobs
+		ADD COLUMN priority_field_hints_json TEXT NOT NULL DEFAULT '{}'`); err != nil {
+		return fmt.Errorf("add priority_field_hints_json column: %w", err)
+	}
+	return nil
 }
 
 var _ Repository = (*EnrichExtractRepo)(nil)

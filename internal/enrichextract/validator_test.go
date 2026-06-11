@@ -2,6 +2,7 @@ package enrichextract
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -53,5 +54,105 @@ func TestAlignOutputFields(t *testing.T) {
 	}
 	if _, ok := aligned["extra"]; ok {
 		t.Fatalf("extra field should be removed: %#v", aligned)
+	}
+}
+
+func TestNormalizeStartRequestPriorityFieldHints(t *testing.T) {
+	req := StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		TargetExample: []map[string]any{{
+			"id":       1,
+			"dynasty":  "",
+			"material": "",
+		}},
+		PriorityFieldHints: map[string]string{
+			" dynasty ": " 朝代信息 ",
+		},
+	}
+	normalized, targetFields, err := NormalizeStartRequest(req)
+	if err != nil {
+		t.Fatalf("NormalizeStartRequest error: %v", err)
+	}
+	if len(targetFields) != 2 {
+		t.Fatalf("unexpected target fields: %#v", targetFields)
+	}
+	if len(normalized.PriorityFieldHints) != 1 {
+		t.Fatalf("unexpected priority field hints: %#v", normalized.PriorityFieldHints)
+	}
+	if normalized.PriorityFieldHints["dynasty"] != "朝代信息" {
+		t.Fatalf("unexpected normalized priority hint: %#v", normalized.PriorityFieldHints)
+	}
+}
+
+func TestNormalizeStartRequestPriorityFieldHintsRejectsUnknownField(t *testing.T) {
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		TargetExample: []map[string]any{{
+			"id":      1,
+			"dynasty": "",
+		}},
+		PriorityFieldHints: map[string]string{
+			"material": "材质信息",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for unknown priority field")
+	}
+	if !strings.Contains(err.Error(), "must be one of target fields") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestNormalizeStartRequestPriorityFieldHintsRejectsKeyField(t *testing.T) {
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		TargetExample: []map[string]any{{
+			"id":      1,
+			"dynasty": "",
+		}},
+		PriorityFieldHints: map[string]string{
+			"id": "主键说明",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for key field priority hint")
+	}
+	if !strings.Contains(err.Error(), "cannot contain key_field") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestNormalizeStartRequestPriorityFieldHintsRejectsEmptyHint(t *testing.T) {
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		TargetExample: []map[string]any{{
+			"id":      1,
+			"dynasty": "",
+		}},
+		PriorityFieldHints: map[string]string{
+			"dynasty": "   ",
+		},
+	})
+	if err == nil {
+		t.Fatal("expected error for empty priority hint")
+	}
+	if !strings.Contains(err.Error(), "must not be empty") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

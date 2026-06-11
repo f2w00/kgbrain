@@ -46,6 +46,15 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	if len(targetFields) == 0 {
 		return req, nil, &validationError{message: "target_example must contain target fields"}
 	}
+	priorityFieldHints, err := NormalizePriorityFieldHints(
+		req.PriorityFieldHints,
+		targetFields,
+		req.KeyField,
+	)
+	if err != nil {
+		return req, nil, err
+	}
+	req.PriorityFieldHints = priorityFieldHints
 
 	concurrency := DefaultConcurrency
 	if req.Concurrency != nil {
@@ -81,6 +90,49 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	req.Overwrite = &overwrite
 
 	return req, targetFields, nil
+}
+
+// NormalizePriorityFieldHints 归一化重点字段说明，要求字段属于目标字段且说明非空。
+func NormalizePriorityFieldHints(
+	hints map[string]string,
+	targetFields []string,
+	keyField string,
+) (map[string]string, error) {
+	if len(hints) == 0 {
+		return nil, nil
+	}
+	allowed := make(map[string]struct{}, len(targetFields))
+	for _, field := range targetFields {
+		allowed[field] = struct{}{}
+	}
+	normalized := make(map[string]string, len(hints))
+	for rawField, rawHint := range hints {
+		field := strings.TrimSpace(rawField)
+		if field == "" {
+			return nil, &validationError{message: "priority_field_hints contains empty field name"}
+		}
+		if field == keyField {
+			return nil, &validationError{message: "priority_field_hints cannot contain key_field"}
+		}
+		if _, ok := allowed[field]; !ok {
+			return nil, &validationError{message: fmt.Sprintf(
+				"priority_field_hints[%s] must be one of target fields",
+				field,
+			)}
+		}
+		hint := strings.TrimSpace(rawHint)
+		if hint == "" {
+			return nil, &validationError{message: fmt.Sprintf(
+				"priority_field_hints[%s] must not be empty",
+				field,
+			)}
+		}
+		normalized[field] = hint
+	}
+	if len(normalized) == 0 {
+		return nil, nil
+	}
+	return normalized, nil
 }
 
 // ExtractTargetFields 从目标结构示例中提取字段名列表，自动排除 key_field。

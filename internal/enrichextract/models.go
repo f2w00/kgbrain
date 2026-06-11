@@ -33,6 +33,7 @@ type Job struct {
 	SourceJSONField    string
 	TargetExample      []map[string]any
 	TargetFields       []string
+	PriorityFieldHints map[string]string
 	StartID            *int64
 	EndID              *int64
 	Overwrite          bool

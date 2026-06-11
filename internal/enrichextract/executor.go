@@ -69,18 +69,19 @@ func (e *executor) Execute(
 		targetExample = job.TargetExample[0]
 	}
 	return domainSvc.Execute(ctx, llmClient, ExecuteRequest{
-		SourceTable:     req.SourceTable,
-		OutputTable:     req.OutputTable,
-		KeyField:        req.KeyField,
-		SourceJSONField: req.SourceJSONField,
-		TargetFields:    job.TargetFields,
-		TargetExample:   targetExample,
-		StartID:         req.StartID,
-		EndID:           req.EndID,
-		Overwrite:       job.Overwrite,
-		Concurrency:     job.Concurrency,
-		PageSize:        job.PageSize,
-		MaxRetries:      job.MaxRetries,
-		LastKey:         job.LastKey,
+		SourceTable:        req.SourceTable,
+		OutputTable:        req.OutputTable,
+		KeyField:           req.KeyField,
+		SourceJSONField:    req.SourceJSONField,
+		TargetFields:       job.TargetFields,
+		TargetExample:      targetExample,
+		PriorityFieldHints: cloneStringMap(job.PriorityFieldHints),
+		StartID:            req.StartID,
+		EndID:              req.EndID,
+		Overwrite:          job.Overwrite,
+		Concurrency:        job.Concurrency,
+		PageSize:           job.PageSize,
+		MaxRetries:         job.MaxRetries,
+		LastKey:            job.LastKey,
 	})
 }
