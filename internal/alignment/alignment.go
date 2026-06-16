@@ -17,50 +17,47 @@ const (
 	MappingStatusMatched = "matched"
 	// MappingStatusUnknownToNull 表示原始值无意义，应输出 null。
 	MappingStatusUnknownToNull = "unknown_to_null"
-	// MappingStatusFallbackOriginal 表示保留原始值输出。
-	MappingStatusFallbackOriginal = "fallback_original"
+	// MappingStatusNeedsCandidate 表示需进入候选集等待人工审核。
+	MappingStatusNeedsCandidate = "needs_candidate"
 )
 
 // MaxBatchSize 限制单批送给 LLM 的最大原始值数量。
 const MaxBatchSize = 50
 
-// PrepareFields 对字段配置执行规范化和批大小裁剪。
-func PrepareFields(
-	fields []FieldConfig,
+// PrepareField 对字段配置执行目标集注入、目标值规范化和批大小裁剪。
+func PrepareField(
+	field FieldConfig,
+	targets []string,
 	defaultBatchSize int,
-) ([]PreparedField, error) {
-	prepared := make([]PreparedField, 0, len(fields))
-	seen := make(map[string]struct{}, len(fields))
-	for _, field := range fields {
-		name := strings.TrimSpace(field.Name)
-		if _, ok := seen[name]; ok {
-			return nil, fmt.Errorf("duplicate alignment field %q", name)
-		}
-		seen[name] = struct{}{}
-		targets := NormalizeTargets(field.Targets)
-		if len(targets) == 0 {
-			return nil, fmt.Errorf("fields[%s].targets is required", name)
-		}
-		targetsJSONBytes, err := json.Marshal(targets)
-		if err != nil {
-			return nil, fmt.Errorf("marshal targets for field %q: %w", name, err)
-		}
-		batchSize := defaultBatchSize
-		if field.BatchSize != nil {
-			batchSize = *field.BatchSize
-		}
-		if batchSize > MaxBatchSize {
-			batchSize = MaxBatchSize
-		}
-		prepared = append(prepared, PreparedField{
-			Name:        name,
-			Targets:     targets,
-			TargetsJSON: string(targetsJSONBytes),
-			TargetHash:  hash.Key(targets...),
-			BatchSize:   batchSize,
-		})
+) (PreparedField, error) {
+	name := strings.TrimSpace(field.Name)
+	targetSetID := strings.TrimSpace(field.TargetSetID)
+	if targetSetID == "" {
+		targetSetID = name
 	}
-	return prepared, nil
+	normalizedTargets := NormalizeTargets(targets)
+	if len(normalizedTargets) == 0 {
+		return PreparedField{}, fmt.Errorf("fields[%s] target set is empty", name)
+	}
+	targetsJSONBytes, err := json.Marshal(normalizedTargets)
+	if err != nil {
+		return PreparedField{}, fmt.Errorf("marshal targets for field %q: %w", name, err)
+	}
+	batchSize := defaultBatchSize
+	if field.BatchSize != nil {
+		batchSize = *field.BatchSize
+	}
+	if batchSize > MaxBatchSize {
+		batchSize = MaxBatchSize
+	}
+	return PreparedField{
+		Name:        name,
+		TargetSetID: targetSetID,
+		Targets:     normalizedTargets,
+		TargetsJSON: string(targetsJSONBytes),
+		TargetHash:  hash.Key(normalizedTargets...),
+		BatchSize:   batchSize,
+	}, nil
 }
 
 // NormalizeTargets 对 targets 执行 trim、去空、去重、排序。
@@ -142,7 +139,7 @@ func GenerateMappingsBatch(
 //  4. 根据 status 分别校验：
 //     - matched: aligned_value 不能为空且必须属于 field.Targets
 //     - unknown_to_null: aligned_value 必须为 null
-//     - fallback_original: aligned_value 为空时自动降级为 raw_value
+//     - needs_candidate: aligned_value 必须为 null
 //     - 其他 status 一律拒绝
 //  5. 最终去重计数必须覆盖全部输入（兜底校验）
 func ValidateGeneratedMappings(
@@ -203,12 +200,12 @@ func ValidateGeneratedMappings(
 					field.Name,
 				)
 			}
-		case MappingStatusFallbackOriginal:
-			if item.AlignedValue == nil {
-				value := item.RawValue
-				record.AlignedValue = &value
-			} else {
-				record.AlignedValue = item.AlignedValue
+		case MappingStatusNeedsCandidate:
+			if item.AlignedValue != nil {
+				return nil, fmt.Errorf(
+					"needs_candidate result must have null aligned_value for field %q",
+					field.Name,
+				)
 			}
 		default:
 			return nil, fmt.Errorf(
@@ -244,22 +241,22 @@ func BuildAlignmentPrompt(field PreparedField, rawValues []string) (string, erro
 
 输出数组中每个元素必须包含:
 - raw_value: 原始值
-- status: matched / unknown_to_null / fallback_original 之一
-- aligned_value: matched 时必须是目标实体中的一个值；unknown_to_null 时必须为 null；fallback_original 时可以为原始值或其他有意义值
+- status: matched / unknown_to_null / needs_candidate 之一
+- aligned_value: matched 时必须是目标实体中的一个值；unknown_to_null 时必须为 null；needs_candidate 时必须为 null
 
 规则:
 - 必须覆盖每个 raw_value，不能缺失，不能新增，不能重复
 - matched 的 aligned_value 必须严格属于 targets
 - 无意义、未知、空泛描述用 unknown_to_null
-- 无法明确匹配到单个目标实体但原始值有意义时用 fallback_original
-- 同时指向多个目标实体时不要强行匹配，使用 fallback_original
+- 无法明确匹配到单个目标实体但原始值有意义时用 needs_candidate
+- 同时指向多个目标实体时不要强行匹配，使用 needs_candidate
 - 只输出 JSON 数组，不要输出解释
 
 示例:
 [
   {"raw_value":"唐朝","status":"matched","aligned_value":"唐"},
   {"raw_value":"不详","status":"unknown_to_null","aligned_value":null},
-  {"raw_value":"明清","status":"fallback_original","aligned_value":"明清"}
+  {"raw_value":"明清","status":"needs_candidate","aligned_value":null}
 ]
 
 /nothink`, field.Name, string(targetsJSON), string(valuesJSON)), nil

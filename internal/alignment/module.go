@@ -38,7 +38,14 @@ func NewModule(deps ModuleDeps) (*Module, error) {
 			return processrecord.NewRepository(db)
 		},
 	)
-	service := NewService(repo, deps.Resources, WithExecutor(executor))
+	service := NewService(
+		repo,
+		deps.Resources,
+		WithExecutor(executor),
+		WithBusinessAccess(deps.DBOpener, func(db *sql.DB) BusinessRepository {
+			return NewEntityAlignmentBusinessRepo(db)
+		}),
+	)
 	return &Module{
 		Service: service,
 		Handler: NewEntityAlignmentHandler(service),

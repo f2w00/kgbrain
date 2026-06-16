@@ -13,6 +13,16 @@ service EntityAlignmentService {
   rpc StartEntityAlignment(StartEntityAlignmentRequest) returns (StartEntityAlignmentResponse);
   // 查询指定任务的当前状态与进度。
   rpc GetEntityAlignmentJob(GetEntityAlignmentJobRequest) returns (GetEntityAlignmentJobResponse);
+  // 查询指定标准集下的标准输出值。
+  rpc ListAlignmentTargets(ListAlignmentTargetsRequest) returns (ListAlignmentTargetsResponse);
+  // 批量新增或更新标准输出值。
+  rpc UpsertAlignmentTargets(UpsertAlignmentTargetsRequest) returns (UpsertAlignmentTargetsResponse);
+  // 删除一个标准输出值。
+  rpc DeleteAlignmentTarget(DeleteAlignmentTargetRequest) returns (DeleteAlignmentTargetResponse);
+  // 查询候选值列表。
+  rpc ListTargetCandidates(ListTargetCandidatesRequest) returns (ListTargetCandidatesResponse);
+  // 审核候选值并回写标准值或 mapping。
+  rpc ReviewTargetCandidates(ReviewTargetCandidatesRequest) returns (ReviewTargetCandidatesResponse);
 }
 
 // 启动实体对齐任务的请求参数。
@@ -35,19 +45,104 @@ message StartEntityAlignmentRequest {
   optional int64 start_id = 8;
   // 结束主键值（含）。
   optional int64 end_id = 9;
+  // 仅处理上次实体对齐后仍等待 target 审核的记录。
+  optional bool only_waiting_target_review = 10;
 }
 
 // 单个字段的对齐配置。
 message EntityAlignmentField {
   // 源字段名。
   string name = 1;
-  // 标准目标值列表，LLM 将源值匹配到这些目标值之一。
-  repeated string targets = 2;
+  // 标准集 ID；未传时默认使用 name。
+  optional string target_set_id = 2;
   // 批处理大小，每批递交给 LLM 的源值数量。
   optional int32 batch_size = 3;
   // LLM 批处理请求并发数。
   optional int32 batch_concurrency = 4;
 }
+
+message ListAlignmentTargetsRequest {
+  string database_resource_id = 1;
+  string target_set_id = 2;
+}
+
+message AlignmentTarget {
+  string target_set_id = 1;
+  string label = 2;
+  string description = 3;
+}
+
+message ListAlignmentTargetsResponse {
+  repeated AlignmentTarget targets = 1;
+}
+
+message UpsertAlignmentTargetsRequest {
+  string database_resource_id = 1;
+  string target_set_id = 2;
+  repeated AlignmentTarget targets = 3;
+}
+
+message UpsertAlignmentTargetsResponse {}
+
+message DeleteAlignmentTargetRequest {
+  string database_resource_id = 1;
+  string target_set_id = 2;
+  string label = 3;
+}
+
+message DeleteAlignmentTargetResponse {}
+
+enum TargetCandidateStatus {
+  TARGET_CANDIDATE_STATUS_UNSPECIFIED = 0;
+  TARGET_CANDIDATE_STATUS_PENDING = 1;
+  TARGET_CANDIDATE_STATUS_RESOLVED = 2;
+}
+
+enum TargetCandidateResolution {
+  TARGET_CANDIDATE_RESOLUTION_UNSPECIFIED = 0;
+  TARGET_CANDIDATE_RESOLUTION_ADD_AS_LABEL = 1;
+  TARGET_CANDIDATE_RESOLUTION_MAP_TO_EXISTING = 2;
+  TARGET_CANDIDATE_RESOLUTION_REJECT_AS_NULL = 3;
+}
+
+message TargetCandidate {
+  string id = 1;
+  string target_set_id = 2;
+  string raw_value = 3;
+  int64 frequency = 4;
+  TargetCandidateStatus status = 5;
+  TargetCandidateResolution resolution = 6;
+  string resolved_label = 7;
+  string review_reason = 8;
+  int64 created_at_unix = 9;
+  int64 updated_at_unix = 10;
+}
+
+message ListTargetCandidatesRequest {
+  string database_resource_id = 1;
+  string target_set_id = 2;
+  optional TargetCandidateStatus status = 3;
+}
+
+message ListTargetCandidatesResponse {
+  repeated TargetCandidate candidates = 1;
+}
+
+message ReviewTargetCandidateAction {
+  string candidate_id = 1;
+  TargetCandidateResolution resolution = 2;
+  string label = 3;
+  string review_reason = 4;
+}
+
+message ReviewTargetCandidatesRequest {
+  string database_resource_id = 1;
+  string target_set_id = 2;
+  repeated ReviewTargetCandidateAction actions = 3;
+  string source_table = 4;
+}
+
+message ReviewTargetCandidatesResponse {}
 
 // 启动任务的响应。
 message StartEntityAlignmentResponse {

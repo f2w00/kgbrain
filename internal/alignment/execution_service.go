@@ -3,8 +3,7 @@ package alignment
 
 import (
 	"context"
-
-	"kgbrain/internal/processrecord"
+	"fmt"
 )
 
 // DomainService 承载实体对齐的核心业务流程。
@@ -47,9 +46,34 @@ func (s *DomainService) Execute(
 	llmClient LLMClient,
 	req ExecuteRequest,
 ) error {
-	preparedFields, err := PrepareFields(req.Fields, s.defaultBatchSize)
-	if err != nil {
-		return err
+	preparedFields := make([]PreparedField, 0, len(req.Fields))
+	seen := make(map[string]struct{}, len(req.Fields))
+	for _, field := range req.Fields {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		name := field.Name
+		if _, ok := seen[name]; ok {
+			return fmt.Errorf("duplicate alignment field %q", name)
+		}
+		seen[name] = struct{}{}
+		targetSetID := field.TargetSetID
+		if targetSetID == "" {
+			targetSetID = name
+		}
+		targetDefs, err := s.repo.LoadTargetLabels(ctx, targetSetID)
+		if err != nil {
+			return err
+		}
+		targets := make([]string, 0, len(targetDefs))
+		for _, target := range targetDefs {
+			targets = append(targets, target.Label)
+		}
+		prepared, err := PrepareField(field, targets, s.defaultBatchSize)
+		if err != nil {
+			return err
+		}
+		preparedFields = append(preparedFields, prepared)
 	}
 	sourceColumns, err := s.repo.EnsureExecutionReady(ctx, req, preparedFields)
 	if err != nil {
@@ -84,6 +108,9 @@ func (s *DomainService) Execute(
 			if err != nil {
 				return err
 			}
+			if err := s.repo.UpsertTargetCandidates(ctx, field.TargetSetID, generated); err != nil {
+				return err
+			}
 			if err := s.repo.UpsertMappings(
 				ctx,
 				req,
@@ -98,12 +125,9 @@ func (s *DomainService) Execute(
 	if err := s.repo.WriteOutputRows(ctx, req, sourceColumns, preparedFields); err != nil {
 		return err
 	}
-	return s.processRecorder.UpsertSourceRange(ctx, processrecord.SourceRangeRecord{
-		SourceTable: req.SourceTable,
-		KeyField:    req.KeyField,
-		StartID:     req.StartID,
-		EndID:       req.EndID,
-		ProcessType: ProcessTypeEntityAlignment,
-		Status:      processrecord.StatusSucceeded,
-	})
+	processRecords, err := s.repo.BuildSourceRangeProcessRecords(ctx, req, preparedFields)
+	if err != nil {
+		return err
+	}
+	return s.processRecorder.UpsertMany(ctx, processRecords)
 }

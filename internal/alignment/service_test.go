@@ -2,12 +2,16 @@ package alignment
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"sync"
 	"testing"
 	"time"
 
+	"kgbrain/internal/processrecord"
 	"kgbrain/internal/resource"
+
+	_ "modernc.org/sqlite"
 )
 
 type fakeRepo struct {
@@ -70,6 +74,12 @@ type fakeExecutor struct {
 	called chan StartRequest
 }
 
+type fakeBusinessRepo struct {
+	reviewSourceTable string
+	reviewTargetSetID string
+	reviewActions     []ReviewCandidateAction
+}
+
 func (fakeResources) GetLLM(id string) (*resource.LLMResource, error) {
 	return &resource.LLMResource{ID: id}, nil
 }
@@ -90,6 +100,118 @@ func (e *fakeExecutor) Execute(
 	return e.err
 }
 
+func (r *fakeBusinessRepo) EnsureExecutionReady(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ []PreparedField,
+) ([]ColumnMeta, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) SelectDistinctRawValues(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ string,
+) ([]string, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) LoadExistingMappings(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ PreparedField,
+	_ []string,
+) (map[string]MappingRecord, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) TouchMappings(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ PreparedField,
+	_ map[string]MappingRecord,
+) error {
+	return nil
+}
+
+func (r *fakeBusinessRepo) UpsertMappings(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ PreparedField,
+	_ []MappingRecord,
+	_ bool,
+) error {
+	return nil
+}
+
+func (r *fakeBusinessRepo) LoadTargetLabels(
+	_ context.Context,
+	_ string,
+) ([]TargetDefinition, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) UpsertTargets(
+	_ context.Context,
+	_ string,
+	_ []TargetDefinition,
+) error {
+	return nil
+}
+
+func (r *fakeBusinessRepo) DeleteTarget(
+	_ context.Context,
+	_ string,
+	_ string,
+) error {
+	return nil
+}
+
+func (r *fakeBusinessRepo) UpsertTargetCandidates(
+	_ context.Context,
+	_ string,
+	_ []MappingRecord,
+) error {
+	return nil
+}
+
+func (r *fakeBusinessRepo) ListTargetCandidates(
+	_ context.Context,
+	_ string,
+	_ string,
+) ([]TargetCandidate, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) ReviewTargetCandidates(
+	_ context.Context,
+	sourceTable string,
+	targetSetID string,
+	actions []ReviewCandidateAction,
+) error {
+	r.reviewSourceTable = sourceTable
+	r.reviewTargetSetID = targetSetID
+	r.reviewActions = append([]ReviewCandidateAction(nil), actions...)
+	return nil
+}
+
+func (r *fakeBusinessRepo) BuildSourceRangeProcessRecords(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ []PreparedField,
+) ([]processrecord.Record, error) {
+	return nil, nil
+}
+
+func (r *fakeBusinessRepo) WriteOutputRows(
+	_ context.Context,
+	_ ExecuteRequest,
+	_ []ColumnMeta,
+	_ []PreparedField,
+) error {
+	return nil
+}
+
 func validStartRequest() StartRequest {
 	return StartRequest{
 		LLMResourceID:      "llm_1",
@@ -97,7 +219,7 @@ func validStartRequest() StartRequest {
 		SourceTable:        "public.source",
 		OutputTable:        "public.output",
 		KeyField:           "id",
-		Fields:             []FieldRequest{{Name: "dynasty", Targets: []string{"唐", "宋"}}},
+		Fields:             []FieldRequest{{Name: "dynasty", TargetSetID: "dynasty"}},
 	}
 }
 
@@ -111,6 +233,7 @@ func TestServiceStartCreatesAndRunsJob(t *testing.T) {
 	req := validStartRequest()
 	req.StartID = int64Ptr(100)
 	req.EndID = int64Ptr(200)
+	req.OnlyWaitingTargetReview = true
 
 	result, err := svc.Start(context.Background(), req)
 	if err != nil {
@@ -143,6 +266,9 @@ func TestServiceStartCreatesAndRunsJob(t *testing.T) {
 	if len(job.Fields) != 1 || job.Fields[0].Name != "dynasty" {
 		t.Fatalf("unexpected job fields: %#v", job)
 	}
+	if !job.OnlyWaitingTargetReview {
+		t.Fatalf("expected only waiting target review flag on job")
+	}
 }
 
 func TestServiceRunJobUsesExecutor(t *testing.T) {
@@ -152,6 +278,7 @@ func TestServiceRunJobUsesExecutor(t *testing.T) {
 	req := validStartRequest()
 	req.StartID = int64Ptr(10)
 	req.EndID = int64Ptr(20)
+	req.OnlyWaitingTargetReview = true
 
 	result, err := svc.Start(context.Background(), req)
 	if err != nil {
@@ -165,6 +292,9 @@ func TestServiceRunJobUsesExecutor(t *testing.T) {
 		}
 		if calledReq.StartID == nil || *calledReq.StartID != 10 {
 			t.Fatalf("unexpected executor start id: %#v", calledReq)
+		}
+		if !calledReq.OnlyWaitingTargetReview {
+			t.Fatalf("expected only waiting target review flag in executor request")
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("executor was not called")
@@ -274,5 +404,60 @@ func TestServiceGetMissingJob(t *testing.T) {
 	}
 }
 
+func TestServiceReviewCandidatesRequiresSourceTable(t *testing.T) {
+	svc := NewService(newFakeRepo(), fakeResources{})
+	err := svc.ReviewCandidates(context.Background(), ReviewCandidatesRequest{
+		DatabaseResourceID: "db_1",
+		TargetSetID:        "industry",
+		Actions: []ReviewCandidateAction{{
+			CandidateID: "candidate_1",
+			Resolution:  "reject_as_null",
+		}},
+	})
+	if !IsValidationError(err) {
+		t.Fatalf("expected validation error, got %v", err)
+	}
+}
+
+func TestServiceReviewCandidatesPassesSourceTable(t *testing.T) {
+	jobRepo := newFakeRepo()
+	bizRepo := &fakeBusinessRepo{}
+	svc := NewService(
+		jobRepo,
+		fakeResources{},
+		WithBusinessAccess(
+			func(_ *resource.DatabaseResource) (*sql.DB, error) {
+				return sql.Open("sqlite", ":memory:")
+			},
+			func(_ *sql.DB) BusinessRepository {
+				return bizRepo
+			},
+		),
+	)
+	err := svc.ReviewCandidates(context.Background(), ReviewCandidatesRequest{
+		DatabaseResourceID: "db_1",
+		TargetSetID:        "industry",
+		SourceTable:        "biz.company_raw",
+		Actions: []ReviewCandidateAction{{
+			CandidateID: "candidate_1",
+			Resolution:  "reject_as_null",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("review candidates: %v", err)
+	}
+	if bizRepo.reviewSourceTable != "biz.company_raw" {
+		t.Fatalf("unexpected source table: %#v", bizRepo.reviewSourceTable)
+	}
+	if bizRepo.reviewTargetSetID != "industry" {
+		t.Fatalf("unexpected target set id: %#v", bizRepo.reviewTargetSetID)
+	}
+	if len(bizRepo.reviewActions) != 1 ||
+		bizRepo.reviewActions[0].CandidateID != "candidate_1" {
+		t.Fatalf("unexpected review actions: %#v", bizRepo.reviewActions)
+	}
+}
+
 var _ Repository = (*fakeRepo)(nil)
 var _ ResourceReader = (*fakeResources)(nil)
+var _ BusinessRepository = (*fakeBusinessRepo)(nil)

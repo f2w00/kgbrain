@@ -27,17 +27,18 @@ func TestEntityAlignmentRepoJobLifecycle(t *testing.T) {
 	startID := int64(100)
 	endID := int64(200)
 	job := &Job{
-		JobID:              "ea_job_1",
-		LLMResourceID:      "llm_1",
-		DatabaseResourceID: "db_1",
-		SourceTable:        "public.source",
-		OutputTable:        "public.output",
-		Status:             StatusPending,
-		ReuseMapping:       true,
-		KeyField:           "id",
-		StartID:            &startID,
-		EndID:              &endID,
-		CreatedAt:          "2026-06-09T00:00:00Z",
+		JobID:                   "ea_job_1",
+		LLMResourceID:           "llm_1",
+		DatabaseResourceID:      "db_1",
+		SourceTable:             "public.source",
+		OutputTable:             "public.output",
+		Status:                  StatusPending,
+		ReuseMapping:            true,
+		OnlyWaitingTargetReview: true,
+		KeyField:                "id",
+		StartID:                 &startID,
+		EndID:                   &endID,
+		CreatedAt:               "2026-06-09T00:00:00Z",
 	}
 	if err := repo.CreateJob(job); err != nil {
 		t.Fatalf("create job: %v", err)
@@ -58,6 +59,9 @@ func TestEntityAlignmentRepoJobLifecycle(t *testing.T) {
 	}
 	if len(got.Fields) != 0 {
 		t.Fatalf("unexpected job fields: %#v", got)
+	}
+	if !got.OnlyWaitingTargetReview {
+		t.Fatalf("expected only waiting target review flag to be persisted")
 	}
 
 	if err := repo.MarkRunning("ea_job_1"); err != nil {
@@ -107,9 +111,9 @@ func TestEntityAlignmentRepoJobLifecycleWithNilRange(t *testing.T) {
 		ReuseMapping:       false,
 		KeyField:           "id",
 		Fields: []FieldConfig{{
-			Name:      "dynasty",
-			Targets:   []string{"唐", "宋"},
-			BatchSize: &batchSize,
+			Name:        "dynasty",
+			TargetSetID: "dynasty",
+			BatchSize:   &batchSize,
 		}},
 		CreatedAt: "2026-06-09T00:00:00Z",
 	}

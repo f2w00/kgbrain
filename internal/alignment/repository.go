@@ -23,6 +23,7 @@ func NewEntityAlignmentRepo(db *sql.DB) (*EntityAlignmentRepo, error) {
 		output_table         TEXT NOT NULL,
 		status               TEXT NOT NULL,
 		reuse_mapping        INTEGER NOT NULL,
+		only_waiting_target_review INTEGER NOT NULL DEFAULT 0,
 		key_field            TEXT NOT NULL,
 		start_id             INTEGER,
 		end_id               INTEGER,
@@ -41,6 +42,14 @@ func NewEntityAlignmentRepo(db *sql.DB) (*EntityAlignmentRepo, error) {
 		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
 	}
 	if err := ensureColumn(db, "entity_alignment_jobs", "end_id", "INTEGER"); err != nil {
+		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
+	}
+	if err := ensureColumn(
+		db,
+		"entity_alignment_jobs",
+		"only_waiting_target_review",
+		"INTEGER NOT NULL DEFAULT 0",
+	); err != nil {
 		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
 	}
 	if err := ensureColumn(db, "entity_alignment_jobs", "fields_json", "TEXT"); err != nil {
@@ -63,6 +72,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		output_table,
 		status,
 		reuse_mapping,
+		only_waiting_target_review,
 		key_field,
 		start_id,
 		end_id,
@@ -72,7 +82,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		finished_at,
 		error_message
 	)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.JobID,
 		job.LLMResourceID,
 		job.DatabaseResourceID,
@@ -80,6 +90,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		job.OutputTable,
 		job.Status,
 		boolToInt(job.ReuseMapping),
+		boolToInt(job.OnlyWaitingTargetReview),
 		job.KeyField,
 		nullableInt64(job.StartID),
 		nullableInt64(job.EndID),
@@ -96,6 +107,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 	job := &Job{}
 	var reuseMapping int
+	var onlyWaitingTargetReview int
 	var fieldsJSON string
 	var startID, endID sql.NullInt64
 	var startedAt, finishedAt, errorMessage sql.NullString
@@ -107,6 +119,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 		output_table,
 		status,
 		reuse_mapping,
+		only_waiting_target_review,
 		key_field,
 		start_id,
 		end_id,
@@ -124,6 +137,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 			&job.OutputTable,
 			&job.Status,
 			&reuseMapping,
+			&onlyWaitingTargetReview,
 			&job.KeyField,
 			&startID,
 			&endID,
@@ -140,6 +154,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 		return nil, err
 	}
 	job.ReuseMapping = reuseMapping != 0
+	job.OnlyWaitingTargetReview = onlyWaitingTargetReview != 0
 	if startID.Valid {
 		job.StartID = &startID.Int64
 	}
@@ -212,7 +227,6 @@ func nullable(s string) *string {
 	}
 	return &s
 }
-
 func nowString() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }

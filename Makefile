@@ -1,5 +1,5 @@
 APP_NAME = kgbrain
-REGISTRY = 10.15.22.234:5005
+REGISTRY = 10.15.22.3:5005
 IMAGE = $(REGISTRY)/$(APP_NAME)
 TAG = latest
 SHA = $(shell git rev-parse --short HEAD)

@@ -70,12 +70,13 @@ func (e *executor) Execute(
 	}
 	domainSvc := NewDomainService(e.repoFactory(bizDB), e.defaultBatchSize, processRecorder)
 	return domainSvc.Execute(ctx, llmClient, ExecuteRequest{
-		SourceTable:  req.SourceTable,
-		OutputTable:  req.OutputTable,
-		KeyField:     req.KeyField,
-		StartID:      req.StartID,
-		EndID:        req.EndID,
-		ReuseMapping: job.ReuseMapping,
-		Fields:       job.Fields,
+		SourceTable:             req.SourceTable,
+		OutputTable:             req.OutputTable,
+		KeyField:                req.KeyField,
+		StartID:                 req.StartID,
+		EndID:                   req.EndID,
+		ReuseMapping:            job.ReuseMapping,
+		OnlyWaitingTargetReview: job.OnlyWaitingTargetReview,
+		Fields:                  job.Fields,
 	})
 }

@@ -4,6 +4,7 @@ package alignment
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -12,9 +13,11 @@ import (
 
 // Service 编排实体对齐 job 的创建、校验和状态查询。
 type Service struct {
-	repo      Repository
-	resources ResourceReader
-	executor  Executor
+	repo        Repository
+	resources   ResourceReader
+	executor    Executor
+	dbOpener    BusinessDBOpener
+	repoFactory BusinessRepositoryFactory
 }
 
 // NewService 创建实体对齐应用服务。
@@ -46,18 +49,19 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	job := &Job{
-		JobID:              idgen.GenerateEntityAlignmentJobID(),
-		LLMResourceID:      req.LLMResourceID,
-		DatabaseResourceID: req.DatabaseResourceID,
-		SourceTable:        req.SourceTable,
-		OutputTable:        req.OutputTable,
-		Status:             StatusPending,
-		ReuseMapping:       reuseMapping,
-		KeyField:           req.KeyField,
-		StartID:            req.StartID,
-		EndID:              req.EndID,
-		Fields:             toJobFields(req.Fields),
-		CreatedAt:          now,
+		JobID:                   idgen.GenerateEntityAlignmentJobID(),
+		LLMResourceID:           req.LLMResourceID,
+		DatabaseResourceID:      req.DatabaseResourceID,
+		SourceTable:             req.SourceTable,
+		OutputTable:             req.OutputTable,
+		Status:                  StatusPending,
+		ReuseMapping:            reuseMapping,
+		KeyField:                req.KeyField,
+		StartID:                 req.StartID,
+		EndID:                   req.EndID,
+		OnlyWaitingTargetReview: req.OnlyWaitingTargetReview,
+		Fields:                  toJobFields(req.Fields),
+		CreatedAt:               now,
 	}
 	if err := s.repo.CreateJob(job); err != nil {
 		return nil, err
@@ -81,6 +85,129 @@ func (s *Service) GetJob(jobID string) (*Job, error) {
 		return nil, &notFoundError{message: "entity alignment job not found"}
 	}
 	return job, nil
+}
+
+func (s *Service) ListTargets(ctx context.Context, req ListTargetsRequest) (*ListTargetsResult, error) {
+	if strings.TrimSpace(req.DatabaseResourceID) == "" {
+		return nil, &validationError{message: "database_resource_id is required"}
+	}
+	targetSetID := strings.TrimSpace(req.TargetSetID)
+	if targetSetID == "" {
+		return nil, &validationError{message: "target_set_id is required"}
+	}
+	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	targets, err := repo.LoadTargetLabels(ctx, targetSetID)
+	if err != nil {
+		return nil, err
+	}
+	return &ListTargetsResult{Targets: targets}, nil
+}
+
+func (s *Service) UpsertTargets(ctx context.Context, req UpsertTargetsRequest) error {
+	if strings.TrimSpace(req.DatabaseResourceID) == "" {
+		return &validationError{message: "database_resource_id is required"}
+	}
+	targetSetID := strings.TrimSpace(req.TargetSetID)
+	if targetSetID == "" {
+		return &validationError{message: "target_set_id is required"}
+	}
+	if len(req.Targets) == 0 {
+		return &validationError{message: "targets is required"}
+	}
+	for _, target := range req.Targets {
+		if strings.TrimSpace(target.Label) == "" {
+			return &validationError{message: "targets.label is required"}
+		}
+	}
+	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return repo.UpsertTargets(ctx, targetSetID, req.Targets)
+}
+
+func (s *Service) DeleteTarget(ctx context.Context, req DeleteTargetRequest) error {
+	if strings.TrimSpace(req.DatabaseResourceID) == "" {
+		return &validationError{message: "database_resource_id is required"}
+	}
+	targetSetID := strings.TrimSpace(req.TargetSetID)
+	if targetSetID == "" {
+		return &validationError{message: "target_set_id is required"}
+	}
+	label := strings.TrimSpace(req.Label)
+	if label == "" {
+		return &validationError{message: "label is required"}
+	}
+	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return repo.DeleteTarget(ctx, targetSetID, label)
+}
+
+func (s *Service) ListCandidates(
+	ctx context.Context,
+	req ListCandidatesRequest,
+) (*ListCandidatesResult, error) {
+	if strings.TrimSpace(req.DatabaseResourceID) == "" {
+		return nil, &validationError{message: "database_resource_id is required"}
+	}
+	targetSetID := strings.TrimSpace(req.TargetSetID)
+	if targetSetID == "" {
+		return nil, &validationError{message: "target_set_id is required"}
+	}
+	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	candidates, err := repo.ListTargetCandidates(ctx, targetSetID, strings.TrimSpace(req.Status))
+	if err != nil {
+		return nil, err
+	}
+	return &ListCandidatesResult{Candidates: candidates}, nil
+}
+
+func (s *Service) ReviewCandidates(ctx context.Context, req ReviewCandidatesRequest) error {
+	if strings.TrimSpace(req.DatabaseResourceID) == "" {
+		return &validationError{message: "database_resource_id is required"}
+	}
+	targetSetID := strings.TrimSpace(req.TargetSetID)
+	if targetSetID == "" {
+		return &validationError{message: "target_set_id is required"}
+	}
+	if strings.TrimSpace(req.SourceTable) == "" {
+		return &validationError{message: "source_table is required"}
+	}
+	if len(req.Actions) == 0 {
+		return &validationError{message: "actions is required"}
+	}
+	for _, action := range req.Actions {
+		if strings.TrimSpace(action.CandidateID) == "" {
+			return &validationError{message: "candidate_id is required"}
+		}
+		switch action.Resolution {
+		case "add_as_label", "map_to_existing":
+			if strings.TrimSpace(action.Label) == "" {
+				return &validationError{message: "label is required"}
+			}
+		case "reject_as_null":
+		default:
+			return &validationError{message: "invalid resolution"}
+		}
+	}
+	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return repo.ReviewTargetCandidates(ctx, req.SourceTable, targetSetID, req.Actions)
 }
 
 // runJob 在后台 goroutine 中执行实体对齐：先标记 running，再委派 executor 执行，最终标记 succeeded/failed。
@@ -110,15 +237,16 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 	}
 	if s.executor != nil {
 		req := StartRequest{
-			LLMResourceID:      job.LLMResourceID,
-			DatabaseResourceID: job.DatabaseResourceID,
-			SourceTable:        job.SourceTable,
-			OutputTable:        job.OutputTable,
-			ReuseMapping:       &job.ReuseMapping,
-			KeyField:           job.KeyField,
-			StartID:            job.StartID,
-			EndID:              job.EndID,
-			Fields:             fromJobFields(job.Fields),
+			LLMResourceID:           job.LLMResourceID,
+			DatabaseResourceID:      job.DatabaseResourceID,
+			SourceTable:             job.SourceTable,
+			OutputTable:             job.OutputTable,
+			ReuseMapping:            &job.ReuseMapping,
+			KeyField:                job.KeyField,
+			StartID:                 job.StartID,
+			EndID:                   job.EndID,
+			OnlyWaitingTargetReview: job.OnlyWaitingTargetReview,
+			Fields:                  fromJobFields(job.Fields),
 		}
 		if err := s.executor.Execute(ctx, job, req, s.resources); err != nil {
 			_ = s.repo.MarkFailed(jobID, err.Error())
@@ -161,9 +289,6 @@ func validateStartRequest(req StartRequest) error {
 		if name == keyField {
 			return &validationError{message: "key_field cannot be an alignment field"}
 		}
-		if len(field.Targets) == 0 {
-			return &validationError{message: fmt.Sprintf("fields[%s].targets is required", name)}
-		}
 		if field.BatchSize != nil && *field.BatchSize <= 0 {
 			return &validationError{message: "fields.batch_size must be greater than 0"}
 		}
@@ -179,7 +304,7 @@ func toJobFields(fields []FieldRequest) []FieldConfig {
 	for _, field := range fields {
 		result = append(result, FieldConfig{
 			Name:             field.Name,
-			Targets:          append([]string(nil), field.Targets...),
+			TargetSetID:      field.TargetSetID,
 			BatchSize:        field.BatchSize,
 			BatchConcurrency: field.BatchConcurrency,
 		})
@@ -192,10 +317,27 @@ func fromJobFields(fields []FieldConfig) []FieldRequest {
 	for _, field := range fields {
 		result = append(result, FieldRequest{
 			Name:             field.Name,
-			Targets:          append([]string(nil), field.Targets...),
+			TargetSetID:      field.TargetSetID,
 			BatchSize:        field.BatchSize,
 			BatchConcurrency: field.BatchConcurrency,
 		})
 	}
 	return result
+}
+
+func (s *Service) openBusinessRepo(
+	databaseResourceID string,
+) (BusinessRepository, io.Closer, error) {
+	if s.dbOpener == nil || s.repoFactory == nil {
+		return nil, nil, fmt.Errorf("entity alignment business access is not configured")
+	}
+	dbResource, err := s.resources.GetDatabase(databaseResourceID)
+	if err != nil {
+		return nil, nil, err
+	}
+	bizDB, err := s.dbOpener(dbResource)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open business database: %w", err)
+	}
+	return s.repoFactory(bizDB), bizDB, nil
 }

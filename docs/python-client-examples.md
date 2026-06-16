@@ -428,15 +428,15 @@ with httpx.Client(base_url=BASE_URL) as http_client:
             fields=[
                 EntityAlignmentField(
                     name="city_name",
-                    targets=["北京市", "上海市", "广州市", "西安市"],
+                    target_set_id="city_name",
                     batch_size=200,
-                    batch_concurrency=8,
+                    batch_concurrency=1,
                 ),
                 EntityAlignmentField(
                     name="museum_level",
-                    targets=["一级", "二级", "三级", "未评级"],
+                    target_set_id="museum_level",
                     batch_size=100,
-                    batch_concurrency=4,
+                    batch_concurrency=1,
                 ),
             ],
         )
@@ -469,11 +469,102 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 
 ### 3.3 使用说明
 
-- `fields` 是核心配置，每个字段都要给出一组标准目标值 `targets`
+- `fields` 是核心配置；标准目标值不再直接写在请求里，而是通过
+  `target_set_id` 关联业务库中的 `alignment_targets`
 - `reuse_mapping=True` 时，服务会优先复用已有映射缓存
 - `batch_size` 决定一次送给 LLM 的源值数量
-- `batch_concurrency` 决定该字段的并发批处理请求数
+- `batch_concurrency` 决定该字段的并发批处理请求数；默认建议保持 `1`
 - `output_table` 需要提前准备好可写结构
+
+### 3.4 审核候选值并仅重跑等待审核记录
+
+当某些原始值被判定为 `needs_candidate` 时，系统会把对应行标记为
+`waiting_target_review`。推荐处理闭环如下：
+
+1. 查询候选值列表
+2. 调用 `ReviewTargetCandidates` 完成人工审核
+3. 重新调用 `StartEntityAlignment`，并设置 `only_waiting_target_review=True`
+
+```python
+import httpx
+
+from kgbrain.v1.entity_alignment_pb2 import (
+    EntityAlignmentField,
+    ReviewTargetCandidateAction,
+    ReviewTargetCandidatesRequest,
+    StartEntityAlignmentRequest,
+    TargetCandidateResolution,
+)
+from kgbrain.v1.entity_alignment_connect import EntityAlignmentServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with httpx.Client(base_url=BASE_URL) as http_client:
+    client = EntityAlignmentServiceClientSync(http_client)
+
+    # 1. 人工审核候选值。
+    client.review_target_candidates(
+        ReviewTargetCandidatesRequest(
+            database_resource_id="museum_pg",
+            source_table="public.museum_raw",
+            target_set_id="city_name",
+            actions=[
+                ReviewTargetCandidateAction(
+                    candidate_id="candidate_123",
+                    resolution=(
+                        TargetCandidateResolution.
+                        TARGET_CANDIDATE_RESOLUTION_MAP_TO_EXISTING
+                    ),
+                    label="西安市",
+                    review_reason="人工确认归并到现有标准城市",
+                ),
+                ReviewTargetCandidateAction(
+                    candidate_id="candidate_124",
+                    resolution=(
+                        TargetCandidateResolution.
+                        TARGET_CANDIDATE_RESOLUTION_REJECT_AS_NULL
+                    ),
+                    review_reason="无实际含义",
+                ),
+            ],
+        )
+    )
+
+    # 2. 只重跑当前仍处于 waiting_target_review 的记录。
+    rerun_resp = client.start_entity_alignment(
+        StartEntityAlignmentRequest(
+            llm_resource_id="qwen_local",
+            database_resource_id="museum_pg",
+            source_table="public.museum_raw",
+            output_table="public.museum_aligned",
+            key_field="id",
+            reuse_mapping=True,
+            only_waiting_target_review=True,
+            fields=[
+                EntityAlignmentField(
+                    name="city_name",
+                    target_set_id="city_name",
+                ),
+                EntityAlignmentField(
+                    name="museum_level",
+                    target_set_id="museum_level",
+                ),
+            ],
+        )
+    )
+
+    print("重跑任务已创建:", rerun_resp.job_id)
+```
+
+补充说明：
+
+- `ReviewTargetCandidatesRequest.source_table` 必须与原始对齐任务使用的 `source_table` 一致
+- `source_table` 的作用是定位审核写回的 mapping 表 schema，例如：
+  - `public.museum_raw` -> `public.entity_alignment_mapping`
+  - `biz.museum_raw` -> `biz.entity_alignment_mapping`
+- `only_waiting_target_review=True` 时，建议同时设置 `reuse_mapping=True`，这样审核后回写的 mapping 会被直接复用
 
 ## 四、统一错误处理示例
 

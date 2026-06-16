@@ -42,6 +42,21 @@ const (
 	// EntityAlignmentServiceGetEntityAlignmentJobProcedure is the fully-qualified name of the
 	// EntityAlignmentService's GetEntityAlignmentJob RPC.
 	EntityAlignmentServiceGetEntityAlignmentJobProcedure = "/kgbrain.v1.EntityAlignmentService/GetEntityAlignmentJob"
+	// EntityAlignmentServiceListAlignmentTargetsProcedure is the fully-qualified name of the
+	// EntityAlignmentService's ListAlignmentTargets RPC.
+	EntityAlignmentServiceListAlignmentTargetsProcedure = "/kgbrain.v1.EntityAlignmentService/ListAlignmentTargets"
+	// EntityAlignmentServiceUpsertAlignmentTargetsProcedure is the fully-qualified name of the
+	// EntityAlignmentService's UpsertAlignmentTargets RPC.
+	EntityAlignmentServiceUpsertAlignmentTargetsProcedure = "/kgbrain.v1.EntityAlignmentService/UpsertAlignmentTargets"
+	// EntityAlignmentServiceDeleteAlignmentTargetProcedure is the fully-qualified name of the
+	// EntityAlignmentService's DeleteAlignmentTarget RPC.
+	EntityAlignmentServiceDeleteAlignmentTargetProcedure = "/kgbrain.v1.EntityAlignmentService/DeleteAlignmentTarget"
+	// EntityAlignmentServiceListTargetCandidatesProcedure is the fully-qualified name of the
+	// EntityAlignmentService's ListTargetCandidates RPC.
+	EntityAlignmentServiceListTargetCandidatesProcedure = "/kgbrain.v1.EntityAlignmentService/ListTargetCandidates"
+	// EntityAlignmentServiceReviewTargetCandidatesProcedure is the fully-qualified name of the
+	// EntityAlignmentService's ReviewTargetCandidates RPC.
+	EntityAlignmentServiceReviewTargetCandidatesProcedure = "/kgbrain.v1.EntityAlignmentService/ReviewTargetCandidates"
 )
 
 // EntityAlignmentServiceClient is a client for the kgbrain.v1.EntityAlignmentService service.
@@ -50,6 +65,16 @@ type EntityAlignmentServiceClient interface {
 	StartEntityAlignment(context.Context, *connect.Request[v1.StartEntityAlignmentRequest]) (*connect.Response[v1.StartEntityAlignmentResponse], error)
 	// 查询指定任务的当前状态与进度。
 	GetEntityAlignmentJob(context.Context, *connect.Request[v1.GetEntityAlignmentJobRequest]) (*connect.Response[v1.GetEntityAlignmentJobResponse], error)
+	// 查询指定标准集下的标准输出值。
+	ListAlignmentTargets(context.Context, *connect.Request[v1.ListAlignmentTargetsRequest]) (*connect.Response[v1.ListAlignmentTargetsResponse], error)
+	// 批量新增或更新标准输出值。
+	UpsertAlignmentTargets(context.Context, *connect.Request[v1.UpsertAlignmentTargetsRequest]) (*connect.Response[v1.UpsertAlignmentTargetsResponse], error)
+	// 删除一个标准输出值。
+	DeleteAlignmentTarget(context.Context, *connect.Request[v1.DeleteAlignmentTargetRequest]) (*connect.Response[v1.DeleteAlignmentTargetResponse], error)
+	// 查询候选值列表。
+	ListTargetCandidates(context.Context, *connect.Request[v1.ListTargetCandidatesRequest]) (*connect.Response[v1.ListTargetCandidatesResponse], error)
+	// 审核候选值并回写标准值或 mapping。
+	ReviewTargetCandidates(context.Context, *connect.Request[v1.ReviewTargetCandidatesRequest]) (*connect.Response[v1.ReviewTargetCandidatesResponse], error)
 }
 
 // NewEntityAlignmentServiceClient constructs a client for the kgbrain.v1.EntityAlignmentService
@@ -75,13 +100,48 @@ func NewEntityAlignmentServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(entityAlignmentServiceMethods.ByName("GetEntityAlignmentJob")),
 			connect.WithClientOptions(opts...),
 		),
+		listAlignmentTargets: connect.NewClient[v1.ListAlignmentTargetsRequest, v1.ListAlignmentTargetsResponse](
+			httpClient,
+			baseURL+EntityAlignmentServiceListAlignmentTargetsProcedure,
+			connect.WithSchema(entityAlignmentServiceMethods.ByName("ListAlignmentTargets")),
+			connect.WithClientOptions(opts...),
+		),
+		upsertAlignmentTargets: connect.NewClient[v1.UpsertAlignmentTargetsRequest, v1.UpsertAlignmentTargetsResponse](
+			httpClient,
+			baseURL+EntityAlignmentServiceUpsertAlignmentTargetsProcedure,
+			connect.WithSchema(entityAlignmentServiceMethods.ByName("UpsertAlignmentTargets")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteAlignmentTarget: connect.NewClient[v1.DeleteAlignmentTargetRequest, v1.DeleteAlignmentTargetResponse](
+			httpClient,
+			baseURL+EntityAlignmentServiceDeleteAlignmentTargetProcedure,
+			connect.WithSchema(entityAlignmentServiceMethods.ByName("DeleteAlignmentTarget")),
+			connect.WithClientOptions(opts...),
+		),
+		listTargetCandidates: connect.NewClient[v1.ListTargetCandidatesRequest, v1.ListTargetCandidatesResponse](
+			httpClient,
+			baseURL+EntityAlignmentServiceListTargetCandidatesProcedure,
+			connect.WithSchema(entityAlignmentServiceMethods.ByName("ListTargetCandidates")),
+			connect.WithClientOptions(opts...),
+		),
+		reviewTargetCandidates: connect.NewClient[v1.ReviewTargetCandidatesRequest, v1.ReviewTargetCandidatesResponse](
+			httpClient,
+			baseURL+EntityAlignmentServiceReviewTargetCandidatesProcedure,
+			connect.WithSchema(entityAlignmentServiceMethods.ByName("ReviewTargetCandidates")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // entityAlignmentServiceClient implements EntityAlignmentServiceClient.
 type entityAlignmentServiceClient struct {
-	startEntityAlignment  *connect.Client[v1.StartEntityAlignmentRequest, v1.StartEntityAlignmentResponse]
-	getEntityAlignmentJob *connect.Client[v1.GetEntityAlignmentJobRequest, v1.GetEntityAlignmentJobResponse]
+	startEntityAlignment   *connect.Client[v1.StartEntityAlignmentRequest, v1.StartEntityAlignmentResponse]
+	getEntityAlignmentJob  *connect.Client[v1.GetEntityAlignmentJobRequest, v1.GetEntityAlignmentJobResponse]
+	listAlignmentTargets   *connect.Client[v1.ListAlignmentTargetsRequest, v1.ListAlignmentTargetsResponse]
+	upsertAlignmentTargets *connect.Client[v1.UpsertAlignmentTargetsRequest, v1.UpsertAlignmentTargetsResponse]
+	deleteAlignmentTarget  *connect.Client[v1.DeleteAlignmentTargetRequest, v1.DeleteAlignmentTargetResponse]
+	listTargetCandidates   *connect.Client[v1.ListTargetCandidatesRequest, v1.ListTargetCandidatesResponse]
+	reviewTargetCandidates *connect.Client[v1.ReviewTargetCandidatesRequest, v1.ReviewTargetCandidatesResponse]
 }
 
 // StartEntityAlignment calls kgbrain.v1.EntityAlignmentService.StartEntityAlignment.
@@ -94,6 +154,31 @@ func (c *entityAlignmentServiceClient) GetEntityAlignmentJob(ctx context.Context
 	return c.getEntityAlignmentJob.CallUnary(ctx, req)
 }
 
+// ListAlignmentTargets calls kgbrain.v1.EntityAlignmentService.ListAlignmentTargets.
+func (c *entityAlignmentServiceClient) ListAlignmentTargets(ctx context.Context, req *connect.Request[v1.ListAlignmentTargetsRequest]) (*connect.Response[v1.ListAlignmentTargetsResponse], error) {
+	return c.listAlignmentTargets.CallUnary(ctx, req)
+}
+
+// UpsertAlignmentTargets calls kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets.
+func (c *entityAlignmentServiceClient) UpsertAlignmentTargets(ctx context.Context, req *connect.Request[v1.UpsertAlignmentTargetsRequest]) (*connect.Response[v1.UpsertAlignmentTargetsResponse], error) {
+	return c.upsertAlignmentTargets.CallUnary(ctx, req)
+}
+
+// DeleteAlignmentTarget calls kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget.
+func (c *entityAlignmentServiceClient) DeleteAlignmentTarget(ctx context.Context, req *connect.Request[v1.DeleteAlignmentTargetRequest]) (*connect.Response[v1.DeleteAlignmentTargetResponse], error) {
+	return c.deleteAlignmentTarget.CallUnary(ctx, req)
+}
+
+// ListTargetCandidates calls kgbrain.v1.EntityAlignmentService.ListTargetCandidates.
+func (c *entityAlignmentServiceClient) ListTargetCandidates(ctx context.Context, req *connect.Request[v1.ListTargetCandidatesRequest]) (*connect.Response[v1.ListTargetCandidatesResponse], error) {
+	return c.listTargetCandidates.CallUnary(ctx, req)
+}
+
+// ReviewTargetCandidates calls kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates.
+func (c *entityAlignmentServiceClient) ReviewTargetCandidates(ctx context.Context, req *connect.Request[v1.ReviewTargetCandidatesRequest]) (*connect.Response[v1.ReviewTargetCandidatesResponse], error) {
+	return c.reviewTargetCandidates.CallUnary(ctx, req)
+}
+
 // EntityAlignmentServiceHandler is an implementation of the kgbrain.v1.EntityAlignmentService
 // service.
 type EntityAlignmentServiceHandler interface {
@@ -101,6 +186,16 @@ type EntityAlignmentServiceHandler interface {
 	StartEntityAlignment(context.Context, *connect.Request[v1.StartEntityAlignmentRequest]) (*connect.Response[v1.StartEntityAlignmentResponse], error)
 	// 查询指定任务的当前状态与进度。
 	GetEntityAlignmentJob(context.Context, *connect.Request[v1.GetEntityAlignmentJobRequest]) (*connect.Response[v1.GetEntityAlignmentJobResponse], error)
+	// 查询指定标准集下的标准输出值。
+	ListAlignmentTargets(context.Context, *connect.Request[v1.ListAlignmentTargetsRequest]) (*connect.Response[v1.ListAlignmentTargetsResponse], error)
+	// 批量新增或更新标准输出值。
+	UpsertAlignmentTargets(context.Context, *connect.Request[v1.UpsertAlignmentTargetsRequest]) (*connect.Response[v1.UpsertAlignmentTargetsResponse], error)
+	// 删除一个标准输出值。
+	DeleteAlignmentTarget(context.Context, *connect.Request[v1.DeleteAlignmentTargetRequest]) (*connect.Response[v1.DeleteAlignmentTargetResponse], error)
+	// 查询候选值列表。
+	ListTargetCandidates(context.Context, *connect.Request[v1.ListTargetCandidatesRequest]) (*connect.Response[v1.ListTargetCandidatesResponse], error)
+	// 审核候选值并回写标准值或 mapping。
+	ReviewTargetCandidates(context.Context, *connect.Request[v1.ReviewTargetCandidatesRequest]) (*connect.Response[v1.ReviewTargetCandidatesResponse], error)
 }
 
 // NewEntityAlignmentServiceHandler builds an HTTP handler from the service implementation. It
@@ -122,12 +217,52 @@ func NewEntityAlignmentServiceHandler(svc EntityAlignmentServiceHandler, opts ..
 		connect.WithSchema(entityAlignmentServiceMethods.ByName("GetEntityAlignmentJob")),
 		connect.WithHandlerOptions(opts...),
 	)
+	entityAlignmentServiceListAlignmentTargetsHandler := connect.NewUnaryHandler(
+		EntityAlignmentServiceListAlignmentTargetsProcedure,
+		svc.ListAlignmentTargets,
+		connect.WithSchema(entityAlignmentServiceMethods.ByName("ListAlignmentTargets")),
+		connect.WithHandlerOptions(opts...),
+	)
+	entityAlignmentServiceUpsertAlignmentTargetsHandler := connect.NewUnaryHandler(
+		EntityAlignmentServiceUpsertAlignmentTargetsProcedure,
+		svc.UpsertAlignmentTargets,
+		connect.WithSchema(entityAlignmentServiceMethods.ByName("UpsertAlignmentTargets")),
+		connect.WithHandlerOptions(opts...),
+	)
+	entityAlignmentServiceDeleteAlignmentTargetHandler := connect.NewUnaryHandler(
+		EntityAlignmentServiceDeleteAlignmentTargetProcedure,
+		svc.DeleteAlignmentTarget,
+		connect.WithSchema(entityAlignmentServiceMethods.ByName("DeleteAlignmentTarget")),
+		connect.WithHandlerOptions(opts...),
+	)
+	entityAlignmentServiceListTargetCandidatesHandler := connect.NewUnaryHandler(
+		EntityAlignmentServiceListTargetCandidatesProcedure,
+		svc.ListTargetCandidates,
+		connect.WithSchema(entityAlignmentServiceMethods.ByName("ListTargetCandidates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	entityAlignmentServiceReviewTargetCandidatesHandler := connect.NewUnaryHandler(
+		EntityAlignmentServiceReviewTargetCandidatesProcedure,
+		svc.ReviewTargetCandidates,
+		connect.WithSchema(entityAlignmentServiceMethods.ByName("ReviewTargetCandidates")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/kgbrain.v1.EntityAlignmentService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EntityAlignmentServiceStartEntityAlignmentProcedure:
 			entityAlignmentServiceStartEntityAlignmentHandler.ServeHTTP(w, r)
 		case EntityAlignmentServiceGetEntityAlignmentJobProcedure:
 			entityAlignmentServiceGetEntityAlignmentJobHandler.ServeHTTP(w, r)
+		case EntityAlignmentServiceListAlignmentTargetsProcedure:
+			entityAlignmentServiceListAlignmentTargetsHandler.ServeHTTP(w, r)
+		case EntityAlignmentServiceUpsertAlignmentTargetsProcedure:
+			entityAlignmentServiceUpsertAlignmentTargetsHandler.ServeHTTP(w, r)
+		case EntityAlignmentServiceDeleteAlignmentTargetProcedure:
+			entityAlignmentServiceDeleteAlignmentTargetHandler.ServeHTTP(w, r)
+		case EntityAlignmentServiceListTargetCandidatesProcedure:
+			entityAlignmentServiceListTargetCandidatesHandler.ServeHTTP(w, r)
+		case EntityAlignmentServiceReviewTargetCandidatesProcedure:
+			entityAlignmentServiceReviewTargetCandidatesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -143,4 +278,24 @@ func (UnimplementedEntityAlignmentServiceHandler) StartEntityAlignment(context.C
 
 func (UnimplementedEntityAlignmentServiceHandler) GetEntityAlignmentJob(context.Context, *connect.Request[v1.GetEntityAlignmentJobRequest]) (*connect.Response[v1.GetEntityAlignmentJobResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.GetEntityAlignmentJob is not implemented"))
+}
+
+func (UnimplementedEntityAlignmentServiceHandler) ListAlignmentTargets(context.Context, *connect.Request[v1.ListAlignmentTargetsRequest]) (*connect.Response[v1.ListAlignmentTargetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.ListAlignmentTargets is not implemented"))
+}
+
+func (UnimplementedEntityAlignmentServiceHandler) UpsertAlignmentTargets(context.Context, *connect.Request[v1.UpsertAlignmentTargetsRequest]) (*connect.Response[v1.UpsertAlignmentTargetsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets is not implemented"))
+}
+
+func (UnimplementedEntityAlignmentServiceHandler) DeleteAlignmentTarget(context.Context, *connect.Request[v1.DeleteAlignmentTargetRequest]) (*connect.Response[v1.DeleteAlignmentTargetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget is not implemented"))
+}
+
+func (UnimplementedEntityAlignmentServiceHandler) ListTargetCandidates(context.Context, *connect.Request[v1.ListTargetCandidatesRequest]) (*connect.Response[v1.ListTargetCandidatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.ListTargetCandidates is not implemented"))
+}
+
+func (UnimplementedEntityAlignmentServiceHandler) ReviewTargetCandidates(context.Context, *connect.Request[v1.ReviewTargetCandidatesRequest]) (*connect.Response[v1.ReviewTargetCandidatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates is not implemented"))
 }

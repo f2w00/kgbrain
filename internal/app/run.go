@@ -102,7 +102,6 @@ func runWithConfig(cfgFile string, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("init enrich extract module: %w", err)
 	}
-
 	// 4. 接口层: 创建 Connect RPC 服务器, 注册 Connect 协议服务
 	connectServer := connect.New(connect.NewHealthChecker())
 	resourcePath, resourceHTTPHandler := kgbrainv1connect.NewResourceServiceHandler(resourceModule.Handler)

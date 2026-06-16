@@ -6,6 +6,8 @@ const (
 	StatusSucceeded = "succeeded"
 	// StatusFailed 表示指定处理能力最终处理失败。
 	StatusFailed = "failed"
+	// StatusWaitingTargetReview 表示指定处理能力需等待候选值审核后重跑。
+	StatusWaitingTargetReview = "waiting_target_review"
 )
 
 // Record 表示一条业务数据在某个处理能力上的最终状态。

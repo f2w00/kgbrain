@@ -8,11 +8,15 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"kgbrain/internal/processrecord"
 )
 
 const (
 	defaultSchema         = "public"
 	mappingTableName      = "entity_alignment_mapping"
+	targetTableName       = "alignment_targets"
+	candidateTableName    = "target_candidates"
 	outputTableAlias      = "s"
 	mappingTableAlias     = "m_"
 	defaultOutputPageSize = int64(10000)
@@ -90,6 +94,12 @@ func (r *EntityAlignmentBusinessRepo) EnsureExecutionReady(
 	if err := r.ensureMappingTable(ctx, mappingTable); err != nil {
 		return nil, err
 	}
+	if err := r.ensureTargetsTable(ctx, qualifiedName{Schema: sourceTable.Schema, Name: targetTableName}); err != nil {
+		return nil, err
+	}
+	if err := r.ensureCandidatesTable(ctx, qualifiedName{Schema: sourceTable.Schema, Name: candidateTableName}); err != nil {
+		return nil, err
+	}
 	outputColumns, err := r.ensureOutputTable(ctx, outputTable, sourceColumns)
 	if err != nil {
 		return nil, err
@@ -112,6 +122,395 @@ func (r *EntityAlignmentBusinessRepo) EnsureExecutionReady(
 	return sourceColumns, nil
 }
 
+func (r *EntityAlignmentBusinessRepo) LoadTargetLabels(
+	ctx context.Context,
+	targetSetID string,
+) ([]TargetDefinition, error) {
+	table := qualifiedName{Schema: defaultSchema, Name: targetTableName}
+	if err := r.ensureTargetsTable(ctx, table); err != nil {
+		return nil, err
+	}
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT target_set_id, label, description
+		FROM %s
+		WHERE target_set_id = $1
+		ORDER BY label`, fullTableName(table)), targetSetID)
+	if err != nil {
+		return nil, fmt.Errorf("list alignment targets: %w", err)
+	}
+	defer rows.Close()
+	targets := make([]TargetDefinition, 0)
+	for rows.Next() {
+		var target TargetDefinition
+		var description sql.NullString
+		if err := rows.Scan(&target.TargetSetID, &target.Label, &description); err != nil {
+			return nil, fmt.Errorf("scan alignment target: %w", err)
+		}
+		target.Description = description.String
+		targets = append(targets, target)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate alignment targets: %w", err)
+	}
+	return targets, nil
+}
+
+func (r *EntityAlignmentBusinessRepo) UpsertTargets(
+	ctx context.Context,
+	targetSetID string,
+	targets []TargetDefinition,
+) error {
+	table := qualifiedName{Schema: defaultSchema, Name: targetTableName}
+	if err := r.ensureTargetsTable(ctx, table); err != nil {
+		return err
+	}
+	valueRows := make([]string, 0, len(targets))
+	args := make([]any, 0, len(targets)*4)
+	argIndex := 1
+	now := time.Now().UTC()
+	for _, target := range targets {
+		valueRows = append(valueRows, rowPlaceholders(argIndex, 4))
+		args = append(args, targetSetID, target.Label, nullableStringValue(target.Description), now)
+		argIndex += 4
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO %s (target_set_id, label, description, updated_at)
+		VALUES %s
+		ON CONFLICT (target_set_id, label) DO UPDATE
+		SET description = EXCLUDED.description,
+		    updated_at = EXCLUDED.updated_at`, fullTableName(table), strings.Join(valueRows, ", "))
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("upsert alignment targets: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) DeleteTarget(
+	ctx context.Context,
+	targetSetID string,
+	label string,
+) error {
+	table := qualifiedName{Schema: defaultSchema, Name: targetTableName}
+	if err := r.ensureTargetsTable(ctx, table); err != nil {
+		return err
+	}
+	if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+		`DELETE FROM %s WHERE target_set_id = $1 AND label = $2`,
+		fullTableName(table),
+	), targetSetID, label); err != nil {
+		return fmt.Errorf("delete alignment target: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) UpsertTargetCandidates(
+	ctx context.Context,
+	targetSetID string,
+	records []MappingRecord,
+) error {
+	table := qualifiedName{Schema: defaultSchema, Name: candidateTableName}
+	if err := r.ensureCandidatesTable(ctx, table); err != nil {
+		return err
+	}
+	pending := make([]MappingRecord, 0, len(records))
+	for _, record := range records {
+		if record.Status == "needs_candidate" {
+			pending = append(pending, record)
+		}
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+	valueRows := make([]string, 0, len(pending))
+	args := make([]any, 0, len(pending)*6)
+	argIndex := 1
+	now := time.Now().UTC()
+	for _, record := range pending {
+		valueRows = append(valueRows, rowPlaceholders(argIndex, 6))
+		args = append(args, generateCandidateID(), targetSetID, record.RawValue, now, now, now)
+		argIndex += 6
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO %s (
+			id, target_set_id, raw_value, created_at, updated_at, resolved_at
+		) VALUES %s
+		ON CONFLICT (target_set_id, raw_value) DO UPDATE
+		SET frequency = %s.frequency + 1,
+		    updated_at = EXCLUDED.updated_at`, fullTableName(table), strings.Join(valueRows, ", "), fullTableName(table))
+	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("upsert target candidates: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ListTargetCandidates(
+	ctx context.Context,
+	targetSetID string,
+	status string,
+) ([]TargetCandidate, error) {
+	table := qualifiedName{Schema: defaultSchema, Name: candidateTableName}
+	if err := r.ensureCandidatesTable(ctx, table); err != nil {
+		return nil, err
+	}
+	args := []any{targetSetID}
+	where := "WHERE target_set_id = $1"
+	if status != "" {
+		args = append(args, status)
+		where += fmt.Sprintf(" AND status = $%d", len(args))
+	}
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT id, target_set_id, raw_value, frequency, status, resolution,
+		       resolved_label, review_reason, created_at, updated_at
+		FROM %s
+		%s
+		ORDER BY frequency DESC, created_at ASC`, fullTableName(table), where), args...)
+	if err != nil {
+		return nil, fmt.Errorf("list target candidates: %w", err)
+	}
+	defer rows.Close()
+	candidates := make([]TargetCandidate, 0)
+	for rows.Next() {
+		var candidate TargetCandidate
+		var resolution, resolvedLabel, reviewReason sql.NullString
+		var createdAt, updatedAt time.Time
+		if err := rows.Scan(
+			&candidate.ID,
+			&candidate.TargetSetID,
+			&candidate.RawValue,
+			&candidate.Frequency,
+			&candidate.Status,
+			&resolution,
+			&resolvedLabel,
+			&reviewReason,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan target candidate: %w", err)
+		}
+		candidate.Resolution = resolution.String
+		candidate.ResolvedLabel = resolvedLabel.String
+		candidate.ReviewReason = reviewReason.String
+		candidate.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		candidate.UpdatedAt = updatedAt.UTC().Format(time.RFC3339)
+		candidates = append(candidates, candidate)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate target candidates: %w", err)
+	}
+	return candidates, nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ReviewTargetCandidates(
+	ctx context.Context,
+	sourceTable string,
+	targetSetID string,
+	actions []ReviewCandidateAction,
+) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin candidate review tx: %w", err)
+	}
+	defer tx.Rollback()
+	targetTable := qualifiedName{Schema: defaultSchema, Name: targetTableName}
+	candidateTable := qualifiedName{Schema: defaultSchema, Name: candidateTableName}
+	mappingTable, err := mappingTableNameFor(sourceTable)
+	if err != nil {
+		return err
+	}
+	if err := r.ensureTargetsTable(ctx, targetTable); err != nil {
+		return err
+	}
+	if err := r.ensureCandidatesTable(ctx, candidateTable); err != nil {
+		return err
+	}
+	if err := r.ensureMappingTable(ctx, mappingTable); err != nil {
+		return err
+	}
+	for _, action := range actions {
+		var rawValue string
+		if err := tx.QueryRowContext(ctx, fmt.Sprintf(
+			`SELECT raw_value FROM %s WHERE id = $1 AND target_set_id = $2`,
+			fullTableName(candidateTable),
+		), action.CandidateID, targetSetID).Scan(&rawValue); err != nil {
+			return fmt.Errorf("load candidate %s: %w", action.CandidateID, err)
+		}
+		switch action.Resolution {
+		case "add_as_label":
+			if _, err := tx.ExecContext(ctx, fmt.Sprintf(
+				`INSERT INTO %s (target_set_id, label, description, created_at, updated_at)
+				 VALUES ($1, $2, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+				 ON CONFLICT (target_set_id, label) DO UPDATE SET updated_at = CURRENT_TIMESTAMP`,
+				fullTableName(targetTable),
+			), targetSetID, action.Label); err != nil {
+				return fmt.Errorf("upsert target during review: %w", err)
+			}
+			if err := r.reviewCandidateMapping(
+				ctx,
+				tx,
+				mappingTable,
+				targetSetID,
+				rawValue,
+				action.Label,
+				MappingStatusMatched,
+			); err != nil {
+				return err
+			}
+		case "map_to_existing":
+			var exists int
+			if err := tx.QueryRowContext(ctx, fmt.Sprintf(
+				`SELECT COUNT(1) FROM %s WHERE target_set_id = $1 AND label = $2`,
+				fullTableName(targetTable),
+			), targetSetID, action.Label).Scan(&exists); err != nil {
+				return fmt.Errorf("check target exists: %w", err)
+			}
+			if exists == 0 {
+				return fmt.Errorf("target label %q not found in target_set %q", action.Label, targetSetID)
+			}
+			if err := r.reviewCandidateMapping(
+				ctx,
+				tx,
+				mappingTable,
+				targetSetID,
+				rawValue,
+				action.Label,
+				MappingStatusMatched,
+			); err != nil {
+				return err
+			}
+		case "reject_as_null":
+			if err := r.reviewCandidateMapping(
+				ctx,
+				tx,
+				mappingTable,
+				targetSetID,
+				rawValue,
+				"",
+				MappingStatusUnknownToNull,
+			); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("invalid candidate resolution %q", action.Resolution)
+		}
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(
+			`UPDATE %s
+			 SET status = 'resolved', resolution = $1, resolved_label = NULLIF($2, ''),
+			     review_reason = NULLIF($3, ''), resolved_at = CURRENT_TIMESTAMP,
+			     updated_at = CURRENT_TIMESTAMP
+			 WHERE id = $4`, fullTableName(candidateTable)),
+			action.Resolution, action.Label, action.ReviewReason, action.CandidateID); err != nil {
+			return fmt.Errorf("update target candidate review result: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit candidate review tx: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) BuildSourceRangeProcessRecords(
+	ctx context.Context,
+	req ExecuteRequest,
+	fields []PreparedField,
+) ([]processrecord.Record, error) {
+	sourceTable, err := parseQualifiedName(req.SourceTable)
+	if err != nil {
+		return nil, fmt.Errorf("parse source_table: %w", err)
+	}
+	selects := make([]string, 0, len(fields))
+	joins := make([]string, 0, len(fields))
+	for _, field := range fields {
+		alias := mappingTableAlias + field.Name
+		joins = append(joins, fmt.Sprintf(
+			`LEFT JOIN %s %s ON %s.target_set_id = %s AND %s.raw_value = %s.%s::text`,
+			fullTableName(qualifiedName{Schema: sourceTable.Schema, Name: mappingTableName}),
+			alias,
+			alias,
+			sqlStringLiteral(field.TargetSetID),
+			alias,
+			outputTableAlias,
+			quoteIdent(field.Name),
+		))
+		selects = append(selects, fmt.Sprintf(
+			`CASE
+				WHEN %s.%s IS NULL THEN FALSE
+				WHEN btrim(%s.%s::text) = '' THEN FALSE
+				WHEN %s.status = '%s' THEN TRUE
+				ELSE FALSE
+			 END`,
+			outputTableAlias,
+			quoteIdent(field.Name),
+			outputTableAlias,
+			quoteIdent(field.Name),
+			alias,
+			"needs_candidate",
+		))
+	}
+	where, args := buildRangeClause(
+		outputTableAlias+"."+quoteIdent(req.KeyField),
+		req.StartID,
+		req.EndID,
+		1,
+	)
+	reviewWhere, reviewArgs := buildWaitingTargetReviewClause(
+		req,
+		outputTableAlias+"."+quoteIdent(req.KeyField),
+		len(args)+1,
+	)
+	args = append(args, reviewArgs...)
+	query := fmt.Sprintf(`
+			SELECT %s.%s, %s
+			FROM %s %s
+			%s
+			WHERE %s.%s IS NOT NULL%s%s`,
+		outputTableAlias,
+		quoteIdent(req.KeyField),
+		strings.Join(selects, ", "),
+		fullTableName(sourceTable),
+		outputTableAlias,
+		strings.Join(joins, "\n"),
+		outputTableAlias,
+		quoteIdent(req.KeyField),
+		where,
+		reviewWhere,
+	)
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("build source range process records: %w", err)
+	}
+	defer rows.Close()
+	records := make([]processrecord.Record, 0)
+	for rows.Next() {
+		values := make([]any, 0, 1+len(fields))
+		var key int64
+		values = append(values, &key)
+		flags := make([]bool, len(fields))
+		for i := range flags {
+			values = append(values, &flags[i])
+		}
+		if err := rows.Scan(values...); err != nil {
+			return nil, fmt.Errorf("scan process record row: %w", err)
+		}
+		status := processrecord.StatusSucceeded
+		for _, flag := range flags {
+			if flag {
+				status = processrecord.StatusWaitingTargetReview
+				break
+			}
+		}
+		records = append(records, processrecord.Record{
+			SourceTable: req.SourceTable,
+			SourceKey:   key,
+			ProcessType: ProcessTypeEntityAlignment,
+			Status:      status,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate process record rows: %w", err)
+	}
+	return records, nil
+}
+
 // SelectDistinctRawValues 查询指定字段在范围内的非空不重复原始值。
 func (r *EntityAlignmentBusinessRepo) SelectDistinctRawValues(
 	ctx context.Context,
@@ -128,11 +527,17 @@ func (r *EntityAlignmentBusinessRepo) SelectDistinctRawValues(
 		req.EndID,
 		1,
 	)
+	reviewWhere, reviewArgs := buildWaitingTargetReviewClause(
+		req,
+		outputTableAlias+"."+quoteIdent(req.KeyField),
+		len(args)+1,
+	)
+	args = append(args, reviewArgs...)
 	query := fmt.Sprintf(`
 		SELECT DISTINCT %s.%s::text
 		FROM %s %s
 		WHERE %s.%s IS NOT NULL
-		  AND btrim(%s.%s::text) <> ''%s`,
+		  AND btrim(%s.%s::text) <> ''%s%s`,
 		outputTableAlias,
 		quoteIdent(fieldName),
 		fullTableName(sourceTable),
@@ -142,6 +547,7 @@ func (r *EntityAlignmentBusinessRepo) SelectDistinctRawValues(
 		outputTableAlias,
 		quoteIdent(fieldName),
 		where,
+		reviewWhere,
 	)
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -177,9 +583,9 @@ func (r *EntityAlignmentBusinessRepo) LoadExistingMappings(
 	if len(rawValues) == 0 {
 		return result, nil
 	}
-	placeholders := dollarList(3, len(rawValues))
-	args := make([]any, 0, len(rawValues)+2)
-	args = append(args, field.Name, field.TargetHash)
+	placeholders := dollarList(2, len(rawValues))
+	args := make([]any, 0, len(rawValues)+1)
+	args = append(args, field.TargetSetID)
 	for _, rawValue := range rawValues {
 		args = append(args, rawValue)
 	}
@@ -190,8 +596,7 @@ func (r *EntityAlignmentBusinessRepo) LoadExistingMappings(
 	query := fmt.Sprintf(`
 		SELECT raw_value, aligned_value, status
 		FROM %s
-		WHERE field_name = $1
-		  AND target_hash = $2
+		WHERE target_set_id = $1
 		  AND raw_value IN (%s)`,
 		fullTableName(mappingTable),
 		placeholders,
@@ -234,9 +639,9 @@ func (r *EntityAlignmentBusinessRepo) TouchMappings(
 	if len(rawValues) == 0 {
 		return nil
 	}
-	placeholders := dollarList(4, len(rawValues))
+	placeholders := dollarList(3, len(rawValues))
 	now := time.Now().UTC()
-	args := []any{now, field.Name, field.TargetHash}
+	args := []any{now, field.TargetSetID}
 	for _, rawValue := range rawValues {
 		args = append(args, rawValue)
 	}
@@ -247,8 +652,7 @@ func (r *EntityAlignmentBusinessRepo) TouchMappings(
 	query := fmt.Sprintf(`
 		UPDATE %s
 		SET last_used_at = $1, use_count = use_count + 1
-		WHERE field_name = $2
-		  AND target_hash = $3
+		WHERE target_set_id = $2
 		  AND raw_value IN (%s)`,
 		fullTableName(mappingTable),
 		placeholders,
@@ -272,15 +676,13 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 	}
 	now := time.Now().UTC()
 	valueRows := make([]string, 0, len(records))
-	args := make([]any, 0, len(records)*9)
+	args := make([]any, 0, len(records)*7)
 	argIndex := 1
 	for _, record := range records {
-		valueRows = append(valueRows, rowPlaceholders(argIndex, 9))
+		valueRows = append(valueRows, rowPlaceholders(argIndex, 7))
 		args = append(
 			args,
-			field.Name,
-			field.TargetHash,
-			field.TargetsJSON,
+			field.TargetSetID,
 			record.RawValue,
 			record.AlignedValue,
 			record.Status,
@@ -288,7 +690,7 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 			now,
 			now,
 		)
-		argIndex += 9
+		argIndex += 7
 	}
 	mappingTable, err := mappingTableNameFor(req.SourceTable)
 	if err != nil {
@@ -300,7 +702,6 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 		use_count = ` + fullTableName(mappingTable) + `.use_count + 1`
 	if overwrite {
 		conflictSet = `
-			targets_json = EXCLUDED.targets_json,
 			aligned_value = EXCLUDED.aligned_value,
 			status = EXCLUDED.status,
 			last_used_at = EXCLUDED.last_used_at,
@@ -309,9 +710,7 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 	}
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
-			field_name,
-			target_hash,
-			targets_json,
+			target_set_id,
 			raw_value,
 			aligned_value,
 			status,
@@ -320,7 +719,7 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 			last_used_at
 		)
 		VALUES %s
-		ON CONFLICT (field_name, target_hash, raw_value) DO UPDATE
+		ON CONFLICT (target_set_id, raw_value) DO UPDATE
 		SET %s`,
 		fullTableName(mappingTable),
 		strings.Join(valueRows, ", "),
@@ -387,8 +786,14 @@ func (r *EntityAlignmentBusinessRepo) selectOutputKeyRange(
 		req.EndID,
 		1,
 	)
+	reviewWhere, reviewArgs := buildWaitingTargetReviewClause(
+		req,
+		outputTableAlias+"."+quoteIdent(req.KeyField),
+		len(args)+1,
+	)
+	args = append(args, reviewArgs...)
 	query := fmt.Sprintf(
-		`SELECT MIN(%s.%s), MAX(%s.%s) FROM %s %s WHERE %s.%s IS NOT NULL%s`,
+		`SELECT MIN(%s.%s), MAX(%s.%s) FROM %s %s WHERE %s.%s IS NOT NULL%s%s`,
 		outputTableAlias,
 		quoteIdent(req.KeyField),
 		outputTableAlias,
@@ -398,6 +803,7 @@ func (r *EntityAlignmentBusinessRepo) selectOutputKeyRange(
 		outputTableAlias,
 		quoteIdent(req.KeyField),
 		where,
+		reviewWhere,
 	)
 	var start sql.NullInt64
 	var end sql.NullInt64
@@ -440,13 +846,11 @@ func (r *EntityAlignmentBusinessRepo) writeOutputRowsRange(
 	for _, field := range fields {
 		alias := mappingTableAlias + field.Name
 		joins = append(joins, fmt.Sprintf(
-			`LEFT JOIN %s %s ON %s.field_name = %s AND %s.target_hash = %s AND %s.raw_value = %s.%s::text`,
+			`LEFT JOIN %s %s ON %s.target_set_id = %s AND %s.raw_value = %s.%s::text`,
 			fullTableName(mappingTable),
 			alias,
 			alias,
-			sqlStringLiteral(field.Name),
-			alias,
-			sqlStringLiteral(field.TargetHash),
+			sqlStringLiteral(field.TargetSetID),
 			alias,
 			outputTableAlias,
 			quoteIdent(field.Name),
@@ -472,10 +876,10 @@ func (r *EntityAlignmentBusinessRepo) writeOutputRowsRange(
 					CASE %s.status
 						WHEN '%s' THEN %s.aligned_value
 						WHEN '%s' THEN NULL
-						WHEN '%s' THEN %s.%s
-						ELSE %s.%s
+						WHEN '%s' THEN NULL
+						ELSE NULL
 					END
-				ELSE %s.%s
+				ELSE NULL
 			END AS %s`,
 			outputTableAlias,
 			quoteIdent(column.Name),
@@ -486,13 +890,7 @@ func (r *EntityAlignmentBusinessRepo) writeOutputRowsRange(
 			MappingStatusMatched,
 			alias,
 			MappingStatusUnknownToNull,
-			MappingStatusFallbackOriginal,
-			outputTableAlias,
-			quoteIdent(column.Name),
-			outputTableAlias,
-			quoteIdent(column.Name),
-			outputTableAlias,
-			quoteIdent(column.Name),
+			MappingStatusNeedsCandidate,
 			quoteIdent(column.Name),
 		))
 	}
@@ -502,12 +900,18 @@ func (r *EntityAlignmentBusinessRepo) writeOutputRowsRange(
 		&page.End,
 		1,
 	)
+	reviewWhere, reviewArgs := buildWaitingTargetReviewClause(
+		req,
+		outputTableAlias+"."+quoteIdent(req.KeyField),
+		len(args)+1,
+	)
+	args = append(args, reviewArgs...)
 	query := fmt.Sprintf(`
 		INSERT INTO %s (%s)
 		SELECT %s
 		FROM %s %s
 		%s
-		WHERE TRUE%s
+		WHERE TRUE%s%s
 		ON CONFLICT (%s) DO UPDATE
 		SET %s`,
 		fullTableName(outputTable),
@@ -517,6 +921,7 @@ func (r *EntityAlignmentBusinessRepo) writeOutputRowsRange(
 		outputTableAlias,
 		strings.Join(joins, "\n"),
 		where,
+		reviewWhere,
 		quoteIdent(req.KeyField),
 		strings.Join(updates, ", "),
 	)
@@ -592,9 +997,7 @@ func (r *EntityAlignmentBusinessRepo) ensureMappingTable(
 	createSQL := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
 			id BIGSERIAL PRIMARY KEY,
-			field_name TEXT NOT NULL,
-			target_hash TEXT NOT NULL,
-			targets_json JSONB NOT NULL,
+			target_set_id TEXT NOT NULL,
 			raw_value TEXT NOT NULL,
 			aligned_value TEXT,
 			status TEXT NOT NULL,
@@ -608,20 +1011,126 @@ func (r *EntityAlignmentBusinessRepo) ensureMappingTable(
 		fullTableName(name),
 		MappingStatusMatched,
 		MappingStatusUnknownToNull,
-		MappingStatusFallbackOriginal,
+		MappingStatusNeedsCandidate,
 	)
 	if _, err := r.db.ExecContext(ctx, createSQL); err != nil {
 		return fmt.Errorf("create mapping table: %w", err)
 	}
+	if err := r.ensureMappingTargetSetColumn(ctx, name); err != nil {
+		return err
+	}
 	indexSQL := fmt.Sprintf(
-		`CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (field_name, target_hash, raw_value)`,
-		quoteIdent(name.Name+"_uniq"),
+		`CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (target_set_id, raw_value)`,
+		quoteIdent(name.Name+"_target_set_raw_value_uniq"),
 		fullTableName(name),
 	)
 	if _, err := r.db.ExecContext(ctx, indexSQL); err != nil {
 		return fmt.Errorf("create mapping index: %w", err)
 	}
 	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ensureTargetsTable(
+	ctx context.Context,
+	name qualifiedName,
+) error {
+	createSQL := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s (
+			target_set_id TEXT NOT NULL,
+			label TEXT NOT NULL,
+			description TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (target_set_id, label)
+		)`, fullTableName(name))
+	if _, err := r.db.ExecContext(ctx, createSQL); err != nil {
+		return fmt.Errorf("create targets table: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ensureCandidatesTable(
+	ctx context.Context,
+	name qualifiedName,
+) error {
+	createSQL := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS %s (
+			id TEXT PRIMARY KEY,
+			target_set_id TEXT NOT NULL,
+			raw_value TEXT NOT NULL,
+			frequency BIGINT NOT NULL DEFAULT 1,
+			status TEXT NOT NULL DEFAULT 'pending',
+			resolution TEXT,
+			resolved_label TEXT,
+			review_reason TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			resolved_at TIMESTAMPTZ,
+			UNIQUE (target_set_id, raw_value)
+		)`, fullTableName(name))
+	if _, err := r.db.ExecContext(ctx, createSQL); err != nil {
+		return fmt.Errorf("create candidates table: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ensureMappingTargetSetColumn(
+	ctx context.Context,
+	name qualifiedName,
+) error {
+	if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+		`ALTER TABLE %s ADD COLUMN IF NOT EXISTS target_set_id TEXT`,
+		fullTableName(name),
+	)); err != nil {
+		return fmt.Errorf("add mapping target_set_id column: %w", err)
+	}
+	fieldNameExists, err := r.columnExists(ctx, name, "field_name")
+	if err != nil {
+		return err
+	}
+	if fieldNameExists {
+		if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+			`UPDATE %s SET target_set_id = field_name WHERE target_set_id IS NULL`,
+			fullTableName(name),
+		)); err != nil {
+			return fmt.Errorf("backfill mapping target_set_id: %w", err)
+		}
+	}
+	if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+		`ALTER TABLE %s ALTER COLUMN target_set_id SET NOT NULL`,
+		fullTableName(name),
+	)); err != nil {
+		return fmt.Errorf("set mapping target_set_id not null: %w", err)
+	}
+	for _, column := range []string{"field_name", "target_hash", "targets_json"} {
+		if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+			`ALTER TABLE %s DROP COLUMN IF EXISTS %s`,
+			fullTableName(name),
+			quoteIdent(column),
+		)); err != nil {
+			return fmt.Errorf("drop mapping %s column: %w", column, err)
+		}
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) columnExists(
+	ctx context.Context,
+	name qualifiedName,
+	column string,
+) (bool, error) {
+	var count int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(1)
+		FROM information_schema.columns
+		WHERE table_schema = $1 AND table_name = $2 AND column_name = $3`,
+		name.Schema,
+		name.Name,
+		column,
+	).Scan(&count); err != nil {
+		return false, fmt.Errorf("check column exists: %w", err)
+	}
+	return count > 0, nil
 }
 
 func (r *EntityAlignmentBusinessRepo) ensureOutputTable(
@@ -814,6 +1323,30 @@ func buildRangeClause(
 	return " AND " + strings.Join(clauses, " AND "), args
 }
 
+// buildWaitingTargetReviewClause 只保留上次实体对齐等待 target 审核的源数据。
+func buildWaitingTargetReviewClause(
+	req ExecuteRequest,
+	keyExpr string,
+	startIndex int,
+) (string, []any) {
+	if !req.OnlyWaitingTargetReview {
+		return "", nil
+	}
+	clause := fmt.Sprintf(` AND EXISTS (
+		SELECT 1
+		FROM data_process_records dpr
+		WHERE dpr.source_table = $%d
+		  AND dpr.source_key = %s
+		  AND dpr.process_type = $%d
+		  AND dpr.status = $%d
+	)`, startIndex, keyExpr, startIndex+1, startIndex+2)
+	return clause, []any{
+		req.SourceTable,
+		ProcessTypeEntityAlignment,
+		processrecord.StatusWaitingTargetReview,
+	}
+}
+
 // mappingTableNameFor 从源表名推导 mapping 表的 schema 和固定名称。
 func mappingTableNameFor(sourceTable string) (qualifiedName, error) {
 	sourceName, err := parseQualifiedName(sourceTable)
@@ -862,6 +1395,47 @@ func nullableString(v sql.NullString) *string {
 		return nil
 	}
 	return &v.String
+}
+
+func nullableStringValue(v string) any {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	return v
+}
+
+func generateCandidateID() string {
+	return fmt.Sprintf("candidate_%d", time.Now().UnixNano())
+}
+
+func (r *EntityAlignmentBusinessRepo) reviewCandidateMapping(
+	ctx context.Context,
+	tx *sql.Tx,
+	mappingTable qualifiedName,
+	targetSetID string,
+	rawValue string,
+	alignedValue string,
+	status string,
+) error {
+	var nullableAligned any
+	if alignedValue != "" {
+		nullableAligned = alignedValue
+	}
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(
+		`INSERT INTO %s (
+			target_set_id, raw_value, aligned_value, status,
+			created_at, updated_at, last_used_at
+		 ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		 ON CONFLICT (target_set_id, raw_value) DO UPDATE
+		 SET aligned_value = EXCLUDED.aligned_value,
+		     status = EXCLUDED.status,
+			 updated_at = CURRENT_TIMESTAMP,
+			 last_used_at = CURRENT_TIMESTAMP`,
+		fullTableName(mappingTable),
+	), targetSetID, rawValue, nullableAligned, status); err != nil {
+		return fmt.Errorf("review candidate mapping upsert: %w", err)
+	}
+	return nil
 }
 
 var _ BusinessRepository = (*EntityAlignmentBusinessRepo)(nil)

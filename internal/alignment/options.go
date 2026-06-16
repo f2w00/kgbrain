@@ -15,3 +15,11 @@ func WithExecutor(executor Executor) Option {
 		s.executor = executor
 	}
 }
+
+// WithBusinessAccess 为实体对齐服务注入直接访问业务库所需依赖。
+func WithBusinessAccess(dbOpener BusinessDBOpener, repoFactory BusinessRepositoryFactory) Option {
+	return func(s *Service) {
+		s.dbOpener = dbOpener
+		s.repoFactory = repoFactory
+	}
+}

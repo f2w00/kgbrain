@@ -83,6 +83,41 @@ type BusinessRepository interface {
 		records []MappingRecord,
 		overwrite bool,
 	) error
+	LoadTargetLabels(
+		ctx context.Context,
+		targetSetID string,
+	) ([]TargetDefinition, error)
+	UpsertTargets(
+		ctx context.Context,
+		targetSetID string,
+		targets []TargetDefinition,
+	) error
+	DeleteTarget(
+		ctx context.Context,
+		targetSetID string,
+		label string,
+	) error
+	UpsertTargetCandidates(
+		ctx context.Context,
+		targetSetID string,
+		records []MappingRecord,
+	) error
+	ListTargetCandidates(
+		ctx context.Context,
+		targetSetID string,
+		status string,
+	) ([]TargetCandidate, error)
+	ReviewTargetCandidates(
+		ctx context.Context,
+		sourceTable string,
+		targetSetID string,
+		actions []ReviewCandidateAction,
+	) error
+	BuildSourceRangeProcessRecords(
+		ctx context.Context,
+		req ExecuteRequest,
+		fields []PreparedField,
+	) ([]processrecord.Record, error)
 	WriteOutputRows(
 		ctx context.Context,
 		req ExecuteRequest,
@@ -93,6 +128,7 @@ type BusinessRepository interface {
 
 // ProcessRecorder 记录业务数据在实体对齐处理上的最终状态。
 type ProcessRecorder interface {
+	UpsertMany(ctx context.Context, records []processrecord.Record) error
 	UpsertSourceRange(ctx context.Context, record processrecord.SourceRangeRecord) error
 }
 

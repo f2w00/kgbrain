@@ -24,6 +24,21 @@ class EntityAlignmentService(Protocol):
     async def get_entity_alignment_job(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
+    async def list_alignment_targets(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def upsert_alignment_targets(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def delete_alignment_target(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def list_target_candidates(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def review_target_candidates(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
 
 class EntityAlignmentServiceASGIApplication(ConnectASGIApplication[EntityAlignmentService]):
     def __init__(self, service: EntityAlignmentService | AsyncGenerator[EntityAlignmentService], *, interceptors: Iterable[Interceptor]=(), read_max_bytes: int | None = None, compressions: Iterable[Compression] | None = None, codecs: Iterable[Codec] | None = None) -> None:
@@ -49,6 +64,56 @@ class EntityAlignmentServiceASGIApplication(ConnectASGIApplication[EntityAlignme
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=svc.get_entity_alignment_job,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ListAlignmentTargets": Endpoint.unary(
+                    method=MethodInfo(
+                        name="ListAlignmentTargets",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.list_alignment_targets,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/UpsertAlignmentTargets": Endpoint.unary(
+                    method=MethodInfo(
+                        name="UpsertAlignmentTargets",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.upsert_alignment_targets,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/DeleteAlignmentTarget": Endpoint.unary(
+                    method=MethodInfo(
+                        name="DeleteAlignmentTarget",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.delete_alignment_target,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ListTargetCandidates": Endpoint.unary(
+                    method=MethodInfo(
+                        name="ListTargetCandidates",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.list_target_candidates,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ReviewTargetCandidates": Endpoint.unary(
+                    method=MethodInfo(
+                        name="ReviewTargetCandidates",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.review_target_candidates,
                 ),
             },
             interceptors=interceptors,
@@ -104,6 +169,106 @@ class EntityAlignmentServiceClient(ConnectClient):
             timeout_ms=timeout_ms,
         )
 
+    async def list_alignment_targets(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ListAlignmentTargets",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def upsert_alignment_targets(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="UpsertAlignmentTargets",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def delete_alignment_target(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DeleteAlignmentTarget",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def list_target_candidates(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ListTargetCandidates",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def review_target_candidates(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ReviewTargetCandidates",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
 
 
 
@@ -112,6 +277,16 @@ class EntityAlignmentServiceSync(Protocol):
     def start_entity_alignment(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.StartEntityAlignmentRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.StartEntityAlignmentResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def get_entity_alignment_job(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def list_alignment_targets(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def upsert_alignment_targets(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def delete_alignment_target(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def list_target_candidates(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def review_target_candidates(self, request: kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
 
@@ -138,6 +313,56 @@ class EntityAlignmentServiceWSGIApplication(ConnectWSGIApplication):
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=service.get_entity_alignment_job,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ListAlignmentTargets": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="ListAlignmentTargets",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.list_alignment_targets,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/UpsertAlignmentTargets": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="UpsertAlignmentTargets",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.upsert_alignment_targets,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/DeleteAlignmentTarget": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="DeleteAlignmentTarget",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.delete_alignment_target,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ListTargetCandidates": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="ListTargetCandidates",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.list_target_candidates,
+                ),
+                "/kgbrain.v1.EntityAlignmentService/ReviewTargetCandidates": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="ReviewTargetCandidates",
+                        service_name="kgbrain.v1.EntityAlignmentService",
+                        input=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+                        output=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.review_target_candidates,
                 ),
             },
             interceptors=interceptors,
@@ -187,6 +412,106 @@ class EntityAlignmentServiceClientSync(ConnectClientSync):
                 service_name="kgbrain.v1.EntityAlignmentService",
                 input=kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobRequest,
                 output=kgbrain_dot_v1_dot_entity__alignment__pb2.GetEntityAlignmentJobResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def list_alignment_targets(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ListAlignmentTargets",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListAlignmentTargetsResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def upsert_alignment_targets(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="UpsertAlignmentTargets",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.UpsertAlignmentTargetsResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def delete_alignment_target(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DeleteAlignmentTarget",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.DeleteAlignmentTargetResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def list_target_candidates(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ListTargetCandidates",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ListTargetCandidatesResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def review_target_candidates(
+        self,
+        request: kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="ReviewTargetCandidates",
+                service_name="kgbrain.v1.EntityAlignmentService",
+                input=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesRequest,
+                output=kgbrain_dot_v1_dot_entity__alignment__pb2.ReviewTargetCandidatesResponse,
                 idempotency_level=IdempotencyLevel.UNKNOWN,
             ),
             headers=headers,

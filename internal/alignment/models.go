@@ -16,29 +16,30 @@ const (
 
 // Job 记录一次实体对齐异步任务的基础状态。
 type Job struct {
-	JobID              string
-	LLMResourceID      string
-	DatabaseResourceID string
-	SourceTable        string
-	OutputTable        string
-	Status             string
-	ReuseMapping       bool
-	KeyField           string
-	StartID            *int64
-	EndID              *int64
-	Fields             []FieldConfig
-	CreatedAt          string
-	StartedAt          string
-	FinishedAt         string
-	ErrorMessage       string
+	JobID                   string
+	LLMResourceID           string
+	DatabaseResourceID      string
+	SourceTable             string
+	OutputTable             string
+	Status                  string
+	ReuseMapping            bool
+	KeyField                string
+	StartID                 *int64
+	EndID                   *int64
+	OnlyWaitingTargetReview bool
+	Fields                  []FieldConfig
+	CreatedAt               string
+	StartedAt               string
+	FinishedAt              string
+	ErrorMessage            string
 }
 
 // FieldConfig 保存 job 启动时的字段配置快照，供后台执行时恢复请求上下文。
 type FieldConfig struct {
-	Name             string   `json:"name"`
-	Targets          []string `json:"targets"`
-	BatchSize        *int     `json:"batch_size,omitempty"`
-	BatchConcurrency *int     `json:"batch_concurrency,omitempty"`
+	Name             string `json:"name"`
+	TargetSetID      string `json:"target_set_id,omitempty"`
+	BatchSize        *int   `json:"batch_size,omitempty"`
+	BatchConcurrency *int   `json:"batch_concurrency,omitempty"`
 }
 
 // ColumnMeta 描述业务表中一个列的最小元数据。
@@ -51,6 +52,7 @@ type ColumnMeta struct {
 // PreparedField 保存领域层整理后的字段处理上下文。
 type PreparedField struct {
 	Name        string
+	TargetSetID string
 	Targets     []string
 	TargetsJSON string
 	TargetHash  string
@@ -62,6 +64,32 @@ type MappingRecord struct {
 	RawValue     string
 	AlignedValue *string
 	Status       string
+}
+
+type TargetDefinition struct {
+	TargetSetID string
+	Label       string
+	Description string
+}
+
+type TargetCandidate struct {
+	ID            string
+	TargetSetID   string
+	RawValue      string
+	Frequency     int64
+	Status        string
+	Resolution    string
+	ResolvedLabel string
+	ReviewReason  string
+	CreatedAt     string
+	UpdatedAt     string
+}
+
+type ReviewCandidateAction struct {
+	CandidateID  string
+	Resolution   string
+	Label        string
+	ReviewReason string
 }
 
 type llmMappingRecord struct {

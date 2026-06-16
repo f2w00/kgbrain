@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!kgbrain/v1/entity_alignment.proto\x12\nkgbrain.v1\"\xa4\x03\n\x1bStartEntityAlignmentRequest\x12&\n\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x02 \x01(\tR\x12\x64\x61tabaseResourceId\x12!\n\x0csource_table\x18\x03 \x01(\tR\x0bsourceTable\x12!\n\x0coutput_table\x18\x04 \x01(\tR\x0boutputTable\x12(\n\rreuse_mapping\x18\x05 \x01(\x08H\x00R\x0creuseMapping\x88\x01\x01\x12\x38\n\x06\x66ields\x18\x06 \x03(\x0b\x32 .kgbrain.v1.EntityAlignmentFieldR\x06\x66ields\x12\x1b\n\tkey_field\x18\x07 \x01(\tR\x08keyField\x12\x1e\n\x08start_id\x18\x08 \x01(\x03H\x01R\x07startId\x88\x01\x01\x12\x1a\n\x06\x65nd_id\x18\t \x01(\x03H\x02R\x05\x65ndId\x88\x01\x01\x42\x10\n\x0e_reuse_mappingB\x0b\n\t_start_idB\t\n\x07_end_id\"\xbf\x01\n\x14\x45ntityAlignmentField\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n\x07targets\x18\x02 \x03(\tR\x07targets\x12\"\n\nbatch_size\x18\x03 \x01(\x05H\x00R\tbatchSize\x88\x01\x01\x12\x30\n\x11\x62\x61tch_concurrency\x18\x04 \x01(\x05H\x01R\x10\x62\x61tchConcurrency\x88\x01\x01\x42\r\n\x0b_batch_sizeB\x14\n\x12_batch_concurrency\"s\n\x1cStartEntityAlignmentResponse\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12<\n\x06status\x18\x02 \x01(\x0e\x32$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\"5\n\x1cGetEntityAlignmentJobRequest\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xb3\x03\n\x1dGetEntityAlignmentJobResponse\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12&\n\x0fllm_resource_id\x18\x02 \x01(\tR\rllmResourceId\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x03 \x01(\tR\x12\x64\x61tabaseResourceId\x12!\n\x0csource_table\x18\x04 \x01(\tR\x0bsourceTable\x12!\n\x0coutput_table\x18\x05 \x01(\tR\x0boutputTable\x12<\n\x06status\x18\x06 \x01(\x0e\x32$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\x12#\n\rerror_message\x18\x07 \x01(\tR\x0c\x65rrorMessage\x12&\n\x0f\x63reated_at_unix\x18\x08 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fstarted_at_unix\x18\t \x01(\x03R\rstartedAtUnix\x12(\n\x10\x66inished_at_unix\x18\n \x01(\x03R\x0e\x66inishedAtUnix*\xec\x01\n\x18\x45ntityAlignmentJobStatus\x12+\n\'ENTITY_ALIGNMENT_JOB_STATUS_UNSPECIFIED\x10\x00\x12\'\n#ENTITY_ALIGNMENT_JOB_STATUS_PENDING\x10\x01\x12\'\n#ENTITY_ALIGNMENT_JOB_STATUS_RUNNING\x10\x02\x12)\n%ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED\x10\x03\x12&\n\"ENTITY_ALIGNMENT_JOB_STATUS_FAILED\x10\x04\x32\xf1\x01\n\x16\x45ntityAlignmentService\x12i\n\x14StartEntityAlignment\x12\'.kgbrain.v1.StartEntityAlignmentRequest\x1a(.kgbrain.v1.StartEntityAlignmentResponse\x12l\n\x15GetEntityAlignmentJob\x12(.kgbrain.v1.GetEntityAlignmentJobRequest\x1a).kgbrain.v1.GetEntityAlignmentJobResponseB+Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n!kgbrain/v1/entity_alignment.proto\x12\nkgbrain.v1\"\x85\x04\n\x1bStartEntityAlignmentRequest\x12&\n\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x02 \x01(\tR\x12\x64\x61tabaseResourceId\x12!\n\x0csource_table\x18\x03 \x01(\tR\x0bsourceTable\x12!\n\x0coutput_table\x18\x04 \x01(\tR\x0boutputTable\x12(\n\rreuse_mapping\x18\x05 \x01(\x08H\x00R\x0creuseMapping\x88\x01\x01\x12\x38\n\x06\x66ields\x18\x06 \x03(\x0b\x32 .kgbrain.v1.EntityAlignmentFieldR\x06\x66ields\x12\x1b\n\tkey_field\x18\x07 \x01(\tR\x08keyField\x12\x1e\n\x08start_id\x18\x08 \x01(\x03H\x01R\x07startId\x88\x01\x01\x12\x1a\n\x06\x65nd_id\x18\t \x01(\x03H\x02R\x05\x65ndId\x88\x01\x01\x12@\n\x1aonly_waiting_target_review\x18\n \x01(\x08H\x03R\x17onlyWaitingTargetReview\x88\x01\x01\x42\x10\n\x0e_reuse_mappingB\x0b\n\t_start_idB\t\n\x07_end_idB\x1d\n\x1b_only_waiting_target_review\"\xe0\x01\n\x14\x45ntityAlignmentField\x12\x12\n\x04name\x18\x01 \x01(\tR\x04name\x12\'\n\rtarget_set_id\x18\x02 \x01(\tH\x00R\x0btargetSetId\x88\x01\x01\x12\"\n\nbatch_size\x18\x03 \x01(\x05H\x01R\tbatchSize\x88\x01\x01\x12\x30\n\x11\x62\x61tch_concurrency\x18\x04 \x01(\x05H\x02R\x10\x62\x61tchConcurrency\x88\x01\x01\x42\x10\n\x0e_target_set_idB\r\n\x0b_batch_sizeB\x14\n\x12_batch_concurrency\"s\n\x1bListAlignmentTargetsRequest\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x01 \x01(\tR\x12\x64\x61tabaseResourceId\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\"m\n\x0f\x41lignmentTarget\x12\"\n\rtarget_set_id\x18\x01 \x01(\tR\x0btargetSetId\x12\x14\n\x05label\x18\x02 \x01(\tR\x05label\x12 \n\x0b\x64\x65scription\x18\x03 \x01(\tR\x0b\x64\x65scription\"U\n\x1cListAlignmentTargetsResponse\x12\x35\n\x07targets\x18\x01 \x03(\x0b\x32\x1b.kgbrain.v1.AlignmentTargetR\x07targets\"\xac\x01\n\x1dUpsertAlignmentTargetsRequest\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x01 \x01(\tR\x12\x64\x61tabaseResourceId\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\x12\x35\n\x07targets\x18\x03 \x03(\x0b\x32\x1b.kgbrain.v1.AlignmentTargetR\x07targets\" \n\x1eUpsertAlignmentTargetsResponse\"\x8a\x01\n\x1c\x44\x65leteAlignmentTargetRequest\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x01 \x01(\tR\x12\x64\x61tabaseResourceId\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\"\x1f\n\x1d\x44\x65leteAlignmentTargetResponse\"\x9e\x03\n\x0fTargetCandidate\x12\x0e\n\x02id\x18\x01 \x01(\tR\x02id\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\x12\x1b\n\traw_value\x18\x03 \x01(\tR\x08rawValue\x12\x1c\n\tfrequency\x18\x04 \x01(\x03R\tfrequency\x12\x39\n\x06status\x18\x05 \x01(\x0e\x32!.kgbrain.v1.TargetCandidateStatusR\x06status\x12\x45\n\nresolution\x18\x06 \x01(\x0e\x32%.kgbrain.v1.TargetCandidateResolutionR\nresolution\x12%\n\x0eresolved_label\x18\x07 \x01(\tR\rresolvedLabel\x12#\n\rreview_reason\x18\x08 \x01(\tR\x0creviewReason\x12&\n\x0f\x63reated_at_unix\x18\t \x01(\x03R\rcreatedAtUnix\x12&\n\x0fupdated_at_unix\x18\n \x01(\x03R\rupdatedAtUnix\"\xbe\x01\n\x1bListTargetCandidatesRequest\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x01 \x01(\tR\x12\x64\x61tabaseResourceId\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\x12>\n\x06status\x18\x03 \x01(\x0e\x32!.kgbrain.v1.TargetCandidateStatusH\x00R\x06status\x88\x01\x01\x42\t\n\x07_status\"[\n\x1cListTargetCandidatesResponse\x12;\n\ncandidates\x18\x01 \x03(\x0b\x32\x1b.kgbrain.v1.TargetCandidateR\ncandidates\"\xc2\x01\n\x1bReviewTargetCandidateAction\x12!\n\x0c\x63\x61ndidate_id\x18\x01 \x01(\tR\x0b\x63\x61ndidateId\x12\x45\n\nresolution\x18\x02 \x01(\x0e\x32%.kgbrain.v1.TargetCandidateResolutionR\nresolution\x12\x14\n\x05label\x18\x03 \x01(\tR\x05label\x12#\n\rreview_reason\x18\x04 \x01(\tR\x0creviewReason\"\xdb\x01\n\x1dReviewTargetCandidatesRequest\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x01 \x01(\tR\x12\x64\x61tabaseResourceId\x12\"\n\rtarget_set_id\x18\x02 \x01(\tR\x0btargetSetId\x12\x41\n\x07\x61\x63tions\x18\x03 \x03(\x0b\x32\'.kgbrain.v1.ReviewTargetCandidateActionR\x07\x61\x63tions\x12!\n\x0csource_table\x18\x04 \x01(\tR\x0bsourceTable\" \n\x1eReviewTargetCandidatesResponse\"s\n\x1cStartEntityAlignmentResponse\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12<\n\x06status\x18\x02 \x01(\x0e\x32$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\"5\n\x1cGetEntityAlignmentJobRequest\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xb3\x03\n\x1dGetEntityAlignmentJobResponse\x12\x15\n\x06job_id\x18\x01 \x01(\tR\x05jobId\x12&\n\x0fllm_resource_id\x18\x02 \x01(\tR\rllmResourceId\x12\x30\n\x14\x64\x61tabase_resource_id\x18\x03 \x01(\tR\x12\x64\x61tabaseResourceId\x12!\n\x0csource_table\x18\x04 \x01(\tR\x0bsourceTable\x12!\n\x0coutput_table\x18\x05 \x01(\tR\x0boutputTable\x12<\n\x06status\x18\x06 \x01(\x0e\x32$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\x12#\n\rerror_message\x18\x07 \x01(\tR\x0c\x65rrorMessage\x12&\n\x0f\x63reated_at_unix\x18\x08 \x01(\x03R\rcreatedAtUnix\x12&\n\x0fstarted_at_unix\x18\t \x01(\x03R\rstartedAtUnix\x12(\n\x10\x66inished_at_unix\x18\n \x01(\x03R\x0e\x66inishedAtUnix*\x8b\x01\n\x15TargetCandidateStatus\x12\'\n#TARGET_CANDIDATE_STATUS_UNSPECIFIED\x10\x00\x12#\n\x1fTARGET_CANDIDATE_STATUS_PENDING\x10\x01\x12$\n TARGET_CANDIDATE_STATUS_RESOLVED\x10\x02*\xd7\x01\n\x19TargetCandidateResolution\x12+\n\'TARGET_CANDIDATE_RESOLUTION_UNSPECIFIED\x10\x00\x12,\n(TARGET_CANDIDATE_RESOLUTION_ADD_AS_LABEL\x10\x01\x12/\n+TARGET_CANDIDATE_RESOLUTION_MAP_TO_EXISTING\x10\x02\x12.\n*TARGET_CANDIDATE_RESOLUTION_REJECT_AS_NULL\x10\x03*\xec\x01\n\x18\x45ntityAlignmentJobStatus\x12+\n\'ENTITY_ALIGNMENT_JOB_STATUS_UNSPECIFIED\x10\x00\x12\'\n#ENTITY_ALIGNMENT_JOB_STATUS_PENDING\x10\x01\x12\'\n#ENTITY_ALIGNMENT_JOB_STATUS_RUNNING\x10\x02\x12)\n%ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED\x10\x03\x12&\n\"ENTITY_ALIGNMENT_JOB_STATUS_FAILED\x10\x04\x32\x97\x06\n\x16\x45ntityAlignmentService\x12i\n\x14StartEntityAlignment\x12\'.kgbrain.v1.StartEntityAlignmentRequest\x1a(.kgbrain.v1.StartEntityAlignmentResponse\x12l\n\x15GetEntityAlignmentJob\x12(.kgbrain.v1.GetEntityAlignmentJobRequest\x1a).kgbrain.v1.GetEntityAlignmentJobResponse\x12i\n\x14ListAlignmentTargets\x12\'.kgbrain.v1.ListAlignmentTargetsRequest\x1a(.kgbrain.v1.ListAlignmentTargetsResponse\x12o\n\x16UpsertAlignmentTargets\x12).kgbrain.v1.UpsertAlignmentTargetsRequest\x1a*.kgbrain.v1.UpsertAlignmentTargetsResponse\x12l\n\x15\x44\x65leteAlignmentTarget\x12(.kgbrain.v1.DeleteAlignmentTargetRequest\x1a).kgbrain.v1.DeleteAlignmentTargetResponse\x12i\n\x14ListTargetCandidates\x12\'.kgbrain.v1.ListTargetCandidatesRequest\x1a(.kgbrain.v1.ListTargetCandidatesResponse\x12o\n\x16ReviewTargetCandidates\x12).kgbrain.v1.ReviewTargetCandidatesRequest\x1a*.kgbrain.v1.ReviewTargetCandidatesResponseB+Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,18 +32,48 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'kgbrain.v1.entity_alignment
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1'
-  _globals['_ENTITYALIGNMENTJOBSTATUS']._serialized_start=1277
-  _globals['_ENTITYALIGNMENTJOBSTATUS']._serialized_end=1513
+  _globals['_TARGETCANDIDATESTATUS']._serialized_start=3261
+  _globals['_TARGETCANDIDATESTATUS']._serialized_end=3400
+  _globals['_TARGETCANDIDATERESOLUTION']._serialized_start=3403
+  _globals['_TARGETCANDIDATERESOLUTION']._serialized_end=3618
+  _globals['_ENTITYALIGNMENTJOBSTATUS']._serialized_start=3621
+  _globals['_ENTITYALIGNMENTJOBSTATUS']._serialized_end=3857
   _globals['_STARTENTITYALIGNMENTREQUEST']._serialized_start=50
-  _globals['_STARTENTITYALIGNMENTREQUEST']._serialized_end=470
-  _globals['_ENTITYALIGNMENTFIELD']._serialized_start=473
-  _globals['_ENTITYALIGNMENTFIELD']._serialized_end=664
-  _globals['_STARTENTITYALIGNMENTRESPONSE']._serialized_start=666
-  _globals['_STARTENTITYALIGNMENTRESPONSE']._serialized_end=781
-  _globals['_GETENTITYALIGNMENTJOBREQUEST']._serialized_start=783
-  _globals['_GETENTITYALIGNMENTJOBREQUEST']._serialized_end=836
-  _globals['_GETENTITYALIGNMENTJOBRESPONSE']._serialized_start=839
-  _globals['_GETENTITYALIGNMENTJOBRESPONSE']._serialized_end=1274
-  _globals['_ENTITYALIGNMENTSERVICE']._serialized_start=1516
-  _globals['_ENTITYALIGNMENTSERVICE']._serialized_end=1757
+  _globals['_STARTENTITYALIGNMENTREQUEST']._serialized_end=567
+  _globals['_ENTITYALIGNMENTFIELD']._serialized_start=570
+  _globals['_ENTITYALIGNMENTFIELD']._serialized_end=794
+  _globals['_LISTALIGNMENTTARGETSREQUEST']._serialized_start=796
+  _globals['_LISTALIGNMENTTARGETSREQUEST']._serialized_end=911
+  _globals['_ALIGNMENTTARGET']._serialized_start=913
+  _globals['_ALIGNMENTTARGET']._serialized_end=1022
+  _globals['_LISTALIGNMENTTARGETSRESPONSE']._serialized_start=1024
+  _globals['_LISTALIGNMENTTARGETSRESPONSE']._serialized_end=1109
+  _globals['_UPSERTALIGNMENTTARGETSREQUEST']._serialized_start=1112
+  _globals['_UPSERTALIGNMENTTARGETSREQUEST']._serialized_end=1284
+  _globals['_UPSERTALIGNMENTTARGETSRESPONSE']._serialized_start=1286
+  _globals['_UPSERTALIGNMENTTARGETSRESPONSE']._serialized_end=1318
+  _globals['_DELETEALIGNMENTTARGETREQUEST']._serialized_start=1321
+  _globals['_DELETEALIGNMENTTARGETREQUEST']._serialized_end=1459
+  _globals['_DELETEALIGNMENTTARGETRESPONSE']._serialized_start=1461
+  _globals['_DELETEALIGNMENTTARGETRESPONSE']._serialized_end=1492
+  _globals['_TARGETCANDIDATE']._serialized_start=1495
+  _globals['_TARGETCANDIDATE']._serialized_end=1909
+  _globals['_LISTTARGETCANDIDATESREQUEST']._serialized_start=1912
+  _globals['_LISTTARGETCANDIDATESREQUEST']._serialized_end=2102
+  _globals['_LISTTARGETCANDIDATESRESPONSE']._serialized_start=2104
+  _globals['_LISTTARGETCANDIDATESRESPONSE']._serialized_end=2195
+  _globals['_REVIEWTARGETCANDIDATEACTION']._serialized_start=2198
+  _globals['_REVIEWTARGETCANDIDATEACTION']._serialized_end=2392
+  _globals['_REVIEWTARGETCANDIDATESREQUEST']._serialized_start=2395
+  _globals['_REVIEWTARGETCANDIDATESREQUEST']._serialized_end=2614
+  _globals['_REVIEWTARGETCANDIDATESRESPONSE']._serialized_start=2616
+  _globals['_REVIEWTARGETCANDIDATESRESPONSE']._serialized_end=2648
+  _globals['_STARTENTITYALIGNMENTRESPONSE']._serialized_start=2650
+  _globals['_STARTENTITYALIGNMENTRESPONSE']._serialized_end=2765
+  _globals['_GETENTITYALIGNMENTJOBREQUEST']._serialized_start=2767
+  _globals['_GETENTITYALIGNMENTJOBREQUEST']._serialized_end=2820
+  _globals['_GETENTITYALIGNMENTJOBRESPONSE']._serialized_start=2823
+  _globals['_GETENTITYALIGNMENTJOBRESPONSE']._serialized_end=3258
+  _globals['_ENTITYALIGNMENTSERVICE']._serialized_start=3860
+  _globals['_ENTITYALIGNMENTSERVICE']._serialized_end=4651
 # @@protoc_insertion_point(module_scope)

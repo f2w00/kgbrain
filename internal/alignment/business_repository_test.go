@@ -63,6 +63,33 @@ func TestBuildRangeClause(t *testing.T) {
 	}
 }
 
+func TestBuildWaitingTargetReviewClause(t *testing.T) {
+	req := ExecuteRequest{SourceTable: "public.artifact_raw"}
+	gotSQL, gotArgs := buildWaitingTargetReviewClause(req, `s."id"`, 3)
+	if gotSQL != "" || gotArgs != nil {
+		t.Fatalf("expected empty clause, got %q %#v", gotSQL, gotArgs)
+	}
+
+	req.OnlyWaitingTargetReview = true
+	gotSQL, gotArgs = buildWaitingTargetReviewClause(req, `s."id"`, 3)
+	wantSQL := ` AND EXISTS (
+		SELECT 1
+		FROM data_process_records dpr
+		WHERE dpr.source_table = $3
+		  AND dpr.source_key = s."id"
+		  AND dpr.process_type = $4
+		  AND dpr.status = $5
+	)`
+	if gotSQL != wantSQL {
+		t.Fatalf("unexpected clause:\n%s", gotSQL)
+	}
+	if len(gotArgs) != 3 || gotArgs[0] != "public.artifact_raw" ||
+		gotArgs[1] != ProcessTypeEntityAlignment ||
+		gotArgs[2] != "waiting_target_review" {
+		t.Fatalf("unexpected args: %#v", gotArgs)
+	}
+}
+
 func TestBuildOutputPages(t *testing.T) {
 	tests := []struct {
 		name     string
