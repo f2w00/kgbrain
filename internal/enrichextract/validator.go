@@ -37,7 +37,7 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	if req.KeyField == "" {
 		return req, nil, &validationError{message: "key_field is required"}
 	}
-	if len(req.TargetExample) == 0 || req.TargetExample[0] == nil {
+	if req.TargetExample == nil {
 		return req, nil, &validationError{message: "target_example is required"}
 	}
 	if req.StartID != nil && req.EndID != nil && *req.StartID > *req.EndID {
@@ -49,7 +49,7 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 		return req, nil, err
 	}
 	req.OutputSchema = outputSchema
-	if err := validateTargetExampleFields(req.TargetExample[0], targetFields); err != nil {
+	if err := validateTargetExampleFields(req.TargetExample, targetFields); err != nil {
 		return req, nil, err
 	}
 	if len(targetFields) == 0 {

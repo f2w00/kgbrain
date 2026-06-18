@@ -307,16 +307,14 @@ with httpx.Client(base_url=BASE_URL) as http_client:
                     type=ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT,
                 ),
             ],
-            target_example=[
-                make_struct(
-                    {
-                        "standard_name": "青花瓷盘",
-                        "dynasty": "明代",
-                        "material": "瓷",
-                        "category": "瓷器",
-                    }
-                )
-            ],
+            target_example=make_struct(
+                {
+                    "standard_name": "青花瓷盘",
+                    "dynasty": "明代",
+                    "material": "瓷",
+                    "category": "瓷器",
+                }
+            ),
             priority_field_hints={
                 "dynasty": (
                     "朝代信息。优先从名称、标题、描述、年代、分类等字段中提取，"

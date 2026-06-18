@@ -61,7 +61,7 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		KeyField:              normalized.KeyField,
 		SourceJSONField:       normalized.SourceJSONField,
 		OutputSchema:          cloneOutputSchema(normalized.OutputSchema),
-		TargetExample:         cloneRows(normalized.TargetExample),
+		TargetExample:         cloneRow(normalized.TargetExample),
 		PriorityFieldHints:    cloneStringMap(normalized.PriorityFieldHints),
 		AutoCreateOutputTable: *normalized.AutoCreateOutputTable,
 		StartID:               normalized.StartID,
@@ -146,7 +146,7 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 		KeyField:              job.KeyField,
 		SourceJSONField:       job.SourceJSONField,
 		OutputSchema:          cloneOutputSchema(job.OutputSchema),
-		TargetExample:         cloneRows(job.TargetExample),
+		TargetExample:         cloneRow(job.TargetExample),
 		PriorityFieldHints:    cloneStringMap(job.PriorityFieldHints),
 		AutoCreateOutputTable: boolPtr(job.AutoCreateOutputTable),
 		StartID:               job.StartID,
@@ -198,15 +198,14 @@ func boolPtr(v bool) *bool {
 	return &v
 }
 
-// cloneRows 深拷贝 []map[string]any，避免意外修改共享底层数组。
-func cloneRows(rows []map[string]any) []map[string]any {
-	cloned := make([]map[string]any, 0, len(rows))
-	for _, row := range rows {
-		m := make(map[string]any, len(row))
-		for k, v := range row {
-			m[k] = v
-		}
-		cloned = append(cloned, m)
+// cloneRow 深拷贝 map[string]any，避免意外修改共享底层引用。
+func cloneRow(row map[string]any) map[string]any {
+	if row == nil {
+		return nil
+	}
+	cloned := make(map[string]any, len(row))
+	for k, v := range row {
+		cloned[k] = v
 	}
 	return cloned
 }

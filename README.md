@@ -69,7 +69,7 @@ grpcurl -plaintext -d '{
     {"name": "name", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"},
     {"name": "dynasty", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"}
   ],
-  "target_example": [{"name": "青花瓷盘", "dynasty": "明代"}],
+  "target_example": {"name": "青花瓷盘", "dynasty": "明代"},
   "auto_create_output_table": true,
   "priority_field_hints": {
     "dynasty": "朝代信息。优先从名称、标题、描述中提取，例如明代、清代。"

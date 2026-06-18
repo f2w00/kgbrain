@@ -111,7 +111,7 @@ message StartEnrichExtractRequest {
   string key_field = 5;
 
   repeated EnrichExtractOutputColumn output_schema = 6;
-  repeated google.protobuf.Struct target_example = 7;
+  google.protobuf.Struct target_example = 7;
 
   optional int64 start_id = 8;
   optional int64 end_id = 9;
@@ -147,7 +147,7 @@ enum EnrichExtractOutputColumnType {
 | `output_table` | string | 是 | 结果写入表，支持 `schema.table` |
 | `key_field` | string | 是 | 整数主键字段，用于分页、去重和 upsert |
 | `output_schema` | EnrichExtractOutputColumn[] | 是 | 输出字段结构，是校验、建表、写库和 prompt 字段列表的唯一来源 |
-| `target_example` | Struct[] | 是 | LLM 输出结构示例，字段集合必须与 `output_schema` 一致 |
+| `target_example` | Struct | 是 | LLM 输出结构示例，字段集合必须与 `output_schema` 一致 |
 | `start_id` | int64 | 否 | 基于 `key_field` 的处理范围下界 |
 | `end_id` | int64 | 否 | 基于 `key_field` 的处理范围上界 |
 | `concurrency` | int32 | 否 | LLM 逐行调用并发数，默认保守值 |
@@ -172,13 +172,11 @@ enum EnrichExtractOutputColumnType {
     {"name": "dynasty", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"},
     {"name": "material", "type": "ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT"}
   ],
-  "target_example": [
-    {
-      "standard_name": "青花瓷盘",
-      "dynasty": "明代",
-      "material": "瓷"
-    }
-  ],
+  "target_example": {
+    "standard_name": "青花瓷盘",
+    "dynasty": "明代",
+    "material": "瓷"
+  },
   "start_id": 1000,
   "end_id": 2000,
   "concurrency": 2,
@@ -204,7 +202,7 @@ enum EnrichExtractOutputColumnType {
 `target_example` 处理规则：
 
 - `target_example` 必填，用于展示 LLM 输出格式，不参与数据库 DDL 推断。
-- `target_example[0]` 的字段集合必须与 `output_schema.name` 完全一致。
+- `target_example` 的字段集合必须与 `output_schema.name` 完全一致。
 - 示例不应包含 `key_field`；如果 LLM 输出中包含 `key_field`，服务仍会删除。
 
 `priority_field_hints` 处理规则：
@@ -807,7 +805,16 @@ failed
 | `pending` | job 已创建，后台执行尚未开始 |
 | `running` | job 正在执行 |
 | `succeeded` | 所有候选行均处理成功 |
-| `partial` | 部分行失败，部分行成功 |
+| `partial` | 部分行失败，部分行成功；失败行已记录但不会在同一 job 内自动重试 |
+
+`partial` 处理语义：
+
+- `partial` 表示至少一行成功、至少一行失败。
+- 单行失败不会阻塞后续分页，`last_key` 仍会在当前 page 完成后推进。
+- 当前版本不提供失败行外部查询接口，也不提供只重试失败行的接口。
+- 如需重试失败行，可用相同参数重新提交新 job；`overwrite=false` 时已成功写入
+  `output_table` 的行会被过滤，未成功写入的行会再次进入处理。
+- 上层编排服务依赖 enrichextract 时，必须显式定义遇到 `partial` 后是否继续下游。
 | `failed` | 初始化失败、表校验失败或全部候选行失败 |
 
 行级错误表建议字段：

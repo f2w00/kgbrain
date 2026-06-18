@@ -10,7 +10,7 @@ type StartRequest struct {
 	KeyField              string
 	SourceJSONField       string
 	OutputSchema          []OutputColumn
-	TargetExample         []map[string]any
+	TargetExample         map[string]any
 	PriorityFieldHints    map[string]string
 	AutoCreateOutputTable *bool
 	StartID               *int64
