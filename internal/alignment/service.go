@@ -43,10 +43,6 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		return nil, err
 	}
 
-	reuseMapping := true
-	if req.ReuseMapping != nil {
-		reuseMapping = *req.ReuseMapping
-	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	job := &Job{
 		JobID:                   idgen.GenerateEntityAlignmentJobID(),
@@ -55,7 +51,6 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		SourceTable:             req.SourceTable,
 		OutputTable:             req.OutputTable,
 		Status:                  StatusPending,
-		ReuseMapping:            reuseMapping,
 		KeyField:                req.KeyField,
 		StartID:                 req.StartID,
 		EndID:                   req.EndID,
@@ -182,9 +177,6 @@ func (s *Service) ReviewCandidates(ctx context.Context, req ReviewCandidatesRequ
 	if targetSetID == "" {
 		return &validationError{message: "target_set_id is required"}
 	}
-	if strings.TrimSpace(req.SourceTable) == "" {
-		return &validationError{message: "source_table is required"}
-	}
 	if len(req.Actions) == 0 {
 		return &validationError{message: "actions is required"}
 	}
@@ -241,7 +233,6 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 			DatabaseResourceID:      job.DatabaseResourceID,
 			SourceTable:             job.SourceTable,
 			OutputTable:             job.OutputTable,
-			ReuseMapping:            &job.ReuseMapping,
 			KeyField:                job.KeyField,
 			StartID:                 job.StartID,
 			EndID:                   job.EndID,
@@ -291,9 +282,6 @@ func validateStartRequest(req StartRequest) error {
 		}
 		if field.BatchSize != nil && *field.BatchSize <= 0 {
 			return &validationError{message: "fields.batch_size must be greater than 0"}
-		}
-		if field.BatchConcurrency != nil && *field.BatchConcurrency <= 0 {
-			return &validationError{message: "fields.batch_concurrency must be greater than 0"}
 		}
 	}
 	return nil

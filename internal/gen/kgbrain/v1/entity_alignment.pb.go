@@ -197,8 +197,6 @@ type StartEntityAlignmentRequest struct {
 	SourceTable string `protobuf:"bytes,3,opt,name=source_table,json=sourceTable,proto3" json:"source_table,omitempty"`
 	// 输出表名，写入对齐结果。
 	OutputTable string `protobuf:"bytes,4,opt,name=output_table,json=outputTable,proto3" json:"output_table,omitempty"`
-	// 是否复用已有的映射关系，打开时将先读取已有的映射缓存。
-	ReuseMapping *bool `protobuf:"varint,5,opt,name=reuse_mapping,json=reuseMapping,proto3,oneof" json:"reuse_mapping,omitempty"`
 	// 需对齐的字段列表，每个字段可配置独立的目标值与批处理参数。
 	Fields []*EntityAlignmentField `protobuf:"bytes,6,rep,name=fields,proto3" json:"fields,omitempty"`
 	// 主键字段名。
@@ -271,13 +269,6 @@ func (x *StartEntityAlignmentRequest) GetOutputTable() string {
 	return ""
 }
 
-func (x *StartEntityAlignmentRequest) GetReuseMapping() bool {
-	if x != nil && x.ReuseMapping != nil {
-		return *x.ReuseMapping
-	}
-	return false
-}
-
 func (x *StartEntityAlignmentRequest) GetFields() []*EntityAlignmentField {
 	if x != nil {
 		return x.Fields
@@ -322,7 +313,9 @@ type EntityAlignmentField struct {
 	TargetSetId *string `protobuf:"bytes,2,opt,name=target_set_id,json=targetSetId,proto3,oneof" json:"target_set_id,omitempty"`
 	// 批处理大小，每批递交给 LLM 的源值数量。
 	BatchSize *int32 `protobuf:"varint,3,opt,name=batch_size,json=batchSize,proto3,oneof" json:"batch_size,omitempty"`
-	// LLM 批处理请求并发数。
+	// 已禁用：当前服务端按 batch 串行处理，该字段会被忽略。
+	//
+	// Deprecated: Marked as deprecated in kgbrain/v1/entity_alignment.proto.
 	BatchConcurrency *int32 `protobuf:"varint,4,opt,name=batch_concurrency,json=batchConcurrency,proto3,oneof" json:"batch_concurrency,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
@@ -379,6 +372,7 @@ func (x *EntityAlignmentField) GetBatchSize() int32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in kgbrain/v1/entity_alignment.proto.
 func (x *EntityAlignmentField) GetBatchConcurrency() int32 {
 	if x != nil && x.BatchConcurrency != nil {
 		return *x.BatchConcurrency
@@ -1359,29 +1353,27 @@ var File_kgbrain_v1_entity_alignment_proto protoreflect.FileDescriptor
 const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\n" +
 	"!kgbrain/v1/entity_alignment.proto\x12\n" +
-	"kgbrain.v1\"\x85\x04\n" +
+	"kgbrain.v1\"\xde\x03\n" +
 	"\x1bStartEntityAlignmentRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
 	"\fsource_table\x18\x03 \x01(\tR\vsourceTable\x12!\n" +
-	"\foutput_table\x18\x04 \x01(\tR\voutputTable\x12(\n" +
-	"\rreuse_mapping\x18\x05 \x01(\bH\x00R\freuseMapping\x88\x01\x01\x128\n" +
+	"\foutput_table\x18\x04 \x01(\tR\voutputTable\x128\n" +
 	"\x06fields\x18\x06 \x03(\v2 .kgbrain.v1.EntityAlignmentFieldR\x06fields\x12\x1b\n" +
 	"\tkey_field\x18\a \x01(\tR\bkeyField\x12\x1e\n" +
-	"\bstart_id\x18\b \x01(\x03H\x01R\astartId\x88\x01\x01\x12\x1a\n" +
-	"\x06end_id\x18\t \x01(\x03H\x02R\x05endId\x88\x01\x01\x12@\n" +
+	"\bstart_id\x18\b \x01(\x03H\x00R\astartId\x88\x01\x01\x12\x1a\n" +
+	"\x06end_id\x18\t \x01(\x03H\x01R\x05endId\x88\x01\x01\x12@\n" +
 	"\x1aonly_waiting_target_review\x18\n" +
-	" \x01(\bH\x03R\x17onlyWaitingTargetReview\x88\x01\x01B\x10\n" +
-	"\x0e_reuse_mappingB\v\n" +
+	" \x01(\bH\x02R\x17onlyWaitingTargetReview\x88\x01\x01B\v\n" +
 	"\t_start_idB\t\n" +
 	"\a_end_idB\x1d\n" +
-	"\x1b_only_waiting_target_review\"\xe0\x01\n" +
+	"\x1b_only_waiting_target_reviewJ\x04\b\x05\x10\x06R\rreuse_mapping\"\xe4\x01\n" +
 	"\x14EntityAlignmentField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12'\n" +
 	"\rtarget_set_id\x18\x02 \x01(\tH\x00R\vtargetSetId\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"batch_size\x18\x03 \x01(\x05H\x01R\tbatchSize\x88\x01\x01\x120\n" +
-	"\x11batch_concurrency\x18\x04 \x01(\x05H\x02R\x10batchConcurrency\x88\x01\x01B\x10\n" +
+	"batch_size\x18\x03 \x01(\x05H\x01R\tbatchSize\x88\x01\x01\x124\n" +
+	"\x11batch_concurrency\x18\x04 \x01(\x05B\x02\x18\x01H\x02R\x10batchConcurrency\x88\x01\x01B\x10\n" +
 	"\x0e_target_set_idB\r\n" +
 	"\v_batch_sizeB\x14\n" +
 	"\x12_batch_concurrency\"s\n" +

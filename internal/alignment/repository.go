@@ -89,7 +89,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		job.SourceTable,
 		job.OutputTable,
 		job.Status,
-		boolToInt(job.ReuseMapping),
+		1,
 		boolToInt(job.OnlyWaitingTargetReview),
 		job.KeyField,
 		nullableInt64(job.StartID),
@@ -106,7 +106,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 // GetJob 按 job_id 查询实体对齐 job；不存在时返回 nil, nil。
 func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 	job := &Job{}
-	var reuseMapping int
+	var legacyReuseMapping int
 	var onlyWaitingTargetReview int
 	var fieldsJSON string
 	var startID, endID sql.NullInt64
@@ -136,7 +136,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 			&job.SourceTable,
 			&job.OutputTable,
 			&job.Status,
-			&reuseMapping,
+			&legacyReuseMapping,
 			&onlyWaitingTargetReview,
 			&job.KeyField,
 			&startID,
@@ -153,7 +153,6 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	job.ReuseMapping = reuseMapping != 0
 	job.OnlyWaitingTargetReview = onlyWaitingTargetReview != 0
 	if startID.Valid {
 		job.StartID = &startID.Int64

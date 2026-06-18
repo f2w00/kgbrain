@@ -41,7 +41,6 @@ func (h *EntityAlignmentHandler) StartEntityAlignment(
 		DatabaseResourceID:      msg.GetDatabaseResourceId(),
 		SourceTable:             msg.GetSourceTable(),
 		OutputTable:             msg.GetOutputTable(),
-		ReuseMapping:            msg.ReuseMapping,
 		KeyField:                msg.GetKeyField(),
 		StartID:                 msg.StartId,
 		EndID:                   msg.EndId,

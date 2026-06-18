@@ -63,7 +63,7 @@ func (r *EntityAlignmentBusinessRepo) EnsureExecutionReady(
 	if err != nil {
 		return nil, fmt.Errorf("parse output_table: %w", err)
 	}
-	mappingTable := qualifiedName{Schema: sourceTable.Schema, Name: mappingTableName}
+	mappingTable := qualifiedName{Schema: defaultSchema, Name: mappingTableName}
 
 	sourceColumns, err := r.loadColumns(ctx, sourceTable)
 	if err != nil {
@@ -94,10 +94,10 @@ func (r *EntityAlignmentBusinessRepo) EnsureExecutionReady(
 	if err := r.ensureMappingTable(ctx, mappingTable); err != nil {
 		return nil, err
 	}
-	if err := r.ensureTargetsTable(ctx, qualifiedName{Schema: sourceTable.Schema, Name: targetTableName}); err != nil {
+	if err := r.ensureTargetsTable(ctx, qualifiedName{Schema: defaultSchema, Name: targetTableName}); err != nil {
 		return nil, err
 	}
-	if err := r.ensureCandidatesTable(ctx, qualifiedName{Schema: sourceTable.Schema, Name: candidateTableName}); err != nil {
+	if err := r.ensureCandidatesTable(ctx, qualifiedName{Schema: defaultSchema, Name: candidateTableName}); err != nil {
 		return nil, err
 	}
 	outputColumns, err := r.ensureOutputTable(ctx, outputTable, sourceColumns)
@@ -222,19 +222,19 @@ func (r *EntityAlignmentBusinessRepo) UpsertTargetCandidates(
 		return nil
 	}
 	valueRows := make([]string, 0, len(pending))
-	args := make([]any, 0, len(pending)*6)
+	args := make([]any, 0, len(pending)*5)
 	argIndex := 1
 	now := time.Now().UTC()
 	for _, record := range pending {
-		valueRows = append(valueRows, rowPlaceholders(argIndex, 6))
-		args = append(args, generateCandidateID(), targetSetID, record.RawValue, now, now, now)
-		argIndex += 6
+		valueRows = append(valueRows, rowPlaceholders(argIndex, 5))
+		args = append(args, generateCandidateID(), targetSetID, record.RawValue, now, now)
+		argIndex += 5
 	}
 	query := fmt.Sprintf(`
-		INSERT INTO %s (
-			id, target_set_id, raw_value, created_at, updated_at, resolved_at
-		) VALUES %s
-		ON CONFLICT (target_set_id, raw_value) DO UPDATE
+			INSERT INTO %s (
+				id, target_set_id, raw_value, created_at, updated_at
+			) VALUES %s
+			ON CONFLICT (target_set_id, raw_value) DO UPDATE
 		SET frequency = %s.frequency + 1,
 		    updated_at = EXCLUDED.updated_at`, fullTableName(table), strings.Join(valueRows, ", "), fullTableName(table))
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
@@ -423,7 +423,7 @@ func (r *EntityAlignmentBusinessRepo) BuildSourceRangeProcessRecords(
 		alias := mappingTableAlias + field.Name
 		joins = append(joins, fmt.Sprintf(
 			`LEFT JOIN %s %s ON %s.target_set_id = %s AND %s.raw_value = %s.%s::text`,
-			fullTableName(qualifiedName{Schema: sourceTable.Schema, Name: mappingTableName}),
+			fullTableName(qualifiedName{Schema: defaultSchema, Name: mappingTableName}),
 			alias,
 			alias,
 			sqlStringLiteral(field.TargetSetID),
@@ -669,7 +669,6 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 	req ExecuteRequest,
 	field PreparedField,
 	records []MappingRecord,
-	overwrite bool,
 ) error {
 	if len(records) == 0 {
 		return nil
@@ -700,14 +699,6 @@ func (r *EntityAlignmentBusinessRepo) UpsertMappings(
 		last_used_at = EXCLUDED.last_used_at,
 		updated_at = EXCLUDED.updated_at,
 		use_count = ` + fullTableName(mappingTable) + `.use_count + 1`
-	if overwrite {
-		conflictSet = `
-			aligned_value = EXCLUDED.aligned_value,
-			status = EXCLUDED.status,
-			last_used_at = EXCLUDED.last_used_at,
-			updated_at = EXCLUDED.updated_at,
-			use_count = ` + fullTableName(mappingTable) + `.use_count + 1`
-	}
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
 			target_set_id,
@@ -746,7 +737,7 @@ func (r *EntityAlignmentBusinessRepo) WriteOutputRows(
 	if err != nil {
 		return fmt.Errorf("parse output_table: %w", err)
 	}
-	mappingTable := qualifiedName{Schema: sourceTable.Schema, Name: mappingTableName}
+	mappingTable := qualifiedName{Schema: defaultSchema, Name: mappingTableName}
 	keyRange, ok, err := r.selectOutputKeyRange(ctx, sourceTable, req)
 	if err != nil {
 		return err
@@ -1347,13 +1338,14 @@ func buildWaitingTargetReviewClause(
 	}
 }
 
-// mappingTableNameFor 从源表名推导 mapping 表的 schema 和固定名称。
+// mappingTableNameFor 返回数据库资源内共享的 public mapping 表。
 func mappingTableNameFor(sourceTable string) (qualifiedName, error) {
-	sourceName, err := parseQualifiedName(sourceTable)
-	if err != nil {
-		return qualifiedName{}, fmt.Errorf("parse source_table: %w", err)
+	if strings.TrimSpace(sourceTable) != "" {
+		if _, err := parseQualifiedName(sourceTable); err != nil {
+			return qualifiedName{}, fmt.Errorf("parse source_table: %w", err)
+		}
 	}
-	return qualifiedName{Schema: sourceName.Schema, Name: mappingTableName}, nil
+	return qualifiedName{Schema: defaultSchema, Name: mappingTableName}, nil
 }
 
 // fullTableName 将 schema 和表名拼接为 "schema"."table" 的完整引用。

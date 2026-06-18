@@ -12,7 +12,7 @@
 ## 安装依赖
 
 ```bash
-pip install connectrpc protobuf httpx
+pip install connectrpc protobuf
 ```
 
 ## 目录准备
@@ -39,7 +39,6 @@ export PYTHONPATH="$PWD/gen/py:$PYTHONPATH"
 
 ```python
 import time
-import httpx
 
 from google.protobuf import struct_pb2
 
@@ -69,8 +68,6 @@ def wait_until(done, interval_seconds: int = 2):
 ### 1.1 创建或更新 LLM 资源
 
 ```python
-import httpx
-
 from kgbrain.v1.resource_pb2 import LLMResourceConfig
 from kgbrain.v1.resource_pb2 import SetLLMResourceRequest
 from kgbrain.v1.resource_connect import ResourceServiceClientSync
@@ -79,8 +76,7 @@ from kgbrain.v1.resource_connect import ResourceServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = ResourceServiceClientSync(http_client)
+with ResourceServiceClientSync(BASE_URL) as client:
 
     resp = client.set_l_l_m_resource(
         SetLLMResourceRequest(
@@ -103,8 +99,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 ### 1.2 查询 LLM 资源
 
 ```python
-import httpx
-
 from kgbrain.v1.resource_pb2 import GetLLMResourceRequest
 from kgbrain.v1.resource_connect import ResourceServiceClientSync
 
@@ -112,8 +106,7 @@ from kgbrain.v1.resource_connect import ResourceServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = ResourceServiceClientSync(http_client)
+with ResourceServiceClientSync(BASE_URL) as client:
 
     resp = client.get_l_l_m_resource(
         GetLLMResourceRequest(resource_id="qwen_local")
@@ -129,8 +122,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 ### 1.3 创建或更新数据库资源
 
 ```python
-import httpx
-
 from kgbrain.v1.resource_pb2 import DATABASE_TYPE_POSTGRES
 from kgbrain.v1.resource_pb2 import DatabaseResourceConfig
 from kgbrain.v1.resource_pb2 import PostgresResourceConfig
@@ -141,8 +132,7 @@ from kgbrain.v1.resource_connect import ResourceServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = ResourceServiceClientSync(http_client)
+with ResourceServiceClientSync(BASE_URL) as client:
 
     resp = client.set_database_resource(
         SetDatabaseResourceRequest(
@@ -168,8 +158,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 ### 1.4 查询数据库资源
 
 ```python
-import httpx
-
 from kgbrain.v1.resource_pb2 import GetDatabaseResourceRequest
 from kgbrain.v1.resource_connect import ResourceServiceClientSync
 
@@ -177,8 +165,7 @@ from kgbrain.v1.resource_connect import ResourceServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = ResourceServiceClientSync(http_client)
+with ResourceServiceClientSync(BASE_URL) as client:
 
     resp = client.get_database_resource(
         GetDatabaseResourceRequest(resource_id="museum_pg")
@@ -194,8 +181,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 ### 1.5 删除资源
 
 ```python
-import httpx
-
 from kgbrain.v1.resource_pb2 import DeleteDatabaseResourceRequest
 from kgbrain.v1.resource_pb2 import DeleteLLMResourceRequest
 from kgbrain.v1.resource_connect import ResourceServiceClientSync
@@ -204,8 +189,7 @@ from kgbrain.v1.resource_connect import ResourceServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = ResourceServiceClientSync(http_client)
+with ResourceServiceClientSync(BASE_URL) as client:
 
     llm_resp = client.delete_l_l_m_resource(
         DeleteLLMResourceRequest(resource_id="qwen_local")
@@ -253,7 +237,6 @@ CREATE TABLE public.artifact_extract (
 
 ```python
 import time
-import httpx
 
 from google.protobuf import struct_pb2
 
@@ -278,8 +261,7 @@ def make_struct(data: dict) -> struct_pb2.Struct:
     return msg
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = EnrichExtractServiceClientSync(http_client)
+with EnrichExtractServiceClientSync(BASE_URL) as client:
 
     start_resp = client.start_enrich_extract(
         StartEnrichExtractRequest(
@@ -395,7 +377,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 
 ```python
 import time
-import httpx
 
 from kgbrain.v1.entity_alignment_pb2 import (
     ENTITY_ALIGNMENT_JOB_STATUS_FAILED,
@@ -410,8 +391,7 @@ from kgbrain.v1.entity_alignment_connect import EntityAlignmentServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = EntityAlignmentServiceClientSync(http_client)
+with EntityAlignmentServiceClientSync(BASE_URL) as client:
 
     start_resp = client.start_entity_alignment(
         StartEntityAlignmentRequest(
@@ -420,7 +400,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
             source_table="public.museum_raw",
             output_table="public.museum_aligned",
             key_field="id",
-            reuse_mapping=True,
             start_id=1,
             end_id=50000,
             fields=[
@@ -428,13 +407,11 @@ with httpx.Client(base_url=BASE_URL) as http_client:
                     name="city_name",
                     target_set_id="city_name",
                     batch_size=200,
-                    batch_concurrency=1,
                 ),
                 EntityAlignmentField(
                     name="museum_level",
                     target_set_id="museum_level",
                     batch_size=100,
-                    batch_concurrency=1,
                 ),
             ],
         )
@@ -469,9 +446,9 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 
 - `fields` 是核心配置；标准目标值不再直接写在请求里，而是通过
   `target_set_id` 关联业务库中的 `alignment_targets`
-- `reuse_mapping=True` 时，服务会优先复用已有映射缓存
+- 服务固定复用已有 mapping；LLM 只处理缺失 mapping 的原始值
 - `batch_size` 决定一次送给 LLM 的源值数量
-- `batch_concurrency` 决定该字段的并发批处理请求数；默认建议保持 `1`
+- `batch_concurrency` 当前已禁用；服务端按 batch 串行处理，传入该字段也会被忽略
 - `output_table` 需要提前准备好可写结构
 
 ### 3.4 审核候选值并仅重跑等待审核记录
@@ -484,8 +461,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 3. 重新调用 `StartEntityAlignment`，并设置 `only_waiting_target_review=True`
 
 ```python
-import httpx
-
 from kgbrain.v1.entity_alignment_pb2 import (
     EntityAlignmentField,
     ReviewTargetCandidateAction,
@@ -499,8 +474,7 @@ from kgbrain.v1.entity_alignment_connect import EntityAlignmentServiceClientSync
 BASE_URL = "http://localhost:8848"
 
 
-with httpx.Client(base_url=BASE_URL) as http_client:
-    client = EntityAlignmentServiceClientSync(http_client)
+with EntityAlignmentServiceClientSync(BASE_URL) as client:
 
     # 1. 人工审核候选值。
     client.review_target_candidates(
@@ -538,7 +512,6 @@ with httpx.Client(base_url=BASE_URL) as http_client:
             source_table="public.museum_raw",
             output_table="public.museum_aligned",
             key_field="id",
-            reuse_mapping=True,
             only_waiting_target_review=True,
             fields=[
                 EntityAlignmentField(
@@ -558,16 +531,13 @@ with httpx.Client(base_url=BASE_URL) as http_client:
 
 补充说明：
 
-- `ReviewTargetCandidatesRequest.source_table` 必须与原始对齐任务使用的 `source_table` 一致
-- `source_table` 的作用是定位审核写回的 mapping 表 schema，例如：
-  - `public.museum_raw` -> `public.entity_alignment_mapping`
-  - `biz.museum_raw` -> `biz.entity_alignment_mapping`
-- `only_waiting_target_review=True` 时，建议同时设置 `reuse_mapping=True`，这样审核后回写的 mapping 会被直接复用
+- `ReviewTargetCandidatesRequest.source_table` 当前是保留字段，可传原始任务的 `source_table`，服务端不会用它决定 mapping 表位置
+- alignment 内部表固定在 `public` 下共享：`alignment_targets`、`target_candidates`、`entity_alignment_mapping`
+- `only_waiting_target_review=True` 时，服务只处理当前仍等待 target 审核的记录，并固定复用审核后回写的 mapping
 
 ## 四、统一错误处理示例
 
 ```python
-import httpx
 from connectrpc.errors import ConnectError
 
 
@@ -578,9 +548,6 @@ def run_request(callable_):
         print("Connect 调用失败")
         print("code:", err.code)
         print("message:", err.message)
-        raise
-    except httpx.HTTPError as err:
-        print("HTTP 请求失败:", err)
         raise
 ```
 

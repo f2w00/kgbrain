@@ -63,6 +63,17 @@ func TestBuildRangeClause(t *testing.T) {
 	}
 }
 
+func TestMappingTableNameForUsesDefaultSchema(t *testing.T) {
+	got, err := mappingTableNameFor("biz.artifact_raw")
+	if err != nil {
+		t.Fatalf("mapping table name: %v", err)
+	}
+	want := qualifiedName{Schema: defaultSchema, Name: mappingTableName}
+	if got != want {
+		t.Fatalf("unexpected mapping table: %#v", got)
+	}
+}
+
 func TestBuildWaitingTargetReviewClause(t *testing.T) {
 	req := ExecuteRequest{SourceTable: "public.artifact_raw"}
 	gotSQL, gotArgs := buildWaitingTargetReviewClause(req, `s."id"`, 3)

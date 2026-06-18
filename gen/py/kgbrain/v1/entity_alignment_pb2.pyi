@@ -40,12 +40,11 @@ ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED: EntityAlignmentJobStatus
 ENTITY_ALIGNMENT_JOB_STATUS_FAILED: EntityAlignmentJobStatus
 
 class StartEntityAlignmentRequest(_message.Message):
-    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "reuse_mapping", "fields", "key_field", "start_id", "end_id", "only_waiting_target_review")
+    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "fields", "key_field", "start_id", "end_id", "only_waiting_target_review")
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     SOURCE_TABLE_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_TABLE_FIELD_NUMBER: _ClassVar[int]
-    REUSE_MAPPING_FIELD_NUMBER: _ClassVar[int]
     FIELDS_FIELD_NUMBER: _ClassVar[int]
     KEY_FIELD_FIELD_NUMBER: _ClassVar[int]
     START_ID_FIELD_NUMBER: _ClassVar[int]
@@ -55,13 +54,12 @@ class StartEntityAlignmentRequest(_message.Message):
     database_resource_id: str
     source_table: str
     output_table: str
-    reuse_mapping: bool
     fields: _containers.RepeatedCompositeFieldContainer[EntityAlignmentField]
     key_field: str
     start_id: int
     end_id: int
     only_waiting_target_review: bool
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., reuse_mapping: bool = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ..., key_field: _Optional[str] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., only_waiting_target_review: bool = ...) -> None: ...
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ..., key_field: _Optional[str] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., only_waiting_target_review: bool = ...) -> None: ...
 
 class EntityAlignmentField(_message.Message):
     __slots__ = ("name", "target_set_id", "batch_size", "batch_concurrency")

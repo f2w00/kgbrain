@@ -90,16 +90,13 @@ func (s *DomainService) Execute(
 		if len(rawValues) == 0 {
 			continue
 		}
-		existing := make(map[string]MappingRecord, len(rawValues))
-		if req.ReuseMapping {
-			existing, err = s.repo.LoadExistingMappings(ctx, req, field, rawValues)
-			if err != nil {
+		existing, err := s.repo.LoadExistingMappings(ctx, req, field, rawValues)
+		if err != nil {
+			return err
+		}
+		if len(existing) > 0 {
+			if err := s.repo.TouchMappings(ctx, req, field, existing); err != nil {
 				return err
-			}
-			if len(existing) > 0 {
-				if err := s.repo.TouchMappings(ctx, req, field, existing); err != nil {
-					return err
-				}
 			}
 		}
 		missing := MissingRawValues(rawValues, existing)
@@ -113,11 +110,10 @@ func (s *DomainService) Execute(
 			}
 			if err := s.repo.UpsertMappings(
 				ctx,
-				req,
-				field,
-				generated,
-				!req.ReuseMapping,
-			); err != nil {
+					req,
+					field,
+					generated,
+				); err != nil {
 				return err
 			}
 		}

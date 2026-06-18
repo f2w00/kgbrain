@@ -75,7 +75,6 @@ func (e *executor) Execute(
 		KeyField:                req.KeyField,
 		StartID:                 req.StartID,
 		EndID:                   req.EndID,
-		ReuseMapping:            job.ReuseMapping,
 		OnlyWaitingTargetReview: job.OnlyWaitingTargetReview,
 		Fields:                  job.Fields,
 	})

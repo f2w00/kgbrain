@@ -35,8 +35,8 @@ message StartEntityAlignmentRequest {
   string source_table = 3;
   // 输出表名，写入对齐结果。
   string output_table = 4;
-  // 是否复用已有的映射关系，打开时将先读取已有的映射缓存。
-  optional bool reuse_mapping = 5;
+  reserved 5;
+  reserved "reuse_mapping";
   // 需对齐的字段列表，每个字段可配置独立的目标值与批处理参数。
   repeated EntityAlignmentField fields = 6;
   // 主键字段名。
@@ -57,8 +57,8 @@ message EntityAlignmentField {
   optional string target_set_id = 2;
   // 批处理大小，每批递交给 LLM 的源值数量。
   optional int32 batch_size = 3;
-  // LLM 批处理请求并发数。
-  optional int32 batch_concurrency = 4;
+  // 已禁用：当前服务端按 batch 串行处理，该字段会被忽略。
+  optional int32 batch_concurrency = 4 [deprecated = true];
 }
 
 message ListAlignmentTargetsRequest {

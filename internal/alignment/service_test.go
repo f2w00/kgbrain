@@ -139,7 +139,6 @@ func (r *fakeBusinessRepo) UpsertMappings(
 	_ ExecuteRequest,
 	_ PreparedField,
 	_ []MappingRecord,
-	_ bool,
 ) error {
 	return nil
 }
@@ -349,7 +348,6 @@ func TestServiceStartValidation(t *testing.T) {
 		{name: "missing fields", mutate: func(r *StartRequest) { r.Fields = nil }},
 		{name: "key field overlaps field", mutate: func(r *StartRequest) { r.KeyField = "dynasty" }},
 		{name: "bad batch size", mutate: func(r *StartRequest) { v := 0; r.Fields[0].BatchSize = &v }},
-		{name: "bad batch concurrency", mutate: func(r *StartRequest) { v := 0; r.Fields[0].BatchConcurrency = &v }},
 		{
 			name: "start id greater than end id",
 			mutate: func(r *StartRequest) {
@@ -367,6 +365,16 @@ func TestServiceStartValidation(t *testing.T) {
 				t.Fatalf("expected validation error, got %v", err)
 			}
 		})
+	}
+}
+
+func TestServiceStartValidationIgnoresDisabledBatchConcurrency(t *testing.T) {
+	svc := NewService(newFakeRepo(), fakeResources{})
+	req := validStartRequest()
+	v := 0
+	req.Fields[0].BatchConcurrency = &v
+	if _, err := svc.Start(context.Background(), req); err != nil {
+		t.Fatalf("expected disabled batch_concurrency to be ignored, got %v", err)
 	}
 }
 
@@ -401,21 +409,6 @@ func TestServiceGetMissingJob(t *testing.T) {
 	_, err := svc.GetJob("missing")
 	if !IsNotFound(err) {
 		t.Fatalf("expected not found, got %v", err)
-	}
-}
-
-func TestServiceReviewCandidatesRequiresSourceTable(t *testing.T) {
-	svc := NewService(newFakeRepo(), fakeResources{})
-	err := svc.ReviewCandidates(context.Background(), ReviewCandidatesRequest{
-		DatabaseResourceID: "db_1",
-		TargetSetID:        "industry",
-		Actions: []ReviewCandidateAction{{
-			CandidateID: "candidate_1",
-			Resolution:  "reject_as_null",
-		}},
-	})
-	if !IsValidationError(err) {
-		t.Fatalf("expected validation error, got %v", err)
 	}
 }
 
@@ -455,6 +448,34 @@ func TestServiceReviewCandidatesPassesSourceTable(t *testing.T) {
 	if len(bizRepo.reviewActions) != 1 ||
 		bizRepo.reviewActions[0].CandidateID != "candidate_1" {
 		t.Fatalf("unexpected review actions: %#v", bizRepo.reviewActions)
+	}
+}
+
+func TestServiceReviewCandidatesAllowsEmptySourceTable(t *testing.T) {
+	jobRepo := newFakeRepo()
+	bizRepo := &fakeBusinessRepo{}
+	svc := NewService(
+		jobRepo,
+		fakeResources{},
+		WithBusinessAccess(
+			func(_ *resource.DatabaseResource) (*sql.DB, error) {
+				return sql.Open("sqlite", ":memory:")
+			},
+			func(_ *sql.DB) BusinessRepository {
+				return bizRepo
+			},
+		),
+	)
+	err := svc.ReviewCandidates(context.Background(), ReviewCandidatesRequest{
+		DatabaseResourceID: "db_1",
+		TargetSetID:        "industry",
+		Actions: []ReviewCandidateAction{{
+			CandidateID: "candidate_1",
+			Resolution:  "reject_as_null",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("review candidates: %v", err)
 	}
 }
 

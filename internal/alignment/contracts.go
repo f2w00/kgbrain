@@ -81,7 +81,6 @@ type BusinessRepository interface {
 		req ExecuteRequest,
 		field PreparedField,
 		records []MappingRecord,
-		overwrite bool,
 	) error
 	LoadTargetLabels(
 		ctx context.Context,

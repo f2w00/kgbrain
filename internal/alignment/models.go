@@ -22,7 +22,6 @@ type Job struct {
 	SourceTable             string
 	OutputTable             string
 	Status                  string
-	ReuseMapping            bool
 	KeyField                string
 	StartID                 *int64
 	EndID                   *int64

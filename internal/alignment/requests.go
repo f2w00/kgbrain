@@ -7,7 +7,6 @@ type StartRequest struct {
 	DatabaseResourceID      string
 	SourceTable             string
 	OutputTable             string
-	ReuseMapping            *bool
 	KeyField                string
 	StartID                 *int64
 	EndID                   *int64
@@ -74,7 +73,6 @@ type ExecuteRequest struct {
 	KeyField                string
 	StartID                 *int64
 	EndID                   *int64
-	ReuseMapping            bool
 	OnlyWaitingTargetReview bool
 	Fields                  []FieldConfig
 }

@@ -33,7 +33,6 @@ func TestEntityAlignmentRepoJobLifecycle(t *testing.T) {
 		SourceTable:             "public.source",
 		OutputTable:             "public.output",
 		Status:                  StatusPending,
-		ReuseMapping:            true,
 		OnlyWaitingTargetReview: true,
 		KeyField:                "id",
 		StartID:                 &startID,
@@ -108,7 +107,6 @@ func TestEntityAlignmentRepoJobLifecycleWithNilRange(t *testing.T) {
 		SourceTable:        "public.source",
 		OutputTable:        "public.output",
 		Status:             StatusPending,
-		ReuseMapping:       false,
 		KeyField:           "id",
 		Fields: []FieldConfig{{
 			Name:        "dynasty",
