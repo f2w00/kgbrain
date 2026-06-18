@@ -26,9 +26,9 @@ func (h *EnrichExtractHandler) StartEnrichExtract(
 	ctx context.Context,
 	req *connectrpc.Request[kgbrainv1.StartEnrichExtractRequest],
 ) (*connectrpc.Response[kgbrainv1.StartEnrichExtractResponse], error) {
-	targetExample := make([]map[string]any, 0, len(req.Msg.GetTargetExample()))
-	for _, example := range req.Msg.GetTargetExample() {
-		targetExample = append(targetExample, example.AsMap())
+	targetExample := map[string]any(nil)
+	if req.Msg.GetTargetExample() != nil {
+		targetExample = req.Msg.GetTargetExample().AsMap()
 	}
 	result, err := h.svc.Start(ctx, StartRequest{
 		LLMResourceID:         req.Msg.GetLlmResourceId(),

@@ -64,17 +64,13 @@ func (e *executor) Execute(
 		return fmt.Errorf("create process recorder: %w", err)
 	}
 	domainSvc := NewDomainService(e.repoFactory(bizDB), e.jobRepo, job.JobID, processRecorder)
-	targetExample := map[string]any{}
-	if len(job.TargetExample) > 0 {
-		targetExample = job.TargetExample[0]
-	}
 	return domainSvc.Execute(ctx, llmClient, ExecuteRequest{
 		SourceTable:           req.SourceTable,
 		OutputTable:           req.OutputTable,
 		KeyField:              req.KeyField,
 		SourceJSONField:       req.SourceJSONField,
 		OutputSchema:          cloneOutputSchema(job.OutputSchema),
-		TargetExample:         targetExample,
+		TargetExample:         cloneRow(job.TargetExample),
 		PriorityFieldHints:    cloneStringMap(job.PriorityFieldHints),
 		StartID:               req.StartID,
 		EndID:                 req.EndID,

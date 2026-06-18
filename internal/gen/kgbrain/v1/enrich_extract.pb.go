@@ -156,7 +156,7 @@ type StartEnrichExtractRequest struct {
 	// 输出表字段结构，作为校验、建表和 LLM 输出字段的唯一来源。
 	OutputSchema []*EnrichExtractOutputColumn `protobuf:"bytes,6,rep,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
 	// 目标输出结构示例，供 LLM 了解期望的字段格式。
-	TargetExample []*structpb.Struct `protobuf:"bytes,7,rep,name=target_example,json=targetExample,proto3" json:"target_example,omitempty"`
+	TargetExample *structpb.Struct `protobuf:"bytes,7,opt,name=target_example,json=targetExample,proto3" json:"target_example,omitempty"`
 	// 起始主键值（含），为空则从表头开始。
 	StartId *int64 `protobuf:"varint,8,opt,name=start_id,json=startId,proto3,oneof" json:"start_id,omitempty"`
 	// 结束主键值（含），为空则直到表尾。
@@ -251,7 +251,7 @@ func (x *StartEnrichExtractRequest) GetOutputSchema() []*EnrichExtractOutputColu
 	return nil
 }
 
-func (x *StartEnrichExtractRequest) GetTargetExample() []*structpb.Struct {
+func (x *StartEnrichExtractRequest) GetTargetExample() *structpb.Struct {
 	if x != nil {
 		return x.TargetExample
 	}
@@ -689,7 +689,7 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\foutput_table\x18\x04 \x01(\tR\voutputTable\x12\x1b\n" +
 	"\tkey_field\x18\x05 \x01(\tR\bkeyField\x12J\n" +
 	"\routput_schema\x18\x06 \x03(\v2%.kgbrain.v1.EnrichExtractOutputColumnR\foutputSchema\x12>\n" +
-	"\x0etarget_example\x18\a \x03(\v2\x17.google.protobuf.StructR\rtargetExample\x12\x1e\n" +
+	"\x0etarget_example\x18\a \x01(\v2\x17.google.protobuf.StructR\rtargetExample\x12\x1e\n" +
 	"\bstart_id\x18\b \x01(\x03H\x00R\astartId\x88\x01\x01\x12\x1a\n" +
 	"\x06end_id\x18\t \x01(\x03H\x01R\x05endId\x88\x01\x01\x12%\n" +
 	"\vconcurrency\x18\n" +

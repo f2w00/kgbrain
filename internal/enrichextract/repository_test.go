@@ -41,10 +41,10 @@ func TestEnrichExtractRepoPersistsPriorityFieldHints(t *testing.T) {
 			{Name: "dynasty", Type: OutputColumnTypeText},
 			{Name: "material", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty":  "",
 			"material": "",
-		}},
+		},
 		PriorityFieldHints: map[string]string{
 			"dynasty":  "朝代信息",
 			"material": "材质信息",

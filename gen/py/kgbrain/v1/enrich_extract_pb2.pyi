@@ -62,7 +62,7 @@ class StartEnrichExtractRequest(_message.Message):
     output_table: str
     key_field: str
     output_schema: _containers.RepeatedCompositeFieldContainer[EnrichExtractOutputColumn]
-    target_example: _containers.RepeatedCompositeFieldContainer[_struct_pb2.Struct]
+    target_example: _struct_pb2.Struct
     start_id: int
     end_id: int
     concurrency: int
@@ -72,7 +72,7 @@ class StartEnrichExtractRequest(_message.Message):
     source_json_field: str
     priority_field_hints: _containers.ScalarMap[str, str]
     auto_create_output_table: bool
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., target_example: _Optional[_Iterable[_Union[_struct_pb2.Struct, _Mapping]]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ..., priority_field_hints: _Optional[_Mapping[str, str]] = ..., auto_create_output_table: bool = ...) -> None: ...
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., target_example: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ..., priority_field_hints: _Optional[_Mapping[str, str]] = ..., auto_create_output_table: bool = ...) -> None: ...
 
 class EnrichExtractOutputColumn(_message.Message):
     __slots__ = ("name", "type")

@@ -73,10 +73,10 @@ func TestNormalizeStartRequestPriorityFieldHints(t *testing.T) {
 			{Name: "dynasty", Type: OutputColumnTypeText},
 			{Name: "material", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty":  "",
 			"material": "",
-		}},
+		},
 		PriorityFieldHints: map[string]string{
 			" dynasty ": " 朝代信息 ",
 		},
@@ -106,9 +106,9 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsUnknownField(t *testing.T
 		OutputSchema: []OutputColumn{
 			{Name: "dynasty", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty": "",
-		}},
+		},
 		PriorityFieldHints: map[string]string{
 			"material": "材质信息",
 		},
@@ -131,9 +131,9 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsKeyField(t *testing.T) {
 		OutputSchema: []OutputColumn{
 			{Name: "dynasty", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty": "",
-		}},
+		},
 		PriorityFieldHints: map[string]string{
 			"id": "主键说明",
 		},
@@ -156,9 +156,9 @@ func TestNormalizeStartRequestPriorityFieldHintsRejectsEmptyHint(t *testing.T) {
 		OutputSchema: []OutputColumn{
 			{Name: "dynasty", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty": "",
-		}},
+		},
 		PriorityFieldHints: map[string]string{
 			"dynasty": "   ",
 		},
@@ -178,9 +178,9 @@ func TestNormalizeStartRequestRequiresOutputSchema(t *testing.T) {
 		SourceTable:        "source_items",
 		OutputTable:        "output_items",
 		KeyField:           "id",
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"dynasty": "",
-		}},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected error for missing output_schema")
@@ -200,9 +200,9 @@ func TestNormalizeStartRequestRejectsMismatchedTargetExample(t *testing.T) {
 		OutputSchema: []OutputColumn{
 			{Name: "dynasty", Type: OutputColumnTypeText},
 		},
-		TargetExample: []map[string]any{{
+		TargetExample: map[string]any{
 			"material": "",
-		}},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected error for mismatched target_example")

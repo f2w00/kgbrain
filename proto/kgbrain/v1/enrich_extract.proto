@@ -29,7 +29,7 @@ message StartEnrichExtractRequest {
   // 输出表字段结构，作为校验、建表和 LLM 输出字段的唯一来源。
   repeated EnrichExtractOutputColumn output_schema = 6;
   // 目标输出结构示例，供 LLM 了解期望的字段格式。
-  repeated google.protobuf.Struct target_example = 7;
+  google.protobuf.Struct target_example = 7;
   // 起始主键值（含），为空则从表头开始。
   optional int64 start_id = 8;
   // 结束主键值（含），为空则直到表尾。
