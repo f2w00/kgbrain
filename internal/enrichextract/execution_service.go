@@ -253,7 +253,6 @@ func buildProcessRecords(
 	records := make([]processrecord.Record, 0, len(successes)+len(errors))
 	for _, row := range successes {
 		records = append(records, processrecord.Record{
-			SourceTable: req.SourceTable,
 			SourceKey:   row.Key,
 			ProcessType: ProcessTypeEnrichExtract,
 			Status:      processrecord.StatusSucceeded,
@@ -261,7 +260,6 @@ func buildProcessRecords(
 	}
 	for _, rowErr := range errors {
 		records = append(records, processrecord.Record{
-			SourceTable: req.SourceTable,
 			SourceKey:   rowErr.SourceKey,
 			ProcessType: ProcessTypeEnrichExtract,
 			Status:      processrecord.StatusFailed,
