@@ -1,4 +1,4 @@
-// Package processrecord 记录业务数据在各处理能力上的最终状态。
+// Package processrecord 记录业务数据的整体处理状态。
 package processrecord
 
 const (
@@ -10,9 +10,8 @@ const (
 	StatusWaitingTargetReview = "waiting_target_review"
 )
 
-// Record 表示一条业务数据在某个处理能力上的最终状态。
+// Record 表示一条业务数据的整体处理状态。
 type Record struct {
-	SourceTable string
 	SourceKey   int64
 	ProcessType string
 	Status      string

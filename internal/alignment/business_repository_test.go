@@ -86,17 +86,13 @@ func TestBuildWaitingTargetReviewClause(t *testing.T) {
 	wantSQL := ` AND EXISTS (
 		SELECT 1
 		FROM data_process_records dpr
-		WHERE dpr.source_table = $3
-		  AND dpr.source_key = s."id"
-		  AND dpr.process_type = $4
-		  AND dpr.status = $5
+		WHERE dpr.source_key = s."id"
+		  AND dpr.status = $3
 	)`
 	if gotSQL != wantSQL {
 		t.Fatalf("unexpected clause:\n%s", gotSQL)
 	}
-	if len(gotArgs) != 3 || gotArgs[0] != "public.artifact_raw" ||
-		gotArgs[1] != ProcessTypeEntityAlignment ||
-		gotArgs[2] != "waiting_target_review" {
+	if len(gotArgs) != 1 || gotArgs[0] != "waiting_target_review" {
 		t.Fatalf("unexpected args: %#v", gotArgs)
 	}
 }

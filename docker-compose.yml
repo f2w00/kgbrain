@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
     kgbrain:
-        image: 10.15.22.234:5005/kgbrain:latest
+        image: 10.15.22.3:5005/kgbrain:latest
         container_name: kgbrain
         ports:
             - "8848:8848"

@@ -22,13 +22,11 @@ func TestRepositoryUpsertMany(t *testing.T) {
 	ctx := context.Background()
 	if err := repo.UpsertMany(ctx, []Record{
 		{
-			SourceTable: "papers",
 			SourceKey:   1,
 			ProcessType: "enrich_extract",
 			Status:      StatusFailed,
 		},
 		{
-			SourceTable: "papers",
 			SourceKey:   2,
 			ProcessType: "enrich_extract",
 			Status:      StatusSucceeded,
@@ -38,9 +36,8 @@ func TestRepositoryUpsertMany(t *testing.T) {
 	}
 	if err := repo.UpsertMany(ctx, []Record{
 		{
-			SourceTable: "papers",
 			SourceKey:   1,
-			ProcessType: "enrich_extract",
+			ProcessType: "entity_alignment",
 			Status:      StatusSucceeded,
 		},
 	}); err != nil {
@@ -55,13 +52,14 @@ func TestRepositoryUpsertMany(t *testing.T) {
 		t.Fatalf("expected 2 records, got %d", count)
 	}
 
-	var status string
-	err = db.QueryRow(`SELECT status FROM data_process_records
-		WHERE source_table = ? AND source_key = ? AND process_type = ?`,
-		"papers", 1, "enrich_extract",
-	).Scan(&status)
+	var processType, status string
+	err = db.QueryRow(`SELECT process_type, status FROM data_process_records
+		WHERE source_key = ?`, 1).Scan(&processType, &status)
 	if err != nil {
 		t.Fatalf("query updated status: %v", err)
+	}
+	if processType != "entity_alignment" {
+		t.Fatalf("expected process_type %q, got %q", "entity_alignment", processType)
 	}
 	if status != StatusSucceeded {
 		t.Fatalf("expected status %q, got %q", StatusSucceeded, status)
@@ -122,9 +120,7 @@ func TestRepositoryUpsertSourceRange(t *testing.T) {
 
 	var status string
 	err = db.QueryRow(`SELECT status FROM data_process_records
-		WHERE source_table = ? AND source_key = ? AND process_type = ?`,
-		"papers", 3, "entity_alignment",
-	).Scan(&status)
+		WHERE source_key = ?`, 3).Scan(&status)
 	if err != nil {
 		t.Fatalf("query range status: %v", err)
 	}

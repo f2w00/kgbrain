@@ -499,7 +499,6 @@ func (r *EntityAlignmentBusinessRepo) BuildSourceRangeProcessRecords(
 			}
 		}
 		records = append(records, processrecord.Record{
-			SourceTable: req.SourceTable,
 			SourceKey:   key,
 			ProcessType: ProcessTypeEntityAlignment,
 			Status:      status,
@@ -1326,14 +1325,10 @@ func buildWaitingTargetReviewClause(
 	clause := fmt.Sprintf(` AND EXISTS (
 		SELECT 1
 		FROM data_process_records dpr
-		WHERE dpr.source_table = $%d
-		  AND dpr.source_key = %s
-		  AND dpr.process_type = $%d
+		WHERE dpr.source_key = %s
 		  AND dpr.status = $%d
-	)`, startIndex, keyExpr, startIndex+1, startIndex+2)
+	)`, keyExpr, startIndex)
 	return clause, []any{
-		req.SourceTable,
-		ProcessTypeEntityAlignment,
 		processrecord.StatusWaitingTargetReview,
 	}
 }

@@ -1,4 +1,4 @@
-FROM 10.15.22.3:5005/distroless:debian13
+FROM gcr.io/distroless/static-debian13:latest
 
 COPY kgbrain /app/kgbrain
 COPY docs /app/docs
