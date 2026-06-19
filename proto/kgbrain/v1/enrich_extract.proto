@@ -48,6 +48,8 @@ message StartEnrichExtractRequest {
   map<string, string> priority_field_hints = 15;
   // 输出表不存在时是否按 output_schema 自动创建。
   optional bool auto_create_output_table = 16;
+  // 单行单次 LLM 调用超时（秒）。为空时默认 30 秒。
+  optional int32 llm_timeout_seconds = 17;
 }
 
 // 输出表字段定义。
@@ -120,6 +122,8 @@ message GetEnrichExtractJobResponse {
   repeated EnrichExtractOutputColumn output_schema = 17;
   // 输出表不存在时是否按 output_schema 自动创建。
   bool auto_create_output_table = 18;
+  // 单行单次 LLM 调用超时（秒）。
+  int32 llm_timeout_seconds = 19;
 }
 
 // 提取补全任务的生命周期状态。

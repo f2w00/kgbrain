@@ -123,6 +123,7 @@ message StartEnrichExtractRequest {
   optional string source_json_field = 14;
   map<string, string> priority_field_hints = 15;
   optional bool auto_create_output_table = 16;
+  optional int32 llm_timeout_seconds = 17;
 }
 
 message EnrichExtractOutputColumn {
@@ -157,6 +158,7 @@ enum EnrichExtractOutputColumnType {
 | `source_json_field` | string | 否 | source 表中保存原始 payload 的 JSONB 字段，默认 `raw_data` |
 | `priority_field_hints` | map<string, string> | 否 | 重点字段说明，key 必须是目标字段名，value 是该字段的抽取/推断说明 |
 | `auto_create_output_table` | bool | 否 | 输出表不存在时是否按 `output_schema` 自动建表，默认 false |
+| `llm_timeout_seconds` | int32 | 否 | 单行单次 LLM 调用超时（秒），默认 30 秒 |
 
 请求示例：
 
@@ -183,6 +185,7 @@ enum EnrichExtractOutputColumnType {
   "overwrite": false,
   "page_size": 100,
   "max_retries": 2,
+  "llm_timeout_seconds": 30,
   "source_json_field": "raw_data",
   "auto_create_output_table": true,
   "priority_field_hints": {
@@ -211,6 +214,12 @@ enum EnrichExtractOutputColumnType {
 - `key` 不允许等于 `key_field`。
 - `value` 不能为空字符串。
 - 该字段只影响 prompt，不新增输出列，也不强制非空。
+
+`llm_timeout_seconds` 处理规则：
+
+- 控制单行单次 LLM 调用超时，默认值为 30 秒。
+- 每次 retry 会重新应用该超时。
+- 允许范围为 `1 ~ 600` 秒。
 
 ## 5. 输入与输出表规则
 

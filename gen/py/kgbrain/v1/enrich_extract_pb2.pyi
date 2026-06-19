@@ -32,7 +32,7 @@ ENRICH_EXTRACT_JOB_STATUS_PARTIAL: EnrichExtractJobStatus
 ENRICH_EXTRACT_JOB_STATUS_FAILED: EnrichExtractJobStatus
 
 class StartEnrichExtractRequest(_message.Message):
-    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "output_schema", "target_example", "start_id", "end_id", "concurrency", "overwrite", "page_size", "max_retries", "source_json_field", "priority_field_hints", "auto_create_output_table")
+    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "output_schema", "target_example", "start_id", "end_id", "concurrency", "overwrite", "page_size", "max_retries", "source_json_field", "priority_field_hints", "auto_create_output_table", "llm_timeout_seconds")
     class PriorityFieldHintsEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -56,6 +56,7 @@ class StartEnrichExtractRequest(_message.Message):
     SOURCE_JSON_FIELD_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_HINTS_FIELD_NUMBER: _ClassVar[int]
     AUTO_CREATE_OUTPUT_TABLE_FIELD_NUMBER: _ClassVar[int]
+    LLM_TIMEOUT_SECONDS_FIELD_NUMBER: _ClassVar[int]
     llm_resource_id: str
     database_resource_id: str
     source_table: str
@@ -72,7 +73,8 @@ class StartEnrichExtractRequest(_message.Message):
     source_json_field: str
     priority_field_hints: _containers.ScalarMap[str, str]
     auto_create_output_table: bool
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., target_example: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ..., priority_field_hints: _Optional[_Mapping[str, str]] = ..., auto_create_output_table: bool = ...) -> None: ...
+    llm_timeout_seconds: int
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., target_example: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., concurrency: _Optional[int] = ..., overwrite: bool = ..., page_size: _Optional[int] = ..., max_retries: _Optional[int] = ..., source_json_field: _Optional[str] = ..., priority_field_hints: _Optional[_Mapping[str, str]] = ..., auto_create_output_table: bool = ..., llm_timeout_seconds: _Optional[int] = ...) -> None: ...
 
 class EnrichExtractOutputColumn(_message.Message):
     __slots__ = ("name", "type")
@@ -97,7 +99,7 @@ class GetEnrichExtractJobRequest(_message.Message):
     def __init__(self, job_id: _Optional[str] = ...) -> None: ...
 
 class GetEnrichExtractJobResponse(_message.Message):
-    __slots__ = ("job_id", "llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "source_json_field", "status", "error_message", "last_key", "processed_rows", "succeeded_rows", "failed_rows", "created_at_unix", "started_at_unix", "finished_at_unix", "output_schema", "auto_create_output_table")
+    __slots__ = ("job_id", "llm_resource_id", "database_resource_id", "source_table", "output_table", "key_field", "source_json_field", "status", "error_message", "last_key", "processed_rows", "succeeded_rows", "failed_rows", "created_at_unix", "started_at_unix", "finished_at_unix", "output_schema", "auto_create_output_table", "llm_timeout_seconds")
     JOB_ID_FIELD_NUMBER: _ClassVar[int]
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -116,6 +118,7 @@ class GetEnrichExtractJobResponse(_message.Message):
     FINISHED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_SCHEMA_FIELD_NUMBER: _ClassVar[int]
     AUTO_CREATE_OUTPUT_TABLE_FIELD_NUMBER: _ClassVar[int]
+    LLM_TIMEOUT_SECONDS_FIELD_NUMBER: _ClassVar[int]
     job_id: str
     llm_resource_id: str
     database_resource_id: str
@@ -134,4 +137,5 @@ class GetEnrichExtractJobResponse(_message.Message):
     finished_at_unix: int
     output_schema: _containers.RepeatedCompositeFieldContainer[EnrichExtractOutputColumn]
     auto_create_output_table: bool
-    def __init__(self, job_id: _Optional[str] = ..., llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., source_json_field: _Optional[str] = ..., status: _Optional[_Union[EnrichExtractJobStatus, str]] = ..., error_message: _Optional[str] = ..., last_key: _Optional[int] = ..., processed_rows: _Optional[int] = ..., succeeded_rows: _Optional[int] = ..., failed_rows: _Optional[int] = ..., created_at_unix: _Optional[int] = ..., started_at_unix: _Optional[int] = ..., finished_at_unix: _Optional[int] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., auto_create_output_table: bool = ...) -> None: ...
+    llm_timeout_seconds: int
+    def __init__(self, job_id: _Optional[str] = ..., llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., key_field: _Optional[str] = ..., source_json_field: _Optional[str] = ..., status: _Optional[_Union[EnrichExtractJobStatus, str]] = ..., error_message: _Optional[str] = ..., last_key: _Optional[int] = ..., processed_rows: _Optional[int] = ..., succeeded_rows: _Optional[int] = ..., failed_rows: _Optional[int] = ..., created_at_unix: _Optional[int] = ..., started_at_unix: _Optional[int] = ..., finished_at_unix: _Optional[int] = ..., output_schema: _Optional[_Iterable[_Union[EnrichExtractOutputColumn, _Mapping]]] = ..., auto_create_output_table: bool = ..., llm_timeout_seconds: _Optional[int] = ...) -> None: ...

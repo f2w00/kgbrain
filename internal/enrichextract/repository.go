@@ -35,6 +35,7 @@ func NewEnrichExtractRepo(db *sql.DB) (*EnrichExtractRepo, error) {
 		concurrency          INTEGER NOT NULL,
 		page_size            INTEGER NOT NULL,
 		max_retries          INTEGER NOT NULL,
+		llm_timeout_seconds  INTEGER NOT NULL DEFAULT 30,
 		last_key             INTEGER,
 		processed_rows       INTEGER NOT NULL DEFAULT 0,
 		succeeded_rows       INTEGER NOT NULL DEFAULT 0,
@@ -81,17 +82,17 @@ func (r *EnrichExtractRepo) CreateJob(job *Job) error {
 		job_id, status, llm_resource_id, database_resource_id, source_table,
 		output_table, key_field, source_json_field, output_schema_json, target_example_json,
 		priority_field_hints_json, auto_create_output_table, start_id, end_id, overwrite, concurrency,
-		page_size, max_retries, last_key, processed_rows, succeeded_rows,
+		page_size, max_retries, llm_timeout_seconds, last_key, processed_rows, succeeded_rows,
 		failed_rows, created_at, started_at, updated_at, finished_at,
 		error_message
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.JobID, job.Status, job.LLMResourceID, job.DatabaseResourceID,
 		job.SourceTable, job.OutputTable, job.KeyField, job.SourceJSONField,
 		string(outputSchemaJSON), string(targetExampleJSON), string(priorityFieldHintsJSON),
 		boolToInt(job.AutoCreateOutputTable),
 		nullableInt64(job.StartID),
 		nullableInt64(job.EndID), boolToInt(job.Overwrite), job.Concurrency,
-		job.PageSize, job.MaxRetries, nullableInt64(job.LastKey), job.ProcessedRows,
+		job.PageSize, job.MaxRetries, job.LLMTimeoutSeconds, nullableInt64(job.LastKey), job.ProcessedRows,
 		job.SucceededRows, job.FailedRows, job.CreatedAt, nullable(job.StartedAt),
 		nullable(job.UpdatedAt), nullable(job.FinishedAt), nullable(job.ErrorMessage),
 	)
@@ -215,7 +216,7 @@ const selectJobsSQL = `SELECT
 	job_id, status, llm_resource_id, database_resource_id, source_table,
 	output_table, key_field, source_json_field, output_schema_json, target_example_json,
 	priority_field_hints_json, auto_create_output_table, start_id, end_id, overwrite, concurrency,
-	page_size, max_retries, last_key, processed_rows, succeeded_rows,
+	page_size, max_retries, llm_timeout_seconds, last_key, processed_rows, succeeded_rows,
 	failed_rows, created_at, started_at, updated_at, finished_at,
 	error_message
 FROM enrich_extract_jobs`
@@ -232,7 +233,7 @@ func scanJob(s scanner) (*Job, error) {
 		&job.SourceTable, &job.OutputTable, &job.KeyField, &job.SourceJSONField,
 		&outputSchemaJSON, &targetExampleJSON, &priorityFieldHintsJSON,
 		&autoCreateOutputTable, &startID, &endID, &overwrite,
-		&job.Concurrency, &job.PageSize, &job.MaxRetries, &lastKey,
+		&job.Concurrency, &job.PageSize, &job.MaxRetries, &job.LLMTimeoutSeconds, &lastKey,
 		&job.ProcessedRows, &job.SucceededRows, &job.FailedRows,
 		&job.CreatedAt, &startedAt, &updatedAt, &finishedAt, &errorMessage,
 	)
@@ -308,6 +309,7 @@ func ensureEnrichExtractJobColumns(db *sql.DB) error {
 	hasOutputSchema := false
 	hasPriorityFieldHints := false
 	hasAutoCreateOutputTable := false
+	hasLLMTimeoutSeconds := false
 	for rows.Next() {
 		var cid int
 		var name, columnType string
@@ -324,6 +326,9 @@ func ensureEnrichExtractJobColumns(db *sql.DB) error {
 		}
 		if strings.EqualFold(name, "auto_create_output_table") {
 			hasAutoCreateOutputTable = true
+		}
+		if strings.EqualFold(name, "llm_timeout_seconds") {
+			hasLLMTimeoutSeconds = true
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -345,6 +350,12 @@ func ensureEnrichExtractJobColumns(db *sql.DB) error {
 		if _, err := db.Exec(`ALTER TABLE enrich_extract_jobs
 			ADD COLUMN auto_create_output_table INTEGER NOT NULL DEFAULT 0`); err != nil {
 			return fmt.Errorf("add auto_create_output_table column: %w", err)
+		}
+	}
+	if !hasLLMTimeoutSeconds {
+		if _, err := db.Exec(`ALTER TABLE enrich_extract_jobs
+			ADD COLUMN llm_timeout_seconds INTEGER NOT NULL DEFAULT 30`); err != nil {
+			return fmt.Errorf("add llm_timeout_seconds column: %w", err)
 		}
 	}
 	return nil

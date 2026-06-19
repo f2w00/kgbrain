@@ -92,6 +92,15 @@ func NormalizeStartRequest(req StartRequest) (StartRequest, []string, error) {
 	}
 	req.MaxRetries = &maxRetries
 
+	llmTimeoutSeconds := DefaultLLMTimeoutSeconds
+	if req.LLMTimeoutSeconds != nil {
+		llmTimeoutSeconds = *req.LLMTimeoutSeconds
+	}
+	if llmTimeoutSeconds <= 0 || llmTimeoutSeconds > MaxLLMTimeoutSeconds {
+		return req, nil, &validationError{message: "llm_timeout_seconds is out of range"}
+	}
+	req.LLMTimeoutSeconds = &llmTimeoutSeconds
+
 	overwrite := false
 	if req.Overwrite != nil {
 		overwrite = *req.Overwrite

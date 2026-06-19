@@ -1,4 +1,4 @@
-FROM 10.15.22.234:5005/distroless:debian13
+FROM 10.15.22.3:5005/distroless:debian13
 
 COPY kgbrain /app/kgbrain
 COPY docs /app/docs

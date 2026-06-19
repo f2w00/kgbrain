@@ -47,6 +47,7 @@ func (h *EnrichExtractHandler) StartEnrichExtract(
 		Overwrite:             req.Msg.Overwrite,
 		PageSize:              optionalInt(req.Msg.PageSize),
 		MaxRetries:            optionalInt(req.Msg.MaxRetries),
+		LLMTimeoutSeconds:     optionalInt(req.Msg.LlmTimeoutSeconds),
 	})
 	if err != nil {
 		return nil, enrichExtractError(err)
@@ -81,6 +82,7 @@ func (h *EnrichExtractHandler) GetEnrichExtractJob(
 		SourceJsonField:       job.SourceJSONField,
 		OutputSchema:          internalOutputSchema(job.OutputSchema),
 		AutoCreateOutputTable: job.AutoCreateOutputTable,
+		LlmTimeoutSeconds:     int32(job.LLMTimeoutSeconds),
 		Status:                protoStatus(job.Status),
 		ErrorMessage:          job.ErrorMessage,
 		LastKey:               lastKey,

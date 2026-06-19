@@ -312,6 +312,7 @@ with EnrichExtractServiceClientSync(BASE_URL) as client:
             concurrency=30,
             page_size=300,
             max_retries=2,
+            llm_timeout_seconds=30,
             overwrite=False,
             auto_create_output_table=True,
         )
@@ -359,6 +360,7 @@ with EnrichExtractServiceClientSync(BASE_URL) as client:
 - `priority_field_hints` 可选，用于按 `字段名 -> 说明` 强化重点字段抽取；key 必须属于
   `output_schema` 定义的目标字段
 - `priority_field_hints` 只影响 prompt，不会新增输出列，也不会强制字段非空
+- `llm_timeout_seconds` 控制单行单次 LLM 调用超时，默认 30 秒
 - 当 `overwrite=False` 时，服务会跳过 `output_table` 中已存在的主键记录
 
 ## 三、实体对齐（entity-alignment）

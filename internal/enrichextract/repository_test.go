@@ -54,6 +54,7 @@ func TestEnrichExtractRepoPersistsPriorityFieldHints(t *testing.T) {
 		Concurrency:           1,
 		PageSize:              100,
 		MaxRetries:            2,
+		LLMTimeoutSeconds:     30,
 		CreatedAt:             "2026-06-11T00:00:00Z",
 	}
 	if err := repo.CreateJob(job); err != nil {
@@ -77,6 +78,9 @@ func TestEnrichExtractRepoPersistsPriorityFieldHints(t *testing.T) {
 	}
 	if len(got.OutputSchema) != 2 || got.OutputSchema[0].Name != "dynasty" {
 		t.Fatalf("unexpected output schema: %#v", got.OutputSchema)
+	}
+	if got.LLMTimeoutSeconds != 30 {
+		t.Fatalf("unexpected llm timeout seconds: %d", got.LLMTimeoutSeconds)
 	}
 }
 
@@ -133,6 +137,7 @@ func TestNewEnrichExtractRepoMigratesPriorityFieldHintsColumn(t *testing.T) {
 	foundPriorityHints := false
 	foundOutputSchema := false
 	foundAutoCreateOutputTable := false
+	foundLLMTimeoutSeconds := false
 	for rows.Next() {
 		var cid int
 		var name, columnType string
@@ -150,6 +155,9 @@ func TestNewEnrichExtractRepoMigratesPriorityFieldHintsColumn(t *testing.T) {
 		if name == "auto_create_output_table" {
 			foundAutoCreateOutputTable = true
 		}
+		if name == "llm_timeout_seconds" {
+			foundLLMTimeoutSeconds = true
+		}
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatalf("iterate table info: %v", err)
@@ -162,5 +170,8 @@ func TestNewEnrichExtractRepoMigratesPriorityFieldHintsColumn(t *testing.T) {
 	}
 	if !foundAutoCreateOutputTable {
 		t.Fatal("expected auto_create_output_table column to be added")
+	}
+	if !foundLLMTimeoutSeconds {
+		t.Fatal("expected llm_timeout_seconds column to be added")
 	}
 }
