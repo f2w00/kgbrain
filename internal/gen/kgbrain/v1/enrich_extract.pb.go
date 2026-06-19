@@ -175,8 +175,10 @@ type StartEnrichExtractRequest struct {
 	PriorityFieldHints map[string]string `protobuf:"bytes,15,rep,name=priority_field_hints,json=priorityFieldHints,proto3" json:"priority_field_hints,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// 输出表不存在时是否按 output_schema 自动创建。
 	AutoCreateOutputTable *bool `protobuf:"varint,16,opt,name=auto_create_output_table,json=autoCreateOutputTable,proto3,oneof" json:"auto_create_output_table,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// 单行单次 LLM 调用超时（秒）。为空时默认 30 秒。
+	LlmTimeoutSeconds *int32 `protobuf:"varint,17,opt,name=llm_timeout_seconds,json=llmTimeoutSeconds,proto3,oneof" json:"llm_timeout_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *StartEnrichExtractRequest) Reset() {
@@ -319,6 +321,13 @@ func (x *StartEnrichExtractRequest) GetAutoCreateOutputTable() bool {
 		return *x.AutoCreateOutputTable
 	}
 	return false
+}
+
+func (x *StartEnrichExtractRequest) GetLlmTimeoutSeconds() int32 {
+	if x != nil && x.LlmTimeoutSeconds != nil {
+		return *x.LlmTimeoutSeconds
+	}
+	return 0
 }
 
 // 输出表字段定义。
@@ -516,8 +525,10 @@ type GetEnrichExtractJobResponse struct {
 	OutputSchema []*EnrichExtractOutputColumn `protobuf:"bytes,17,rep,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`
 	// 输出表不存在时是否按 output_schema 自动创建。
 	AutoCreateOutputTable bool `protobuf:"varint,18,opt,name=auto_create_output_table,json=autoCreateOutputTable,proto3" json:"auto_create_output_table,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// 单行单次 LLM 调用超时（秒）。
+	LlmTimeoutSeconds int32 `protobuf:"varint,19,opt,name=llm_timeout_seconds,json=llmTimeoutSeconds,proto3" json:"llm_timeout_seconds,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetEnrichExtractJobResponse) Reset() {
@@ -676,12 +687,19 @@ func (x *GetEnrichExtractJobResponse) GetAutoCreateOutputTable() bool {
 	return false
 }
 
+func (x *GetEnrichExtractJobResponse) GetLlmTimeoutSeconds() int32 {
+	if x != nil {
+		return x.LlmTimeoutSeconds
+	}
+	return 0
+}
+
 var File_kgbrain_v1_enrich_extract_proto protoreflect.FileDescriptor
 
 const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\n" +
 	"\x1fkgbrain/v1/enrich_extract.proto\x12\n" +
-	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\xe0\a\n" +
+	"kgbrain.v1\x1a\x1cgoogle/protobuf/struct.proto\"\xad\b\n" +
 	"\x19StartEnrichExtractRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
@@ -700,7 +718,8 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"maxRetries\x88\x01\x01\x12/\n" +
 	"\x11source_json_field\x18\x0e \x01(\tH\x06R\x0fsourceJsonField\x88\x01\x01\x12o\n" +
 	"\x14priority_field_hints\x18\x0f \x03(\v2=.kgbrain.v1.StartEnrichExtractRequest.PriorityFieldHintsEntryR\x12priorityFieldHints\x12<\n" +
-	"\x18auto_create_output_table\x18\x10 \x01(\bH\aR\x15autoCreateOutputTable\x88\x01\x01\x1aE\n" +
+	"\x18auto_create_output_table\x18\x10 \x01(\bH\aR\x15autoCreateOutputTable\x88\x01\x01\x123\n" +
+	"\x13llm_timeout_seconds\x18\x11 \x01(\x05H\bR\x11llmTimeoutSeconds\x88\x01\x01\x1aE\n" +
 	"\x17PriorityFieldHintsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\v\n" +
@@ -713,7 +732,8 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"_page_sizeB\x0e\n" +
 	"\f_max_retriesB\x14\n" +
 	"\x12_source_json_fieldB\x1b\n" +
-	"\x19_auto_create_output_table\"n\n" +
+	"\x19_auto_create_output_tableB\x16\n" +
+	"\x14_llm_timeout_seconds\"n\n" +
 	"\x19EnrichExtractOutputColumn\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12=\n" +
 	"\x04type\x18\x02 \x01(\x0e2).kgbrain.v1.EnrichExtractOutputColumnTypeR\x04type\"o\n" +
@@ -721,7 +741,7 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12:\n" +
 	"\x06status\x18\x02 \x01(\x0e2\".kgbrain.v1.EnrichExtractJobStatusR\x06status\"3\n" +
 	"\x1aGetEnrichExtractJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\x87\x06\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xb7\x06\n" +
 	"\x1bGetEnrichExtractJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12&\n" +
 	"\x0fllm_resource_id\x18\x02 \x01(\tR\rllmResourceId\x120\n" +
@@ -742,7 +762,8 @@ const file_kgbrain_v1_enrich_extract_proto_rawDesc = "" +
 	"\x0fstarted_at_unix\x18\x0f \x01(\x03R\rstartedAtUnix\x12(\n" +
 	"\x10finished_at_unix\x18\x10 \x01(\x03R\x0efinishedAtUnix\x12J\n" +
 	"\routput_schema\x18\x11 \x03(\v2%.kgbrain.v1.EnrichExtractOutputColumnR\foutputSchema\x127\n" +
-	"\x18auto_create_output_table\x18\x12 \x01(\bR\x15autoCreateOutputTable*\xac\x01\n" +
+	"\x18auto_create_output_table\x18\x12 \x01(\bR\x15autoCreateOutputTable\x12.\n" +
+	"\x13llm_timeout_seconds\x18\x13 \x01(\x05R\x11llmTimeoutSeconds*\xac\x01\n" +
 	"\x1dEnrichExtractOutputColumnType\x121\n" +
 	"-ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_UNSPECIFIED\x10\x00\x12*\n" +
 	"&ENRICH_EXTRACT_OUTPUT_COLUMN_TYPE_TEXT\x10\x01\x12,\n" +

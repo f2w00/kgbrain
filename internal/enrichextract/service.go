@@ -70,6 +70,7 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		Concurrency:           *normalized.Concurrency,
 		PageSize:              *normalized.PageSize,
 		MaxRetries:            *normalized.MaxRetries,
+		LLMTimeoutSeconds:     *normalized.LLMTimeoutSeconds,
 		CreatedAt:             now,
 	}
 	if err := s.repo.CreateJob(job); err != nil {
@@ -155,6 +156,7 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 		Concurrency:           intPtr(job.Concurrency),
 		PageSize:              intPtr(job.PageSize),
 		MaxRetries:            intPtr(job.MaxRetries),
+		LLMTimeoutSeconds:     intPtr(job.LLMTimeoutSeconds),
 	}
 	if err := s.executor.Execute(ctx, job, req, s.resources); err != nil {
 		_ = s.repo.MarkFailed(jobID, err.Error())

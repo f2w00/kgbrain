@@ -78,6 +78,7 @@ func (e *executor) Execute(
 		Concurrency:           job.Concurrency,
 		PageSize:              job.PageSize,
 		MaxRetries:            job.MaxRetries,
+		LLMTimeoutSeconds:     job.LLMTimeoutSeconds,
 		LastKey:               job.LastKey,
 		AutoCreateOutputTable: job.AutoCreateOutputTable,
 	})

@@ -94,6 +94,33 @@ func TestNormalizeStartRequestPriorityFieldHints(t *testing.T) {
 	if normalized.PriorityFieldHints["dynasty"] != "朝代信息" {
 		t.Fatalf("unexpected normalized priority hint: %#v", normalized.PriorityFieldHints)
 	}
+	if normalized.LLMTimeoutSeconds == nil || *normalized.LLMTimeoutSeconds != 30 {
+		t.Fatalf("unexpected llm timeout seconds: %#v", normalized.LLMTimeoutSeconds)
+	}
+}
+
+func TestNormalizeStartRequestLLMTimeoutSecondsRejectsOutOfRange(t *testing.T) {
+	timeout := 0
+	_, _, err := NormalizeStartRequest(StartRequest{
+		LLMResourceID:      "llm_1",
+		DatabaseResourceID: "db_1",
+		SourceTable:        "source_items",
+		OutputTable:        "output_items",
+		KeyField:           "id",
+		OutputSchema: []OutputColumn{
+			{Name: "dynasty", Type: OutputColumnTypeText},
+		},
+		TargetExample: map[string]any{
+			"dynasty": "",
+		},
+		LLMTimeoutSeconds: &timeout,
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid llm_timeout_seconds")
+	}
+	if !strings.Contains(err.Error(), "llm_timeout_seconds is out of range") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestNormalizeStartRequestPriorityFieldHintsRejectsUnknownField(t *testing.T) {

@@ -168,7 +168,12 @@ func (s *DomainService) processOneRow(
 			req.OutputSchema,
 			req.PriorityFieldHints,
 		)
-		resp, err := llm.GenerateStructuredMessages(ctx, msgs)
+		llmCtx, cancel := context.WithTimeout(
+			ctx,
+			time.Duration(req.LLMTimeoutSeconds)*time.Second,
+		)
+		resp, err := llm.GenerateStructuredMessages(llmCtx, msgs)
+		cancel()
 		if err != nil {
 			lastErr = fmt.Errorf("llm generate: %w", err)
 			continue

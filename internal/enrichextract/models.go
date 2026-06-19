@@ -13,10 +13,12 @@ const (
 	DefaultSourceJSONField   = "raw_data"
 	DefaultConcurrency       = 1
 	DefaultMaxRetries        = 2
+	DefaultLLMTimeoutSeconds = 30
 	MinPageSize              = 100
 	MaxPageSize              = 1000
 	MaxConcurrency           = 128
 	MaxRetries               = 5
+	MaxLLMTimeoutSeconds     = 600
 	WriteBatchSize           = 100
 	ProcessTypeEnrichExtract = "enrich_extract"
 )
@@ -54,6 +56,7 @@ type Job struct {
 	Concurrency           int
 	PageSize              int
 	MaxRetries            int
+	LLMTimeoutSeconds     int
 	LastKey               *int64
 	ProcessedRows         int64
 	SucceededRows         int64

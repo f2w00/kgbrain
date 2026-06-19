@@ -19,6 +19,7 @@ type StartRequest struct {
 	Overwrite             *bool
 	PageSize              *int
 	MaxRetries            *int
+	LLMTimeoutSeconds     *int
 }
 
 // StartResult 是启动任务的响应，包含新创建的 job ID 和初始状态。
@@ -43,5 +44,6 @@ type ExecuteRequest struct {
 	Concurrency           int
 	PageSize              int
 	MaxRetries            int
+	LLMTimeoutSeconds     int
 	LastKey               *int64
 }
