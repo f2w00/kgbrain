@@ -29,13 +29,13 @@ func NewDomainService(
 // Execute 串行执行实体对齐流程。
 //
 // 处理步骤：
-//  1. 规范化字段配置（去重、排序 targets，裁剪 batch_size）
+//  1. 规范化字段配置（去重、排序 targets，裁剪 mapping 写入 batch_size）
 //  2. 校验源表、输出表和 mapping 表结构，获取源表列元信息
 //  3. 逐字段处理：
 //     a. 查询源表该字段所有非空不重复原始值（受 start_id/end_id 范围限制）
 //     b. 如果开启复用，加载已有 mapping，并更新使用计数
-//     c. 计算缺失的原始值，按 BatchSize 分批调用 LLM 生成映射
-//     d. 每批结果写入 mapping 表（upsert）
+//     c. 计算缺失的原始值，逐个调用 LLM 生成映射
+//     d. 生成结果按 BatchSize 批量写入 mapping 表（upsert）
 //  4. 执行数据库侧 INSERT INTO output SELECT ... LEFT JOIN mapping ...
 //     一次性完成对齐写入
 //
@@ -79,6 +79,10 @@ func (s *DomainService) Execute(
 	if err != nil {
 		return err
 	}
+	fuzzyTopK := req.FuzzyTopK
+	if fuzzyTopK <= 0 {
+		fuzzyTopK = DefaultFuzzyTopK
+	}
 	for _, field := range preparedFields {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -100,22 +104,50 @@ func (s *DomainService) Execute(
 			}
 		}
 		missing := MissingRawValues(rawValues, existing)
-		for _, batch := range ChunkStrings(missing, field.BatchSize) {
-			generated, err := GenerateMappingsBatch(ctx, llmClient, field, batch)
+		pending := make([]MappingRecord, 0, field.BatchSize)
+		for _, rawValue := range missing {
+			recalledTargets, err := s.repo.RecallTopKTargets(
+				ctx,
+				field.TargetSetID,
+				rawValue,
+				fuzzyTopK,
+			)
 			if err != nil {
 				return err
 			}
-			if err := s.repo.UpsertTargetCandidates(ctx, field.TargetSetID, generated); err != nil {
+			if len(recalledTargets) == 0 {
+				pending = append(pending, MappingRecord{
+					RawValue: rawValue,
+					Status:   MappingStatusNeedsCandidate,
+				})
+				if len(pending) < field.BatchSize {
+					continue
+				}
+				if err := s.flushGeneratedMappings(ctx, req, field, pending); err != nil {
+					return err
+				}
+				pending = pending[:0]
+				continue
+			}
+			recalledField, err := PrepareRecalledField(field, recalledTargets)
+			if err != nil {
 				return err
 			}
-			if err := s.repo.UpsertMappings(
-				ctx,
-					req,
-					field,
-					generated,
-				); err != nil {
+			generated, err := GenerateMapping(ctx, llmClient, recalledField, rawValue)
+			if err != nil {
 				return err
 			}
+			pending = append(pending, generated)
+			if len(pending) < field.BatchSize {
+				continue
+			}
+			if err := s.flushGeneratedMappings(ctx, req, field, pending); err != nil {
+				return err
+			}
+			pending = pending[:0]
+		}
+		if err := s.flushGeneratedMappings(ctx, req, field, pending); err != nil {
+			return err
 		}
 	}
 	if err := s.repo.WriteOutputRows(ctx, req, sourceColumns, preparedFields); err != nil {
@@ -126,4 +158,19 @@ func (s *DomainService) Execute(
 		return err
 	}
 	return s.processRecorder.UpsertMany(ctx, processRecords)
+}
+
+func (s *DomainService) flushGeneratedMappings(
+	ctx context.Context,
+	req ExecuteRequest,
+	field PreparedField,
+	records []MappingRecord,
+) error {
+	if len(records) == 0 {
+		return nil
+	}
+	if err := s.repo.UpsertTargetCandidates(ctx, field.TargetSetID, records); err != nil {
+		return err
+	}
+	return s.repo.UpsertMappings(ctx, req, field, records)
 }

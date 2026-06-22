@@ -55,6 +55,7 @@ func (s *Service) Start(_ context.Context, req StartRequest) (*StartResult, erro
 		StartID:                 req.StartID,
 		EndID:                   req.EndID,
 		OnlyWaitingTargetReview: req.OnlyWaitingTargetReview,
+		FuzzyTopK:               normalizeFuzzyTopK(req.FuzzyTopK),
 		Fields:                  toJobFields(req.Fields),
 		CreatedAt:               now,
 	}
@@ -99,7 +100,11 @@ func (s *Service) ListTargets(ctx context.Context, req ListTargetsRequest) (*Lis
 	if err != nil {
 		return nil, err
 	}
-	return &ListTargetsResult{Targets: targets}, nil
+	labels := make([]string, 0, len(targets))
+	for _, target := range targets {
+		labels = append(labels, target.Label)
+	}
+	return &ListTargetsResult{Labels: labels}, nil
 }
 
 func (s *Service) UpsertTargets(ctx context.Context, req UpsertTargetsRequest) error {
@@ -110,20 +115,27 @@ func (s *Service) UpsertTargets(ctx context.Context, req UpsertTargetsRequest) e
 	if targetSetID == "" {
 		return &validationError{message: "target_set_id is required"}
 	}
-	if len(req.Targets) == 0 {
-		return &validationError{message: "targets is required"}
+	if len(req.Labels) == 0 {
+		return &validationError{message: "labels is required"}
 	}
-	for _, target := range req.Targets {
-		if strings.TrimSpace(target.Label) == "" {
-			return &validationError{message: "targets.label is required"}
+	for _, label := range req.Labels {
+		if strings.TrimSpace(label) == "" {
+			return &validationError{message: "labels is required"}
 		}
+	}
+	targets := make([]TargetDefinition, 0, len(req.Labels))
+	for _, label := range req.Labels {
+		targets = append(targets, TargetDefinition{
+			TargetSetID: targetSetID,
+			Label:       strings.TrimSpace(label),
+		})
 	}
 	repo, db, err := s.openBusinessRepo(req.DatabaseResourceID)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-	return repo.UpsertTargets(ctx, targetSetID, req.Targets)
+	return repo.UpsertTargets(ctx, targetSetID, targets)
 }
 
 func (s *Service) DeleteTarget(ctx context.Context, req DeleteTargetRequest) error {
@@ -237,6 +249,7 @@ func (s *Service) runJob(ctx context.Context, jobID string) {
 			StartID:                 job.StartID,
 			EndID:                   job.EndID,
 			OnlyWaitingTargetReview: job.OnlyWaitingTargetReview,
+			FuzzyTopK:               &job.FuzzyTopK,
 			Fields:                  fromJobFields(job.Fields),
 		}
 		if err := s.executor.Execute(ctx, job, req, s.resources); err != nil {
@@ -272,6 +285,9 @@ func validateStartRequest(req StartRequest) error {
 	if req.StartID != nil && req.EndID != nil && *req.StartID > *req.EndID {
 		return &validationError{message: "start_id must be less than or equal to end_id"}
 	}
+	if req.FuzzyTopK != nil && *req.FuzzyTopK <= 0 {
+		return &validationError{message: "fuzzy_top_k must be greater than 0"}
+	}
 	for _, field := range req.Fields {
 		name := strings.TrimSpace(field.Name)
 		if name == "" {
@@ -285,6 +301,13 @@ func validateStartRequest(req StartRequest) error {
 		}
 	}
 	return nil
+}
+
+func normalizeFuzzyTopK(v *int) int {
+	if v == nil {
+		return DefaultFuzzyTopK
+	}
+	return *v
 }
 
 func toJobFields(fields []FieldRequest) []FieldConfig {

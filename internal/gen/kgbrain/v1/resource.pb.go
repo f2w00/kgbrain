@@ -422,6 +422,354 @@ func (x *DeleteLLMResourceResponse) GetStatus() string {
 	return ""
 }
 
+// 创建或更新 Embedding 资源的请求。
+type SetEmbeddingResourceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识，用户自定义。
+	ResourceId string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	// 资源名称，便于辨识。
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Embedding 连接配置。
+	Config        *EmbeddingResourceConfig `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEmbeddingResourceRequest) Reset() {
+	*x = SetEmbeddingResourceRequest{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEmbeddingResourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEmbeddingResourceRequest) ProtoMessage() {}
+
+func (x *SetEmbeddingResourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEmbeddingResourceRequest.ProtoReflect.Descriptor instead.
+func (*SetEmbeddingResourceRequest) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *SetEmbeddingResourceRequest) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *SetEmbeddingResourceRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SetEmbeddingResourceRequest) GetConfig() *EmbeddingResourceConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+// 创建或更新 Embedding 资源的响应。
+type SetEmbeddingResourceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识。
+	ResourceId string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	// 操作状态描述。
+	Status        string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEmbeddingResourceResponse) Reset() {
+	*x = SetEmbeddingResourceResponse{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEmbeddingResourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEmbeddingResourceResponse) ProtoMessage() {}
+
+func (x *SetEmbeddingResourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEmbeddingResourceResponse.ProtoReflect.Descriptor instead.
+func (*SetEmbeddingResourceResponse) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SetEmbeddingResourceResponse) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *SetEmbeddingResourceResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+// 查询 Embedding 资源的请求。
+type GetEmbeddingResourceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识。
+	ResourceId    string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEmbeddingResourceRequest) Reset() {
+	*x = GetEmbeddingResourceRequest{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEmbeddingResourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEmbeddingResourceRequest) ProtoMessage() {}
+
+func (x *GetEmbeddingResourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEmbeddingResourceRequest.ProtoReflect.Descriptor instead.
+func (*GetEmbeddingResourceRequest) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetEmbeddingResourceRequest) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+// 查询 Embedding 资源的响应。
+type GetEmbeddingResourceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识。
+	ResourceId string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	// 资源名称。
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Embedding 连接配置。
+	Config *EmbeddingResourceConfig `protobuf:"bytes,3,opt,name=config,proto3" json:"config,omitempty"`
+	// 创建时间（Unix 时间戳，秒）。
+	CreatedAtUnix int64 `protobuf:"varint,4,opt,name=created_at_unix,json=createdAtUnix,proto3" json:"created_at_unix,omitempty"`
+	// 更新时间（Unix 时间戳，秒）。
+	UpdatedAtUnix int64 `protobuf:"varint,5,opt,name=updated_at_unix,json=updatedAtUnix,proto3" json:"updated_at_unix,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEmbeddingResourceResponse) Reset() {
+	*x = GetEmbeddingResourceResponse{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEmbeddingResourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEmbeddingResourceResponse) ProtoMessage() {}
+
+func (x *GetEmbeddingResourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEmbeddingResourceResponse.ProtoReflect.Descriptor instead.
+func (*GetEmbeddingResourceResponse) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetEmbeddingResourceResponse) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *GetEmbeddingResourceResponse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GetEmbeddingResourceResponse) GetConfig() *EmbeddingResourceConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+func (x *GetEmbeddingResourceResponse) GetCreatedAtUnix() int64 {
+	if x != nil {
+		return x.CreatedAtUnix
+	}
+	return 0
+}
+
+func (x *GetEmbeddingResourceResponse) GetUpdatedAtUnix() int64 {
+	if x != nil {
+		return x.UpdatedAtUnix
+	}
+	return 0
+}
+
+// 删除 Embedding 资源的请求。
+type DeleteEmbeddingResourceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识。
+	ResourceId    string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteEmbeddingResourceRequest) Reset() {
+	*x = DeleteEmbeddingResourceRequest{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteEmbeddingResourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteEmbeddingResourceRequest) ProtoMessage() {}
+
+func (x *DeleteEmbeddingResourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteEmbeddingResourceRequest.ProtoReflect.Descriptor instead.
+func (*DeleteEmbeddingResourceRequest) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DeleteEmbeddingResourceRequest) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+// 删除 Embedding 资源的响应。
+type DeleteEmbeddingResourceResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 资源唯一标识。
+	ResourceId string `protobuf:"bytes,1,opt,name=resource_id,json=resourceId,proto3" json:"resource_id,omitempty"`
+	// 操作状态描述。
+	Status        string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteEmbeddingResourceResponse) Reset() {
+	*x = DeleteEmbeddingResourceResponse{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteEmbeddingResourceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteEmbeddingResourceResponse) ProtoMessage() {}
+
+func (x *DeleteEmbeddingResourceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteEmbeddingResourceResponse.ProtoReflect.Descriptor instead.
+func (*DeleteEmbeddingResourceResponse) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DeleteEmbeddingResourceResponse) GetResourceId() string {
+	if x != nil {
+		return x.ResourceId
+	}
+	return ""
+}
+
+func (x *DeleteEmbeddingResourceResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 // LLM 服务连接配置。
 type LLMResourceConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -443,7 +791,7 @@ type LLMResourceConfig struct {
 
 func (x *LLMResourceConfig) Reset() {
 	*x = LLMResourceConfig{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[6]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -455,7 +803,7 @@ func (x *LLMResourceConfig) String() string {
 func (*LLMResourceConfig) ProtoMessage() {}
 
 func (x *LLMResourceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[6]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -468,7 +816,7 @@ func (x *LLMResourceConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LLMResourceConfig.ProtoReflect.Descriptor instead.
 func (*LLMResourceConfig) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{6}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *LLMResourceConfig) GetBaseUrl() string {
@@ -513,6 +861,88 @@ func (x *LLMResourceConfig) GetMaxConcurrency() int32 {
 	return 0
 }
 
+// Embedding 服务连接配置。
+type EmbeddingResourceConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Embedding API 的 Base URL。
+	BaseUrl string `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	// API 密钥。
+	ApiKey string `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// 模型名称，如 text-embedding-3-small、bge-m3 等。
+	Model string `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`
+	// HTTP 请求超时时间（秒）。
+	TimeoutSeconds int32 `protobuf:"varint,4,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	// 最大并发请求数，为空则使用默认值。
+	MaxConcurrency *int32 `protobuf:"varint,5,opt,name=max_concurrency,json=maxConcurrency,proto3,oneof" json:"max_concurrency,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *EmbeddingResourceConfig) Reset() {
+	*x = EmbeddingResourceConfig{}
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EmbeddingResourceConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EmbeddingResourceConfig) ProtoMessage() {}
+
+func (x *EmbeddingResourceConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EmbeddingResourceConfig.ProtoReflect.Descriptor instead.
+func (*EmbeddingResourceConfig) Descriptor() ([]byte, []int) {
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *EmbeddingResourceConfig) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
+	}
+	return ""
+}
+
+func (x *EmbeddingResourceConfig) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *EmbeddingResourceConfig) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *EmbeddingResourceConfig) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+func (x *EmbeddingResourceConfig) GetMaxConcurrency() int32 {
+	if x != nil && x.MaxConcurrency != nil {
+		return *x.MaxConcurrency
+	}
+	return 0
+}
+
 // 创建或更新数据库资源的请求。
 type SetDatabaseResourceRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -528,7 +958,7 @@ type SetDatabaseResourceRequest struct {
 
 func (x *SetDatabaseResourceRequest) Reset() {
 	*x = SetDatabaseResourceRequest{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[7]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -540,7 +970,7 @@ func (x *SetDatabaseResourceRequest) String() string {
 func (*SetDatabaseResourceRequest) ProtoMessage() {}
 
 func (x *SetDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[7]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -553,7 +983,7 @@ func (x *SetDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDatabaseResourceRequest.ProtoReflect.Descriptor instead.
 func (*SetDatabaseResourceRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{7}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SetDatabaseResourceRequest) GetResourceId() string {
@@ -590,7 +1020,7 @@ type SetDatabaseResourceResponse struct {
 
 func (x *SetDatabaseResourceResponse) Reset() {
 	*x = SetDatabaseResourceResponse{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[8]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +1032,7 @@ func (x *SetDatabaseResourceResponse) String() string {
 func (*SetDatabaseResourceResponse) ProtoMessage() {}
 
 func (x *SetDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[8]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +1045,7 @@ func (x *SetDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetDatabaseResourceResponse.ProtoReflect.Descriptor instead.
 func (*SetDatabaseResourceResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{8}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SetDatabaseResourceResponse) GetResourceId() string {
@@ -643,7 +1073,7 @@ type GetDatabaseResourceRequest struct {
 
 func (x *GetDatabaseResourceRequest) Reset() {
 	*x = GetDatabaseResourceRequest{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[9]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +1085,7 @@ func (x *GetDatabaseResourceRequest) String() string {
 func (*GetDatabaseResourceRequest) ProtoMessage() {}
 
 func (x *GetDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[9]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +1098,7 @@ func (x *GetDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatabaseResourceRequest.ProtoReflect.Descriptor instead.
 func (*GetDatabaseResourceRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{9}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetDatabaseResourceRequest) GetResourceId() string {
@@ -697,7 +1127,7 @@ type GetDatabaseResourceResponse struct {
 
 func (x *GetDatabaseResourceResponse) Reset() {
 	*x = GetDatabaseResourceResponse{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[10]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -709,7 +1139,7 @@ func (x *GetDatabaseResourceResponse) String() string {
 func (*GetDatabaseResourceResponse) ProtoMessage() {}
 
 func (x *GetDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[10]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -722,7 +1152,7 @@ func (x *GetDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatabaseResourceResponse.ProtoReflect.Descriptor instead.
 func (*GetDatabaseResourceResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{10}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetDatabaseResourceResponse) GetResourceId() string {
@@ -771,7 +1201,7 @@ type DeleteDatabaseResourceRequest struct {
 
 func (x *DeleteDatabaseResourceRequest) Reset() {
 	*x = DeleteDatabaseResourceRequest{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[11]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -783,7 +1213,7 @@ func (x *DeleteDatabaseResourceRequest) String() string {
 func (*DeleteDatabaseResourceRequest) ProtoMessage() {}
 
 func (x *DeleteDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[11]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -796,7 +1226,7 @@ func (x *DeleteDatabaseResourceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDatabaseResourceRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDatabaseResourceRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{11}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DeleteDatabaseResourceRequest) GetResourceId() string {
@@ -819,7 +1249,7 @@ type DeleteDatabaseResourceResponse struct {
 
 func (x *DeleteDatabaseResourceResponse) Reset() {
 	*x = DeleteDatabaseResourceResponse{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[12]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -831,7 +1261,7 @@ func (x *DeleteDatabaseResourceResponse) String() string {
 func (*DeleteDatabaseResourceResponse) ProtoMessage() {}
 
 func (x *DeleteDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[12]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -844,7 +1274,7 @@ func (x *DeleteDatabaseResourceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDatabaseResourceResponse.ProtoReflect.Descriptor instead.
 func (*DeleteDatabaseResourceResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{12}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DeleteDatabaseResourceResponse) GetResourceId() string {
@@ -874,7 +1304,7 @@ type DatabaseResourceConfig struct {
 
 func (x *DatabaseResourceConfig) Reset() {
 	*x = DatabaseResourceConfig{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[13]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -886,7 +1316,7 @@ func (x *DatabaseResourceConfig) String() string {
 func (*DatabaseResourceConfig) ProtoMessage() {}
 
 func (x *DatabaseResourceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[13]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -899,7 +1329,7 @@ func (x *DatabaseResourceConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatabaseResourceConfig.ProtoReflect.Descriptor instead.
 func (*DatabaseResourceConfig) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{13}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DatabaseResourceConfig) GetType() DatabaseType {
@@ -937,7 +1367,7 @@ type PostgresResourceConfig struct {
 
 func (x *PostgresResourceConfig) Reset() {
 	*x = PostgresResourceConfig{}
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[14]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -949,7 +1379,7 @@ func (x *PostgresResourceConfig) String() string {
 func (*PostgresResourceConfig) ProtoMessage() {}
 
 func (x *PostgresResourceConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_resource_proto_msgTypes[14]
+	mi := &file_kgbrain_v1_resource_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -962,7 +1392,7 @@ func (x *PostgresResourceConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PostgresResourceConfig.ProtoReflect.Descriptor instead.
 func (*PostgresResourceConfig) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{14}
+	return file_kgbrain_v1_resource_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *PostgresResourceConfig) GetHost() string {
@@ -1038,6 +1468,32 @@ const file_kgbrain_v1_resource_proto_rawDesc = "" +
 	"\x19DeleteLLMResourceResponse\x12\x1f\n" +
 	"\vresource_id\x18\x01 \x01(\tR\n" +
 	"resourceId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\"\x8f\x01\n" +
+	"\x1bSetEmbeddingResourceRequest\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12;\n" +
+	"\x06config\x18\x03 \x01(\v2#.kgbrain.v1.EmbeddingResourceConfigR\x06config\"W\n" +
+	"\x1cSetEmbeddingResourceResponse\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\">\n" +
+	"\x1bGetEmbeddingResourceRequest\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\"\xe0\x01\n" +
+	"\x1cGetEmbeddingResourceResponse\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12;\n" +
+	"\x06config\x18\x03 \x01(\v2#.kgbrain.v1.EmbeddingResourceConfigR\x06config\x12&\n" +
+	"\x0fcreated_at_unix\x18\x04 \x01(\x03R\rcreatedAtUnix\x12&\n" +
+	"\x0fupdated_at_unix\x18\x05 \x01(\x03R\rupdatedAtUnix\"A\n" +
+	"\x1eDeleteEmbeddingResourceRequest\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\"Z\n" +
+	"\x1fDeleteEmbeddingResourceResponse\x12\x1f\n" +
+	"\vresource_id\x18\x01 \x01(\tR\n" +
+	"resourceId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\"\xff\x01\n" +
 	"\x11LLMResourceConfig\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12\x17\n" +
@@ -1047,6 +1503,13 @@ const file_kgbrain_v1_resource_proto_rawDesc = "" +
 	"\vtemperature\x18\x05 \x01(\x01H\x00R\vtemperature\x88\x01\x01\x12,\n" +
 	"\x0fmax_concurrency\x18\x06 \x01(\x05H\x01R\x0emaxConcurrency\x88\x01\x01B\x0e\n" +
 	"\f_temperatureB\x12\n" +
+	"\x10_max_concurrency\"\xce\x01\n" +
+	"\x17EmbeddingResourceConfig\x12\x19\n" +
+	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x14\n" +
+	"\x05model\x18\x03 \x01(\tR\x05model\x12'\n" +
+	"\x0ftimeout_seconds\x18\x04 \x01(\x05R\x0etimeoutSeconds\x12,\n" +
+	"\x0fmax_concurrency\x18\x05 \x01(\x05H\x00R\x0emaxConcurrency\x88\x01\x01B\x12\n" +
 	"\x10_max_concurrency\"\x8d\x01\n" +
 	"\x1aSetDatabaseResourceRequest\x12\x1f\n" +
 	"\vresource_id\x18\x01 \x01(\tR\n" +
@@ -1086,11 +1549,14 @@ const file_kgbrain_v1_resource_proto_rawDesc = "" +
 	"\asslmode\x18\x06 \x01(\tR\asslmode*I\n" +
 	"\fDatabaseType\x12\x1d\n" +
 	"\x19DATABASE_TYPE_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16DATABASE_TYPE_POSTGRES\x10\x012\xe6\x04\n" +
+	"\x16DATABASE_TYPE_POSTGRES\x10\x012\xb0\a\n" +
 	"\x0fResourceService\x12W\n" +
 	"\x0eSetLLMResource\x12!.kgbrain.v1.SetLLMResourceRequest\x1a\".kgbrain.v1.SetLLMResourceResponse\x12W\n" +
 	"\x0eGetLLMResource\x12!.kgbrain.v1.GetLLMResourceRequest\x1a\".kgbrain.v1.GetLLMResourceResponse\x12`\n" +
-	"\x11DeleteLLMResource\x12$.kgbrain.v1.DeleteLLMResourceRequest\x1a%.kgbrain.v1.DeleteLLMResourceResponse\x12f\n" +
+	"\x11DeleteLLMResource\x12$.kgbrain.v1.DeleteLLMResourceRequest\x1a%.kgbrain.v1.DeleteLLMResourceResponse\x12i\n" +
+	"\x14SetEmbeddingResource\x12'.kgbrain.v1.SetEmbeddingResourceRequest\x1a(.kgbrain.v1.SetEmbeddingResourceResponse\x12i\n" +
+	"\x14GetEmbeddingResource\x12'.kgbrain.v1.GetEmbeddingResourceRequest\x1a(.kgbrain.v1.GetEmbeddingResourceResponse\x12r\n" +
+	"\x17DeleteEmbeddingResource\x12*.kgbrain.v1.DeleteEmbeddingResourceRequest\x1a+.kgbrain.v1.DeleteEmbeddingResourceResponse\x12f\n" +
 	"\x13SetDatabaseResource\x12&.kgbrain.v1.SetDatabaseResourceRequest\x1a'.kgbrain.v1.SetDatabaseResourceResponse\x12f\n" +
 	"\x13GetDatabaseResource\x12&.kgbrain.v1.GetDatabaseResourceRequest\x1a'.kgbrain.v1.GetDatabaseResourceResponse\x12o\n" +
 	"\x16DeleteDatabaseResource\x12).kgbrain.v1.DeleteDatabaseResourceRequest\x1a*.kgbrain.v1.DeleteDatabaseResourceResponseB+Z)kgbrain/internal/gen/kgbrain/v1;kgbrainv1b\x06proto3"
@@ -1108,49 +1574,64 @@ func file_kgbrain_v1_resource_proto_rawDescGZIP() []byte {
 }
 
 var file_kgbrain_v1_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_kgbrain_v1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_kgbrain_v1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_kgbrain_v1_resource_proto_goTypes = []any{
-	(DatabaseType)(0),                      // 0: kgbrain.v1.DatabaseType
-	(*SetLLMResourceRequest)(nil),          // 1: kgbrain.v1.SetLLMResourceRequest
-	(*SetLLMResourceResponse)(nil),         // 2: kgbrain.v1.SetLLMResourceResponse
-	(*GetLLMResourceRequest)(nil),          // 3: kgbrain.v1.GetLLMResourceRequest
-	(*GetLLMResourceResponse)(nil),         // 4: kgbrain.v1.GetLLMResourceResponse
-	(*DeleteLLMResourceRequest)(nil),       // 5: kgbrain.v1.DeleteLLMResourceRequest
-	(*DeleteLLMResourceResponse)(nil),      // 6: kgbrain.v1.DeleteLLMResourceResponse
-	(*LLMResourceConfig)(nil),              // 7: kgbrain.v1.LLMResourceConfig
-	(*SetDatabaseResourceRequest)(nil),     // 8: kgbrain.v1.SetDatabaseResourceRequest
-	(*SetDatabaseResourceResponse)(nil),    // 9: kgbrain.v1.SetDatabaseResourceResponse
-	(*GetDatabaseResourceRequest)(nil),     // 10: kgbrain.v1.GetDatabaseResourceRequest
-	(*GetDatabaseResourceResponse)(nil),    // 11: kgbrain.v1.GetDatabaseResourceResponse
-	(*DeleteDatabaseResourceRequest)(nil),  // 12: kgbrain.v1.DeleteDatabaseResourceRequest
-	(*DeleteDatabaseResourceResponse)(nil), // 13: kgbrain.v1.DeleteDatabaseResourceResponse
-	(*DatabaseResourceConfig)(nil),         // 14: kgbrain.v1.DatabaseResourceConfig
-	(*PostgresResourceConfig)(nil),         // 15: kgbrain.v1.PostgresResourceConfig
+	(DatabaseType)(0),                       // 0: kgbrain.v1.DatabaseType
+	(*SetLLMResourceRequest)(nil),           // 1: kgbrain.v1.SetLLMResourceRequest
+	(*SetLLMResourceResponse)(nil),          // 2: kgbrain.v1.SetLLMResourceResponse
+	(*GetLLMResourceRequest)(nil),           // 3: kgbrain.v1.GetLLMResourceRequest
+	(*GetLLMResourceResponse)(nil),          // 4: kgbrain.v1.GetLLMResourceResponse
+	(*DeleteLLMResourceRequest)(nil),        // 5: kgbrain.v1.DeleteLLMResourceRequest
+	(*DeleteLLMResourceResponse)(nil),       // 6: kgbrain.v1.DeleteLLMResourceResponse
+	(*SetEmbeddingResourceRequest)(nil),     // 7: kgbrain.v1.SetEmbeddingResourceRequest
+	(*SetEmbeddingResourceResponse)(nil),    // 8: kgbrain.v1.SetEmbeddingResourceResponse
+	(*GetEmbeddingResourceRequest)(nil),     // 9: kgbrain.v1.GetEmbeddingResourceRequest
+	(*GetEmbeddingResourceResponse)(nil),    // 10: kgbrain.v1.GetEmbeddingResourceResponse
+	(*DeleteEmbeddingResourceRequest)(nil),  // 11: kgbrain.v1.DeleteEmbeddingResourceRequest
+	(*DeleteEmbeddingResourceResponse)(nil), // 12: kgbrain.v1.DeleteEmbeddingResourceResponse
+	(*LLMResourceConfig)(nil),               // 13: kgbrain.v1.LLMResourceConfig
+	(*EmbeddingResourceConfig)(nil),         // 14: kgbrain.v1.EmbeddingResourceConfig
+	(*SetDatabaseResourceRequest)(nil),      // 15: kgbrain.v1.SetDatabaseResourceRequest
+	(*SetDatabaseResourceResponse)(nil),     // 16: kgbrain.v1.SetDatabaseResourceResponse
+	(*GetDatabaseResourceRequest)(nil),      // 17: kgbrain.v1.GetDatabaseResourceRequest
+	(*GetDatabaseResourceResponse)(nil),     // 18: kgbrain.v1.GetDatabaseResourceResponse
+	(*DeleteDatabaseResourceRequest)(nil),   // 19: kgbrain.v1.DeleteDatabaseResourceRequest
+	(*DeleteDatabaseResourceResponse)(nil),  // 20: kgbrain.v1.DeleteDatabaseResourceResponse
+	(*DatabaseResourceConfig)(nil),          // 21: kgbrain.v1.DatabaseResourceConfig
+	(*PostgresResourceConfig)(nil),          // 22: kgbrain.v1.PostgresResourceConfig
 }
 var file_kgbrain_v1_resource_proto_depIdxs = []int32{
-	7,  // 0: kgbrain.v1.SetLLMResourceRequest.config:type_name -> kgbrain.v1.LLMResourceConfig
-	7,  // 1: kgbrain.v1.GetLLMResourceResponse.config:type_name -> kgbrain.v1.LLMResourceConfig
-	14, // 2: kgbrain.v1.SetDatabaseResourceRequest.config:type_name -> kgbrain.v1.DatabaseResourceConfig
-	14, // 3: kgbrain.v1.GetDatabaseResourceResponse.config:type_name -> kgbrain.v1.DatabaseResourceConfig
-	0,  // 4: kgbrain.v1.DatabaseResourceConfig.type:type_name -> kgbrain.v1.DatabaseType
-	15, // 5: kgbrain.v1.DatabaseResourceConfig.postgres:type_name -> kgbrain.v1.PostgresResourceConfig
-	1,  // 6: kgbrain.v1.ResourceService.SetLLMResource:input_type -> kgbrain.v1.SetLLMResourceRequest
-	3,  // 7: kgbrain.v1.ResourceService.GetLLMResource:input_type -> kgbrain.v1.GetLLMResourceRequest
-	5,  // 8: kgbrain.v1.ResourceService.DeleteLLMResource:input_type -> kgbrain.v1.DeleteLLMResourceRequest
-	8,  // 9: kgbrain.v1.ResourceService.SetDatabaseResource:input_type -> kgbrain.v1.SetDatabaseResourceRequest
-	10, // 10: kgbrain.v1.ResourceService.GetDatabaseResource:input_type -> kgbrain.v1.GetDatabaseResourceRequest
-	12, // 11: kgbrain.v1.ResourceService.DeleteDatabaseResource:input_type -> kgbrain.v1.DeleteDatabaseResourceRequest
-	2,  // 12: kgbrain.v1.ResourceService.SetLLMResource:output_type -> kgbrain.v1.SetLLMResourceResponse
-	4,  // 13: kgbrain.v1.ResourceService.GetLLMResource:output_type -> kgbrain.v1.GetLLMResourceResponse
-	6,  // 14: kgbrain.v1.ResourceService.DeleteLLMResource:output_type -> kgbrain.v1.DeleteLLMResourceResponse
-	9,  // 15: kgbrain.v1.ResourceService.SetDatabaseResource:output_type -> kgbrain.v1.SetDatabaseResourceResponse
-	11, // 16: kgbrain.v1.ResourceService.GetDatabaseResource:output_type -> kgbrain.v1.GetDatabaseResourceResponse
-	13, // 17: kgbrain.v1.ResourceService.DeleteDatabaseResource:output_type -> kgbrain.v1.DeleteDatabaseResourceResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	13, // 0: kgbrain.v1.SetLLMResourceRequest.config:type_name -> kgbrain.v1.LLMResourceConfig
+	13, // 1: kgbrain.v1.GetLLMResourceResponse.config:type_name -> kgbrain.v1.LLMResourceConfig
+	14, // 2: kgbrain.v1.SetEmbeddingResourceRequest.config:type_name -> kgbrain.v1.EmbeddingResourceConfig
+	14, // 3: kgbrain.v1.GetEmbeddingResourceResponse.config:type_name -> kgbrain.v1.EmbeddingResourceConfig
+	21, // 4: kgbrain.v1.SetDatabaseResourceRequest.config:type_name -> kgbrain.v1.DatabaseResourceConfig
+	21, // 5: kgbrain.v1.GetDatabaseResourceResponse.config:type_name -> kgbrain.v1.DatabaseResourceConfig
+	0,  // 6: kgbrain.v1.DatabaseResourceConfig.type:type_name -> kgbrain.v1.DatabaseType
+	22, // 7: kgbrain.v1.DatabaseResourceConfig.postgres:type_name -> kgbrain.v1.PostgresResourceConfig
+	1,  // 8: kgbrain.v1.ResourceService.SetLLMResource:input_type -> kgbrain.v1.SetLLMResourceRequest
+	3,  // 9: kgbrain.v1.ResourceService.GetLLMResource:input_type -> kgbrain.v1.GetLLMResourceRequest
+	5,  // 10: kgbrain.v1.ResourceService.DeleteLLMResource:input_type -> kgbrain.v1.DeleteLLMResourceRequest
+	7,  // 11: kgbrain.v1.ResourceService.SetEmbeddingResource:input_type -> kgbrain.v1.SetEmbeddingResourceRequest
+	9,  // 12: kgbrain.v1.ResourceService.GetEmbeddingResource:input_type -> kgbrain.v1.GetEmbeddingResourceRequest
+	11, // 13: kgbrain.v1.ResourceService.DeleteEmbeddingResource:input_type -> kgbrain.v1.DeleteEmbeddingResourceRequest
+	15, // 14: kgbrain.v1.ResourceService.SetDatabaseResource:input_type -> kgbrain.v1.SetDatabaseResourceRequest
+	17, // 15: kgbrain.v1.ResourceService.GetDatabaseResource:input_type -> kgbrain.v1.GetDatabaseResourceRequest
+	19, // 16: kgbrain.v1.ResourceService.DeleteDatabaseResource:input_type -> kgbrain.v1.DeleteDatabaseResourceRequest
+	2,  // 17: kgbrain.v1.ResourceService.SetLLMResource:output_type -> kgbrain.v1.SetLLMResourceResponse
+	4,  // 18: kgbrain.v1.ResourceService.GetLLMResource:output_type -> kgbrain.v1.GetLLMResourceResponse
+	6,  // 19: kgbrain.v1.ResourceService.DeleteLLMResource:output_type -> kgbrain.v1.DeleteLLMResourceResponse
+	8,  // 20: kgbrain.v1.ResourceService.SetEmbeddingResource:output_type -> kgbrain.v1.SetEmbeddingResourceResponse
+	10, // 21: kgbrain.v1.ResourceService.GetEmbeddingResource:output_type -> kgbrain.v1.GetEmbeddingResourceResponse
+	12, // 22: kgbrain.v1.ResourceService.DeleteEmbeddingResource:output_type -> kgbrain.v1.DeleteEmbeddingResourceResponse
+	16, // 23: kgbrain.v1.ResourceService.SetDatabaseResource:output_type -> kgbrain.v1.SetDatabaseResourceResponse
+	18, // 24: kgbrain.v1.ResourceService.GetDatabaseResource:output_type -> kgbrain.v1.GetDatabaseResourceResponse
+	20, // 25: kgbrain.v1.ResourceService.DeleteDatabaseResource:output_type -> kgbrain.v1.DeleteDatabaseResourceResponse
+	17, // [17:26] is the sub-list for method output_type
+	8,  // [8:17] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_kgbrain_v1_resource_proto_init() }
@@ -1158,14 +1639,15 @@ func file_kgbrain_v1_resource_proto_init() {
 	if File_kgbrain_v1_resource_proto != nil {
 		return
 	}
-	file_kgbrain_v1_resource_proto_msgTypes[6].OneofWrappers = []any{}
+	file_kgbrain_v1_resource_proto_msgTypes[12].OneofWrappers = []any{}
+	file_kgbrain_v1_resource_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kgbrain_v1_resource_proto_rawDesc), len(file_kgbrain_v1_resource_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   15,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

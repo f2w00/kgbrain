@@ -150,6 +150,15 @@ func (r *fakeBusinessRepo) LoadTargetLabels(
 	return nil, nil
 }
 
+func (r *fakeBusinessRepo) RecallTopKTargets(
+	_ context.Context,
+	_ string,
+	_ string,
+	_ int,
+) ([]string, error) {
+	return nil, nil
+}
+
 func (r *fakeBusinessRepo) UpsertTargets(
 	_ context.Context,
 	_ string,
@@ -268,6 +277,9 @@ func TestServiceStartCreatesAndRunsJob(t *testing.T) {
 	if !job.OnlyWaitingTargetReview {
 		t.Fatalf("expected only waiting target review flag on job")
 	}
+	if job.FuzzyTopK != DefaultFuzzyTopK {
+		t.Fatalf("unexpected fuzzy top k: %d", job.FuzzyTopK)
+	}
 }
 
 func TestServiceRunJobUsesExecutor(t *testing.T) {
@@ -278,6 +290,8 @@ func TestServiceRunJobUsesExecutor(t *testing.T) {
 	req.StartID = int64Ptr(10)
 	req.EndID = int64Ptr(20)
 	req.OnlyWaitingTargetReview = true
+	fuzzyTopK := 20
+	req.FuzzyTopK = &fuzzyTopK
 
 	result, err := svc.Start(context.Background(), req)
 	if err != nil {
@@ -294,6 +308,9 @@ func TestServiceRunJobUsesExecutor(t *testing.T) {
 		}
 		if !calledReq.OnlyWaitingTargetReview {
 			t.Fatalf("expected only waiting target review flag in executor request")
+		}
+		if calledReq.FuzzyTopK == nil || *calledReq.FuzzyTopK != fuzzyTopK {
+			t.Fatalf("unexpected fuzzy top k in executor request: %#v", calledReq)
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("executor was not called")
@@ -348,6 +365,7 @@ func TestServiceStartValidation(t *testing.T) {
 		{name: "missing fields", mutate: func(r *StartRequest) { r.Fields = nil }},
 		{name: "key field overlaps field", mutate: func(r *StartRequest) { r.KeyField = "dynasty" }},
 		{name: "bad batch size", mutate: func(r *StartRequest) { v := 0; r.Fields[0].BatchSize = &v }},
+		{name: "bad fuzzy top k", mutate: func(r *StartRequest) { v := 0; r.FuzzyTopK = &v }},
 		{
 			name: "start id greater than end id",
 			mutate: func(r *StartRequest) {

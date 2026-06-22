@@ -149,3 +149,63 @@ func TestResourceRepoDatabaseCRUD(t *testing.T) {
 		t.Fatalf("expected nil after deletion")
 	}
 }
+
+func TestResourceRepoEmbeddingCRUD(t *testing.T) {
+	repo := newTestResourceRepo(t)
+	maxConcurrency := 4
+
+	if err := repo.SaveEmbedding(&EmbeddingResource{
+		ID:             "emb_1",
+		Name:           "Embedding One",
+		BaseURL:        "http://localhost:8000/v1",
+		APIKey:         "sk-emb",
+		Model:          "text-embedding-3-small",
+		TimeoutSeconds: 30,
+		MaxConcurrency: &maxConcurrency,
+	}); err != nil {
+		t.Fatalf("save embedding: %v", err)
+	}
+
+	got, err := repo.GetEmbedding("emb_1")
+	if err != nil {
+		t.Fatalf("get embedding: %v", err)
+	}
+	if got == nil || got.APIKey != "sk-emb" || got.Model != "text-embedding-3-small" ||
+		got.MaxConcurrency == nil || *got.MaxConcurrency != maxConcurrency {
+		t.Fatalf("unexpected embedding: %#v", got)
+	}
+	createdAt := got.CreatedAt
+
+	if err := repo.SaveEmbedding(&EmbeddingResource{
+		ID:             "emb_1",
+		Name:           "Embedding Updated",
+		BaseURL:        "http://localhost:9000/v1",
+		APIKey:         "sk-emb-2",
+		Model:          "bge-m3",
+		TimeoutSeconds: 45,
+	}); err != nil {
+		t.Fatalf("update embedding: %v", err)
+	}
+
+	got, err = repo.GetEmbedding("emb_1")
+	if err != nil {
+		t.Fatalf("get updated embedding: %v", err)
+	}
+	if got.APIKey != "sk-emb-2" || got.Model != "bge-m3" ||
+		got.CreatedAt != createdAt || got.MaxConcurrency != nil {
+		t.Fatalf("unexpected updated embedding: %#v", got)
+	}
+
+	deleted, err := repo.DeleteEmbedding("emb_1")
+	if err != nil || !deleted {
+		t.Fatalf("delete embedding: deleted=%v err=%v", deleted, err)
+	}
+
+	got, err = repo.GetEmbedding("emb_1")
+	if err != nil {
+		t.Fatalf("get deleted embedding: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil after deletion")
+	}
+}

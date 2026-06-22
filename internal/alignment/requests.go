@@ -11,10 +11,11 @@ type StartRequest struct {
 	StartID                 *int64
 	EndID                   *int64
 	OnlyWaitingTargetReview bool
+	FuzzyTopK               *int
 	Fields                  []FieldRequest
 }
 
-// FieldRequest 描述单个待对齐字段及其 LLM 批处理配置。
+// FieldRequest 描述单个待对齐字段及其 mapping 写入配置。
 type FieldRequest struct {
 	Name             string
 	TargetSetID      string
@@ -30,7 +31,7 @@ type ListTargetsRequest struct {
 type UpsertTargetsRequest struct {
 	DatabaseResourceID string
 	TargetSetID        string
-	Targets            []TargetDefinition
+	Labels             []string
 }
 
 type DeleteTargetRequest struct {
@@ -59,7 +60,7 @@ type StartResult struct {
 }
 
 type ListTargetsResult struct {
-	Targets []TargetDefinition
+	Labels []string
 }
 
 type ListCandidatesResult struct {
@@ -74,5 +75,6 @@ type ExecuteRequest struct {
 	StartID                 *int64
 	EndID                   *int64
 	OnlyWaitingTargetReview bool
+	FuzzyTopK               int
 	Fields                  []FieldConfig
 }

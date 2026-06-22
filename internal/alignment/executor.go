@@ -76,6 +76,14 @@ func (e *executor) Execute(
 		StartID:                 req.StartID,
 		EndID:                   req.EndID,
 		OnlyWaitingTargetReview: job.OnlyWaitingTargetReview,
+		FuzzyTopK:               effectiveFuzzyTopK(job.FuzzyTopK),
 		Fields:                  job.Fields,
 	})
+}
+
+func effectiveFuzzyTopK(v int) int {
+	if v <= 0 {
+		return DefaultFuzzyTopK
+	}
+	return v
 }

@@ -51,6 +51,39 @@ func (s *Service) DeleteLLM(id string) (*DeleteResult, error) {
 	return &DeleteResult{ResourceID: id, Status: status}, nil
 }
 
+func (s *Service) SetEmbedding(r *EmbeddingResource) (*SetResult, error) {
+	if err := r.Validate(); err != nil {
+		return nil, err
+	}
+	if err := s.repo.SaveEmbedding(r); err != nil {
+		return nil, err
+	}
+	return &SetResult{ResourceID: r.ID, Status: "ok"}, nil
+}
+
+func (s *Service) GetEmbedding(id string) (*EmbeddingResource, error) {
+	r, err := s.repo.GetEmbedding(id)
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, &notFoundError{id: id}
+	}
+	return r, nil
+}
+
+func (s *Service) DeleteEmbedding(id string) (*DeleteResult, error) {
+	deleted, err := s.repo.DeleteEmbedding(id)
+	if err != nil {
+		return nil, err
+	}
+	status := "deleted"
+	if !deleted {
+		status = "not_found"
+	}
+	return &DeleteResult{ResourceID: id, Status: status}, nil
+}
+
 func (s *Service) SetDatabase(r *DatabaseResource) (*SetResult, error) {
 	if err := r.Validate(); err != nil {
 		return nil, err

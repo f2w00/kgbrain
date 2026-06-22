@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	// DefaultBatchSize 面向 4B/4096 context 模型的保守默认批大小。
+	// DefaultBatchSize 控制单次批量写入 mapping/candidate 表的默认记录数。
 	DefaultBatchSize = 20
-	// DefaultBatchConcurrency 默认保持单字段 batch 串行，避免打爆本地 LLM。
+	// DefaultBatchConcurrency 已禁用，LLM 固定单值串行处理。
 	DefaultBatchConcurrency = 1
 )
 
@@ -86,6 +86,12 @@ type BusinessRepository interface {
 		ctx context.Context,
 		targetSetID string,
 	) ([]TargetDefinition, error)
+	RecallTopKTargets(
+		ctx context.Context,
+		targetSetID string,
+		rawValue string,
+		topK int,
+	) ([]string, error)
 	UpsertTargets(
 		ctx context.Context,
 		targetSetID string,

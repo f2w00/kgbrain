@@ -64,6 +64,58 @@ class DeleteLLMResourceResponse(_message.Message):
     status: str
     def __init__(self, resource_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
 
+class SetEmbeddingResourceRequest(_message.Message):
+    __slots__ = ("resource_id", "name", "config")
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    CONFIG_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    name: str
+    config: EmbeddingResourceConfig
+    def __init__(self, resource_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[EmbeddingResourceConfig, _Mapping]] = ...) -> None: ...
+
+class SetEmbeddingResourceResponse(_message.Message):
+    __slots__ = ("resource_id", "status")
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    status: str
+    def __init__(self, resource_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
+
+class GetEmbeddingResourceRequest(_message.Message):
+    __slots__ = ("resource_id",)
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    def __init__(self, resource_id: _Optional[str] = ...) -> None: ...
+
+class GetEmbeddingResourceResponse(_message.Message):
+    __slots__ = ("resource_id", "name", "config", "created_at_unix", "updated_at_unix")
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    CONFIG_FIELD_NUMBER: _ClassVar[int]
+    CREATED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
+    UPDATED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    name: str
+    config: EmbeddingResourceConfig
+    created_at_unix: int
+    updated_at_unix: int
+    def __init__(self, resource_id: _Optional[str] = ..., name: _Optional[str] = ..., config: _Optional[_Union[EmbeddingResourceConfig, _Mapping]] = ..., created_at_unix: _Optional[int] = ..., updated_at_unix: _Optional[int] = ...) -> None: ...
+
+class DeleteEmbeddingResourceRequest(_message.Message):
+    __slots__ = ("resource_id",)
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    def __init__(self, resource_id: _Optional[str] = ...) -> None: ...
+
+class DeleteEmbeddingResourceResponse(_message.Message):
+    __slots__ = ("resource_id", "status")
+    RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    resource_id: str
+    status: str
+    def __init__(self, resource_id: _Optional[str] = ..., status: _Optional[str] = ...) -> None: ...
+
 class LLMResourceConfig(_message.Message):
     __slots__ = ("base_url", "api_key", "model", "timeout_seconds", "temperature", "max_concurrency")
     BASE_URL_FIELD_NUMBER: _ClassVar[int]
@@ -79,6 +131,20 @@ class LLMResourceConfig(_message.Message):
     temperature: float
     max_concurrency: int
     def __init__(self, base_url: _Optional[str] = ..., api_key: _Optional[str] = ..., model: _Optional[str] = ..., timeout_seconds: _Optional[int] = ..., temperature: _Optional[float] = ..., max_concurrency: _Optional[int] = ...) -> None: ...
+
+class EmbeddingResourceConfig(_message.Message):
+    __slots__ = ("base_url", "api_key", "model", "timeout_seconds", "max_concurrency")
+    BASE_URL_FIELD_NUMBER: _ClassVar[int]
+    API_KEY_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
+    TIMEOUT_SECONDS_FIELD_NUMBER: _ClassVar[int]
+    MAX_CONCURRENCY_FIELD_NUMBER: _ClassVar[int]
+    base_url: str
+    api_key: str
+    model: str
+    timeout_seconds: int
+    max_concurrency: int
+    def __init__(self, base_url: _Optional[str] = ..., api_key: _Optional[str] = ..., model: _Optional[str] = ..., timeout_seconds: _Optional[int] = ..., max_concurrency: _Optional[int] = ...) -> None: ...
 
 class SetDatabaseResourceRequest(_message.Message):
     __slots__ = ("resource_id", "name", "config")

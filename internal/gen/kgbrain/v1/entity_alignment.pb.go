@@ -207,8 +207,10 @@ type StartEntityAlignmentRequest struct {
 	EndId *int64 `protobuf:"varint,9,opt,name=end_id,json=endId,proto3,oneof" json:"end_id,omitempty"`
 	// 仅处理上次实体对齐后仍等待 target 审核的记录。
 	OnlyWaitingTargetReview *bool `protobuf:"varint,10,opt,name=only_waiting_target_review,json=onlyWaitingTargetReview,proto3,oneof" json:"only_waiting_target_review,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// 模糊召回候选目标值数量；为空时使用服务默认值。
+	FuzzyTopK     *int32 `protobuf:"varint,11,opt,name=fuzzy_top_k,json=fuzzyTopK,proto3,oneof" json:"fuzzy_top_k,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartEntityAlignmentRequest) Reset() {
@@ -304,6 +306,13 @@ func (x *StartEntityAlignmentRequest) GetOnlyWaitingTargetReview() bool {
 	return false
 }
 
+func (x *StartEntityAlignmentRequest) GetFuzzyTopK() int32 {
+	if x != nil && x.FuzzyTopK != nil {
+		return *x.FuzzyTopK
+	}
+	return 0
+}
+
 // 单个字段的对齐配置。
 type EntityAlignmentField struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -311,9 +320,9 @@ type EntityAlignmentField struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// 标准集 ID；未传时默认使用 name。
 	TargetSetId *string `protobuf:"bytes,2,opt,name=target_set_id,json=targetSetId,proto3,oneof" json:"target_set_id,omitempty"`
-	// 批处理大小，每批递交给 LLM 的源值数量。
+	// 批量写入 mapping/candidate 表的记录数；LLM 固定每次处理一个源值。
 	BatchSize *int32 `protobuf:"varint,3,opt,name=batch_size,json=batchSize,proto3,oneof" json:"batch_size,omitempty"`
-	// 已禁用：当前服务端按 batch 串行处理，该字段会被忽略。
+	// 已禁用：LLM 当前固定单值串行处理，该字段会被忽略。
 	//
 	// Deprecated: Marked as deprecated in kgbrain/v1/entity_alignment.proto.
 	BatchConcurrency *int32 `protobuf:"varint,4,opt,name=batch_concurrency,json=batchConcurrency,proto3,oneof" json:"batch_concurrency,omitempty"`
@@ -432,76 +441,16 @@ func (x *ListAlignmentTargetsRequest) GetTargetSetId() string {
 	return ""
 }
 
-type AlignmentTarget struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TargetSetId   string                 `protobuf:"bytes,1,opt,name=target_set_id,json=targetSetId,proto3" json:"target_set_id,omitempty"`
-	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *AlignmentTarget) Reset() {
-	*x = AlignmentTarget{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *AlignmentTarget) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*AlignmentTarget) ProtoMessage() {}
-
-func (x *AlignmentTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use AlignmentTarget.ProtoReflect.Descriptor instead.
-func (*AlignmentTarget) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *AlignmentTarget) GetTargetSetId() string {
-	if x != nil {
-		return x.TargetSetId
-	}
-	return ""
-}
-
-func (x *AlignmentTarget) GetLabel() string {
-	if x != nil {
-		return x.Label
-	}
-	return ""
-}
-
-func (x *AlignmentTarget) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
 type ListAlignmentTargetsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Targets       []*AlignmentTarget     `protobuf:"bytes,1,rep,name=targets,proto3" json:"targets,omitempty"`
+	Labels        []string               `protobuf:"bytes,2,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListAlignmentTargetsResponse) Reset() {
 	*x = ListAlignmentTargetsResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[4]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -513,7 +462,7 @@ func (x *ListAlignmentTargetsResponse) String() string {
 func (*ListAlignmentTargetsResponse) ProtoMessage() {}
 
 func (x *ListAlignmentTargetsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[4]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -526,12 +475,12 @@ func (x *ListAlignmentTargetsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlignmentTargetsResponse.ProtoReflect.Descriptor instead.
 func (*ListAlignmentTargetsResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{4}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ListAlignmentTargetsResponse) GetTargets() []*AlignmentTarget {
+func (x *ListAlignmentTargetsResponse) GetLabels() []string {
 	if x != nil {
-		return x.Targets
+		return x.Labels
 	}
 	return nil
 }
@@ -540,14 +489,14 @@ type UpsertAlignmentTargetsRequest struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	DatabaseResourceId string                 `protobuf:"bytes,1,opt,name=database_resource_id,json=databaseResourceId,proto3" json:"database_resource_id,omitempty"`
 	TargetSetId        string                 `protobuf:"bytes,2,opt,name=target_set_id,json=targetSetId,proto3" json:"target_set_id,omitempty"`
-	Targets            []*AlignmentTarget     `protobuf:"bytes,3,rep,name=targets,proto3" json:"targets,omitempty"`
+	Labels             []string               `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *UpsertAlignmentTargetsRequest) Reset() {
 	*x = UpsertAlignmentTargetsRequest{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[5]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -559,7 +508,7 @@ func (x *UpsertAlignmentTargetsRequest) String() string {
 func (*UpsertAlignmentTargetsRequest) ProtoMessage() {}
 
 func (x *UpsertAlignmentTargetsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[5]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -572,7 +521,7 @@ func (x *UpsertAlignmentTargetsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertAlignmentTargetsRequest.ProtoReflect.Descriptor instead.
 func (*UpsertAlignmentTargetsRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{5}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpsertAlignmentTargetsRequest) GetDatabaseResourceId() string {
@@ -589,9 +538,9 @@ func (x *UpsertAlignmentTargetsRequest) GetTargetSetId() string {
 	return ""
 }
 
-func (x *UpsertAlignmentTargetsRequest) GetTargets() []*AlignmentTarget {
+func (x *UpsertAlignmentTargetsRequest) GetLabels() []string {
 	if x != nil {
-		return x.Targets
+		return x.Labels
 	}
 	return nil
 }
@@ -604,7 +553,7 @@ type UpsertAlignmentTargetsResponse struct {
 
 func (x *UpsertAlignmentTargetsResponse) Reset() {
 	*x = UpsertAlignmentTargetsResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[6]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -616,7 +565,7 @@ func (x *UpsertAlignmentTargetsResponse) String() string {
 func (*UpsertAlignmentTargetsResponse) ProtoMessage() {}
 
 func (x *UpsertAlignmentTargetsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[6]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -629,7 +578,7 @@ func (x *UpsertAlignmentTargetsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertAlignmentTargetsResponse.ProtoReflect.Descriptor instead.
 func (*UpsertAlignmentTargetsResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{6}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{5}
 }
 
 type DeleteAlignmentTargetRequest struct {
@@ -643,7 +592,7 @@ type DeleteAlignmentTargetRequest struct {
 
 func (x *DeleteAlignmentTargetRequest) Reset() {
 	*x = DeleteAlignmentTargetRequest{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[7]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +604,7 @@ func (x *DeleteAlignmentTargetRequest) String() string {
 func (*DeleteAlignmentTargetRequest) ProtoMessage() {}
 
 func (x *DeleteAlignmentTargetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[7]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +617,7 @@ func (x *DeleteAlignmentTargetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAlignmentTargetRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAlignmentTargetRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{7}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeleteAlignmentTargetRequest) GetDatabaseResourceId() string {
@@ -700,7 +649,7 @@ type DeleteAlignmentTargetResponse struct {
 
 func (x *DeleteAlignmentTargetResponse) Reset() {
 	*x = DeleteAlignmentTargetResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[8]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -712,7 +661,7 @@ func (x *DeleteAlignmentTargetResponse) String() string {
 func (*DeleteAlignmentTargetResponse) ProtoMessage() {}
 
 func (x *DeleteAlignmentTargetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[8]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -725,7 +674,7 @@ func (x *DeleteAlignmentTargetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAlignmentTargetResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAlignmentTargetResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{8}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{7}
 }
 
 type TargetCandidate struct {
@@ -746,7 +695,7 @@ type TargetCandidate struct {
 
 func (x *TargetCandidate) Reset() {
 	*x = TargetCandidate{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[9]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +707,7 @@ func (x *TargetCandidate) String() string {
 func (*TargetCandidate) ProtoMessage() {}
 
 func (x *TargetCandidate) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[9]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +720,7 @@ func (x *TargetCandidate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TargetCandidate.ProtoReflect.Descriptor instead.
 func (*TargetCandidate) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{9}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *TargetCandidate) GetId() string {
@@ -855,7 +804,7 @@ type ListTargetCandidatesRequest struct {
 
 func (x *ListTargetCandidatesRequest) Reset() {
 	*x = ListTargetCandidatesRequest{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[10]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -867,7 +816,7 @@ func (x *ListTargetCandidatesRequest) String() string {
 func (*ListTargetCandidatesRequest) ProtoMessage() {}
 
 func (x *ListTargetCandidatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[10]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -880,7 +829,7 @@ func (x *ListTargetCandidatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTargetCandidatesRequest.ProtoReflect.Descriptor instead.
 func (*ListTargetCandidatesRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{10}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListTargetCandidatesRequest) GetDatabaseResourceId() string {
@@ -913,7 +862,7 @@ type ListTargetCandidatesResponse struct {
 
 func (x *ListTargetCandidatesResponse) Reset() {
 	*x = ListTargetCandidatesResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[11]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -925,7 +874,7 @@ func (x *ListTargetCandidatesResponse) String() string {
 func (*ListTargetCandidatesResponse) ProtoMessage() {}
 
 func (x *ListTargetCandidatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[11]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +887,7 @@ func (x *ListTargetCandidatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTargetCandidatesResponse.ProtoReflect.Descriptor instead.
 func (*ListTargetCandidatesResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{11}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListTargetCandidatesResponse) GetCandidates() []*TargetCandidate {
@@ -960,7 +909,7 @@ type ReviewTargetCandidateAction struct {
 
 func (x *ReviewTargetCandidateAction) Reset() {
 	*x = ReviewTargetCandidateAction{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[12]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -972,7 +921,7 @@ func (x *ReviewTargetCandidateAction) String() string {
 func (*ReviewTargetCandidateAction) ProtoMessage() {}
 
 func (x *ReviewTargetCandidateAction) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[12]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -985,7 +934,7 @@ func (x *ReviewTargetCandidateAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReviewTargetCandidateAction.ProtoReflect.Descriptor instead.
 func (*ReviewTargetCandidateAction) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{12}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReviewTargetCandidateAction) GetCandidateId() string {
@@ -1028,7 +977,7 @@ type ReviewTargetCandidatesRequest struct {
 
 func (x *ReviewTargetCandidatesRequest) Reset() {
 	*x = ReviewTargetCandidatesRequest{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[13]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1040,7 +989,7 @@ func (x *ReviewTargetCandidatesRequest) String() string {
 func (*ReviewTargetCandidatesRequest) ProtoMessage() {}
 
 func (x *ReviewTargetCandidatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[13]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1053,7 +1002,7 @@ func (x *ReviewTargetCandidatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReviewTargetCandidatesRequest.ProtoReflect.Descriptor instead.
 func (*ReviewTargetCandidatesRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{13}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ReviewTargetCandidatesRequest) GetDatabaseResourceId() string {
@@ -1092,7 +1041,7 @@ type ReviewTargetCandidatesResponse struct {
 
 func (x *ReviewTargetCandidatesResponse) Reset() {
 	*x = ReviewTargetCandidatesResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[14]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1104,7 +1053,7 @@ func (x *ReviewTargetCandidatesResponse) String() string {
 func (*ReviewTargetCandidatesResponse) ProtoMessage() {}
 
 func (x *ReviewTargetCandidatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[14]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1117,7 +1066,7 @@ func (x *ReviewTargetCandidatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReviewTargetCandidatesResponse.ProtoReflect.Descriptor instead.
 func (*ReviewTargetCandidatesResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{14}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{13}
 }
 
 // 启动任务的响应。
@@ -1133,7 +1082,7 @@ type StartEntityAlignmentResponse struct {
 
 func (x *StartEntityAlignmentResponse) Reset() {
 	*x = StartEntityAlignmentResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[15]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1145,7 +1094,7 @@ func (x *StartEntityAlignmentResponse) String() string {
 func (*StartEntityAlignmentResponse) ProtoMessage() {}
 
 func (x *StartEntityAlignmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[15]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1158,7 +1107,7 @@ func (x *StartEntityAlignmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartEntityAlignmentResponse.ProtoReflect.Descriptor instead.
 func (*StartEntityAlignmentResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{15}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *StartEntityAlignmentResponse) GetJobId() string {
@@ -1186,7 +1135,7 @@ type GetEntityAlignmentJobRequest struct {
 
 func (x *GetEntityAlignmentJobRequest) Reset() {
 	*x = GetEntityAlignmentJobRequest{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[16]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1198,7 +1147,7 @@ func (x *GetEntityAlignmentJobRequest) String() string {
 func (*GetEntityAlignmentJobRequest) ProtoMessage() {}
 
 func (x *GetEntityAlignmentJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[16]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1211,7 +1160,7 @@ func (x *GetEntityAlignmentJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEntityAlignmentJobRequest.ProtoReflect.Descriptor instead.
 func (*GetEntityAlignmentJobRequest) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{16}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GetEntityAlignmentJobRequest) GetJobId() string {
@@ -1244,13 +1193,15 @@ type GetEntityAlignmentJobResponse struct {
 	StartedAtUnix int64 `protobuf:"varint,9,opt,name=started_at_unix,json=startedAtUnix,proto3" json:"started_at_unix,omitempty"`
 	// 任务完成时间（Unix 时间戳，秒）。
 	FinishedAtUnix int64 `protobuf:"varint,10,opt,name=finished_at_unix,json=finishedAtUnix,proto3" json:"finished_at_unix,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 模糊召回候选目标值数量。
+	FuzzyTopK     int32 `protobuf:"varint,11,opt,name=fuzzy_top_k,json=fuzzyTopK,proto3" json:"fuzzy_top_k,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetEntityAlignmentJobResponse) Reset() {
 	*x = GetEntityAlignmentJobResponse{}
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[17]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1262,7 +1213,7 @@ func (x *GetEntityAlignmentJobResponse) String() string {
 func (*GetEntityAlignmentJobResponse) ProtoMessage() {}
 
 func (x *GetEntityAlignmentJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[17]
+	mi := &file_kgbrain_v1_entity_alignment_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1275,7 +1226,7 @@ func (x *GetEntityAlignmentJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEntityAlignmentJobResponse.ProtoReflect.Descriptor instead.
 func (*GetEntityAlignmentJobResponse) Descriptor() ([]byte, []int) {
-	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{17}
+	return file_kgbrain_v1_entity_alignment_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetEntityAlignmentJobResponse) GetJobId() string {
@@ -1348,12 +1299,19 @@ func (x *GetEntityAlignmentJobResponse) GetFinishedAtUnix() int64 {
 	return 0
 }
 
+func (x *GetEntityAlignmentJobResponse) GetFuzzyTopK() int32 {
+	if x != nil {
+		return x.FuzzyTopK
+	}
+	return 0
+}
+
 var File_kgbrain_v1_entity_alignment_proto protoreflect.FileDescriptor
 
 const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\n" +
 	"!kgbrain/v1/entity_alignment.proto\x12\n" +
-	"kgbrain.v1\"\xde\x03\n" +
+	"kgbrain.v1\"\x93\x04\n" +
 	"\x1bStartEntityAlignmentRequest\x12&\n" +
 	"\x0fllm_resource_id\x18\x01 \x01(\tR\rllmResourceId\x120\n" +
 	"\x14database_resource_id\x18\x02 \x01(\tR\x12databaseResourceId\x12!\n" +
@@ -1364,10 +1322,12 @@ const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\bstart_id\x18\b \x01(\x03H\x00R\astartId\x88\x01\x01\x12\x1a\n" +
 	"\x06end_id\x18\t \x01(\x03H\x01R\x05endId\x88\x01\x01\x12@\n" +
 	"\x1aonly_waiting_target_review\x18\n" +
-	" \x01(\bH\x02R\x17onlyWaitingTargetReview\x88\x01\x01B\v\n" +
+	" \x01(\bH\x02R\x17onlyWaitingTargetReview\x88\x01\x01\x12#\n" +
+	"\vfuzzy_top_k\x18\v \x01(\x05H\x03R\tfuzzyTopK\x88\x01\x01B\v\n" +
 	"\t_start_idB\t\n" +
 	"\a_end_idB\x1d\n" +
-	"\x1b_only_waiting_target_reviewJ\x04\b\x05\x10\x06R\rreuse_mapping\"\xe4\x01\n" +
+	"\x1b_only_waiting_target_reviewB\x0e\n" +
+	"\f_fuzzy_top_kJ\x04\b\x05\x10\x06R\rreuse_mapping\"\xe4\x01\n" +
 	"\x14EntityAlignmentField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12'\n" +
 	"\rtarget_set_id\x18\x02 \x01(\tH\x00R\vtargetSetId\x88\x01\x01\x12\"\n" +
@@ -1379,17 +1339,13 @@ const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\x12_batch_concurrency\"s\n" +
 	"\x1bListAlignmentTargetsRequest\x120\n" +
 	"\x14database_resource_id\x18\x01 \x01(\tR\x12databaseResourceId\x12\"\n" +
-	"\rtarget_set_id\x18\x02 \x01(\tR\vtargetSetId\"m\n" +
-	"\x0fAlignmentTarget\x12\"\n" +
-	"\rtarget_set_id\x18\x01 \x01(\tR\vtargetSetId\x12\x14\n" +
-	"\x05label\x18\x02 \x01(\tR\x05label\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\"U\n" +
-	"\x1cListAlignmentTargetsResponse\x125\n" +
-	"\atargets\x18\x01 \x03(\v2\x1b.kgbrain.v1.AlignmentTargetR\atargets\"\xac\x01\n" +
+	"\rtarget_set_id\x18\x02 \x01(\tR\vtargetSetId\"E\n" +
+	"\x1cListAlignmentTargetsResponse\x12\x16\n" +
+	"\x06labels\x18\x02 \x03(\tR\x06labelsJ\x04\b\x01\x10\x02R\atargets\"\x9c\x01\n" +
 	"\x1dUpsertAlignmentTargetsRequest\x120\n" +
 	"\x14database_resource_id\x18\x01 \x01(\tR\x12databaseResourceId\x12\"\n" +
-	"\rtarget_set_id\x18\x02 \x01(\tR\vtargetSetId\x125\n" +
-	"\atargets\x18\x03 \x03(\v2\x1b.kgbrain.v1.AlignmentTargetR\atargets\" \n" +
+	"\rtarget_set_id\x18\x02 \x01(\tR\vtargetSetId\x12\x16\n" +
+	"\x06labels\x18\x04 \x03(\tR\x06labelsJ\x04\b\x03\x10\x04R\atargets\" \n" +
 	"\x1eUpsertAlignmentTargetsResponse\"\x8a\x01\n" +
 	"\x1cDeleteAlignmentTargetRequest\x120\n" +
 	"\x14database_resource_id\x18\x01 \x01(\tR\x12databaseResourceId\x12\"\n" +
@@ -1436,7 +1392,7 @@ const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12<\n" +
 	"\x06status\x18\x02 \x01(\x0e2$.kgbrain.v1.EntityAlignmentJobStatusR\x06status\"5\n" +
 	"\x1cGetEntityAlignmentJobRequest\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xb3\x03\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"\xd3\x03\n" +
 	"\x1dGetEntityAlignmentJobResponse\x12\x15\n" +
 	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12&\n" +
 	"\x0fllm_resource_id\x18\x02 \x01(\tR\rllmResourceId\x120\n" +
@@ -1448,7 +1404,8 @@ const file_kgbrain_v1_entity_alignment_proto_rawDesc = "" +
 	"\x0fcreated_at_unix\x18\b \x01(\x03R\rcreatedAtUnix\x12&\n" +
 	"\x0fstarted_at_unix\x18\t \x01(\x03R\rstartedAtUnix\x12(\n" +
 	"\x10finished_at_unix\x18\n" +
-	" \x01(\x03R\x0efinishedAtUnix*\x8b\x01\n" +
+	" \x01(\x03R\x0efinishedAtUnix\x12\x1e\n" +
+	"\vfuzzy_top_k\x18\v \x01(\x05R\tfuzzyTopK*\x8b\x01\n" +
 	"\x15TargetCandidateStatus\x12'\n" +
 	"#TARGET_CANDIDATE_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fTARGET_CANDIDATE_STATUS_PENDING\x10\x01\x12$\n" +
@@ -1486,7 +1443,7 @@ func file_kgbrain_v1_entity_alignment_proto_rawDescGZIP() []byte {
 }
 
 var file_kgbrain_v1_entity_alignment_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_kgbrain_v1_entity_alignment_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_kgbrain_v1_entity_alignment_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_kgbrain_v1_entity_alignment_proto_goTypes = []any{
 	(TargetCandidateStatus)(0),             // 0: kgbrain.v1.TargetCandidateStatus
 	(TargetCandidateResolution)(0),         // 1: kgbrain.v1.TargetCandidateResolution
@@ -1494,53 +1451,50 @@ var file_kgbrain_v1_entity_alignment_proto_goTypes = []any{
 	(*StartEntityAlignmentRequest)(nil),    // 3: kgbrain.v1.StartEntityAlignmentRequest
 	(*EntityAlignmentField)(nil),           // 4: kgbrain.v1.EntityAlignmentField
 	(*ListAlignmentTargetsRequest)(nil),    // 5: kgbrain.v1.ListAlignmentTargetsRequest
-	(*AlignmentTarget)(nil),                // 6: kgbrain.v1.AlignmentTarget
-	(*ListAlignmentTargetsResponse)(nil),   // 7: kgbrain.v1.ListAlignmentTargetsResponse
-	(*UpsertAlignmentTargetsRequest)(nil),  // 8: kgbrain.v1.UpsertAlignmentTargetsRequest
-	(*UpsertAlignmentTargetsResponse)(nil), // 9: kgbrain.v1.UpsertAlignmentTargetsResponse
-	(*DeleteAlignmentTargetRequest)(nil),   // 10: kgbrain.v1.DeleteAlignmentTargetRequest
-	(*DeleteAlignmentTargetResponse)(nil),  // 11: kgbrain.v1.DeleteAlignmentTargetResponse
-	(*TargetCandidate)(nil),                // 12: kgbrain.v1.TargetCandidate
-	(*ListTargetCandidatesRequest)(nil),    // 13: kgbrain.v1.ListTargetCandidatesRequest
-	(*ListTargetCandidatesResponse)(nil),   // 14: kgbrain.v1.ListTargetCandidatesResponse
-	(*ReviewTargetCandidateAction)(nil),    // 15: kgbrain.v1.ReviewTargetCandidateAction
-	(*ReviewTargetCandidatesRequest)(nil),  // 16: kgbrain.v1.ReviewTargetCandidatesRequest
-	(*ReviewTargetCandidatesResponse)(nil), // 17: kgbrain.v1.ReviewTargetCandidatesResponse
-	(*StartEntityAlignmentResponse)(nil),   // 18: kgbrain.v1.StartEntityAlignmentResponse
-	(*GetEntityAlignmentJobRequest)(nil),   // 19: kgbrain.v1.GetEntityAlignmentJobRequest
-	(*GetEntityAlignmentJobResponse)(nil),  // 20: kgbrain.v1.GetEntityAlignmentJobResponse
+	(*ListAlignmentTargetsResponse)(nil),   // 6: kgbrain.v1.ListAlignmentTargetsResponse
+	(*UpsertAlignmentTargetsRequest)(nil),  // 7: kgbrain.v1.UpsertAlignmentTargetsRequest
+	(*UpsertAlignmentTargetsResponse)(nil), // 8: kgbrain.v1.UpsertAlignmentTargetsResponse
+	(*DeleteAlignmentTargetRequest)(nil),   // 9: kgbrain.v1.DeleteAlignmentTargetRequest
+	(*DeleteAlignmentTargetResponse)(nil),  // 10: kgbrain.v1.DeleteAlignmentTargetResponse
+	(*TargetCandidate)(nil),                // 11: kgbrain.v1.TargetCandidate
+	(*ListTargetCandidatesRequest)(nil),    // 12: kgbrain.v1.ListTargetCandidatesRequest
+	(*ListTargetCandidatesResponse)(nil),   // 13: kgbrain.v1.ListTargetCandidatesResponse
+	(*ReviewTargetCandidateAction)(nil),    // 14: kgbrain.v1.ReviewTargetCandidateAction
+	(*ReviewTargetCandidatesRequest)(nil),  // 15: kgbrain.v1.ReviewTargetCandidatesRequest
+	(*ReviewTargetCandidatesResponse)(nil), // 16: kgbrain.v1.ReviewTargetCandidatesResponse
+	(*StartEntityAlignmentResponse)(nil),   // 17: kgbrain.v1.StartEntityAlignmentResponse
+	(*GetEntityAlignmentJobRequest)(nil),   // 18: kgbrain.v1.GetEntityAlignmentJobRequest
+	(*GetEntityAlignmentJobResponse)(nil),  // 19: kgbrain.v1.GetEntityAlignmentJobResponse
 }
 var file_kgbrain_v1_entity_alignment_proto_depIdxs = []int32{
 	4,  // 0: kgbrain.v1.StartEntityAlignmentRequest.fields:type_name -> kgbrain.v1.EntityAlignmentField
-	6,  // 1: kgbrain.v1.ListAlignmentTargetsResponse.targets:type_name -> kgbrain.v1.AlignmentTarget
-	6,  // 2: kgbrain.v1.UpsertAlignmentTargetsRequest.targets:type_name -> kgbrain.v1.AlignmentTarget
-	0,  // 3: kgbrain.v1.TargetCandidate.status:type_name -> kgbrain.v1.TargetCandidateStatus
-	1,  // 4: kgbrain.v1.TargetCandidate.resolution:type_name -> kgbrain.v1.TargetCandidateResolution
-	0,  // 5: kgbrain.v1.ListTargetCandidatesRequest.status:type_name -> kgbrain.v1.TargetCandidateStatus
-	12, // 6: kgbrain.v1.ListTargetCandidatesResponse.candidates:type_name -> kgbrain.v1.TargetCandidate
-	1,  // 7: kgbrain.v1.ReviewTargetCandidateAction.resolution:type_name -> kgbrain.v1.TargetCandidateResolution
-	15, // 8: kgbrain.v1.ReviewTargetCandidatesRequest.actions:type_name -> kgbrain.v1.ReviewTargetCandidateAction
-	2,  // 9: kgbrain.v1.StartEntityAlignmentResponse.status:type_name -> kgbrain.v1.EntityAlignmentJobStatus
-	2,  // 10: kgbrain.v1.GetEntityAlignmentJobResponse.status:type_name -> kgbrain.v1.EntityAlignmentJobStatus
-	3,  // 11: kgbrain.v1.EntityAlignmentService.StartEntityAlignment:input_type -> kgbrain.v1.StartEntityAlignmentRequest
-	19, // 12: kgbrain.v1.EntityAlignmentService.GetEntityAlignmentJob:input_type -> kgbrain.v1.GetEntityAlignmentJobRequest
-	5,  // 13: kgbrain.v1.EntityAlignmentService.ListAlignmentTargets:input_type -> kgbrain.v1.ListAlignmentTargetsRequest
-	8,  // 14: kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets:input_type -> kgbrain.v1.UpsertAlignmentTargetsRequest
-	10, // 15: kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget:input_type -> kgbrain.v1.DeleteAlignmentTargetRequest
-	13, // 16: kgbrain.v1.EntityAlignmentService.ListTargetCandidates:input_type -> kgbrain.v1.ListTargetCandidatesRequest
-	16, // 17: kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates:input_type -> kgbrain.v1.ReviewTargetCandidatesRequest
-	18, // 18: kgbrain.v1.EntityAlignmentService.StartEntityAlignment:output_type -> kgbrain.v1.StartEntityAlignmentResponse
-	20, // 19: kgbrain.v1.EntityAlignmentService.GetEntityAlignmentJob:output_type -> kgbrain.v1.GetEntityAlignmentJobResponse
-	7,  // 20: kgbrain.v1.EntityAlignmentService.ListAlignmentTargets:output_type -> kgbrain.v1.ListAlignmentTargetsResponse
-	9,  // 21: kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets:output_type -> kgbrain.v1.UpsertAlignmentTargetsResponse
-	11, // 22: kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget:output_type -> kgbrain.v1.DeleteAlignmentTargetResponse
-	14, // 23: kgbrain.v1.EntityAlignmentService.ListTargetCandidates:output_type -> kgbrain.v1.ListTargetCandidatesResponse
-	17, // 24: kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates:output_type -> kgbrain.v1.ReviewTargetCandidatesResponse
-	18, // [18:25] is the sub-list for method output_type
-	11, // [11:18] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	0,  // 1: kgbrain.v1.TargetCandidate.status:type_name -> kgbrain.v1.TargetCandidateStatus
+	1,  // 2: kgbrain.v1.TargetCandidate.resolution:type_name -> kgbrain.v1.TargetCandidateResolution
+	0,  // 3: kgbrain.v1.ListTargetCandidatesRequest.status:type_name -> kgbrain.v1.TargetCandidateStatus
+	11, // 4: kgbrain.v1.ListTargetCandidatesResponse.candidates:type_name -> kgbrain.v1.TargetCandidate
+	1,  // 5: kgbrain.v1.ReviewTargetCandidateAction.resolution:type_name -> kgbrain.v1.TargetCandidateResolution
+	14, // 6: kgbrain.v1.ReviewTargetCandidatesRequest.actions:type_name -> kgbrain.v1.ReviewTargetCandidateAction
+	2,  // 7: kgbrain.v1.StartEntityAlignmentResponse.status:type_name -> kgbrain.v1.EntityAlignmentJobStatus
+	2,  // 8: kgbrain.v1.GetEntityAlignmentJobResponse.status:type_name -> kgbrain.v1.EntityAlignmentJobStatus
+	3,  // 9: kgbrain.v1.EntityAlignmentService.StartEntityAlignment:input_type -> kgbrain.v1.StartEntityAlignmentRequest
+	18, // 10: kgbrain.v1.EntityAlignmentService.GetEntityAlignmentJob:input_type -> kgbrain.v1.GetEntityAlignmentJobRequest
+	5,  // 11: kgbrain.v1.EntityAlignmentService.ListAlignmentTargets:input_type -> kgbrain.v1.ListAlignmentTargetsRequest
+	7,  // 12: kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets:input_type -> kgbrain.v1.UpsertAlignmentTargetsRequest
+	9,  // 13: kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget:input_type -> kgbrain.v1.DeleteAlignmentTargetRequest
+	12, // 14: kgbrain.v1.EntityAlignmentService.ListTargetCandidates:input_type -> kgbrain.v1.ListTargetCandidatesRequest
+	15, // 15: kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates:input_type -> kgbrain.v1.ReviewTargetCandidatesRequest
+	17, // 16: kgbrain.v1.EntityAlignmentService.StartEntityAlignment:output_type -> kgbrain.v1.StartEntityAlignmentResponse
+	19, // 17: kgbrain.v1.EntityAlignmentService.GetEntityAlignmentJob:output_type -> kgbrain.v1.GetEntityAlignmentJobResponse
+	6,  // 18: kgbrain.v1.EntityAlignmentService.ListAlignmentTargets:output_type -> kgbrain.v1.ListAlignmentTargetsResponse
+	8,  // 19: kgbrain.v1.EntityAlignmentService.UpsertAlignmentTargets:output_type -> kgbrain.v1.UpsertAlignmentTargetsResponse
+	10, // 20: kgbrain.v1.EntityAlignmentService.DeleteAlignmentTarget:output_type -> kgbrain.v1.DeleteAlignmentTargetResponse
+	13, // 21: kgbrain.v1.EntityAlignmentService.ListTargetCandidates:output_type -> kgbrain.v1.ListTargetCandidatesResponse
+	16, // 22: kgbrain.v1.EntityAlignmentService.ReviewTargetCandidates:output_type -> kgbrain.v1.ReviewTargetCandidatesResponse
+	16, // [16:23] is the sub-list for method output_type
+	9,  // [9:16] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_kgbrain_v1_entity_alignment_proto_init() }
@@ -1550,14 +1504,14 @@ func file_kgbrain_v1_entity_alignment_proto_init() {
 	}
 	file_kgbrain_v1_entity_alignment_proto_msgTypes[0].OneofWrappers = []any{}
 	file_kgbrain_v1_entity_alignment_proto_msgTypes[1].OneofWrappers = []any{}
-	file_kgbrain_v1_entity_alignment_proto_msgTypes[10].OneofWrappers = []any{}
+	file_kgbrain_v1_entity_alignment_proto_msgTypes[9].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kgbrain_v1_entity_alignment_proto_rawDesc), len(file_kgbrain_v1_entity_alignment_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   18,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -17,6 +17,7 @@ const (
 	mappingTableName      = "entity_alignment_mapping"
 	targetTableName       = "alignment_targets"
 	candidateTableName    = "target_candidates"
+	targetTrgmIndexName   = "alignment_targets_label_trgm_idx"
 	outputTableAlias      = "s"
 	mappingTableAlias     = "m_"
 	defaultOutputPageSize = int64(10000)
@@ -97,6 +98,9 @@ func (r *EntityAlignmentBusinessRepo) EnsureExecutionReady(
 	if err := r.ensureTargetsTable(ctx, qualifiedName{Schema: defaultSchema, Name: targetTableName}); err != nil {
 		return nil, err
 	}
+	if err := r.ensureTargetRecallIndex(ctx, qualifiedName{Schema: defaultSchema, Name: targetTableName}); err != nil {
+		return nil, err
+	}
 	if err := r.ensureCandidatesTable(ctx, qualifiedName{Schema: defaultSchema, Name: candidateTableName}); err != nil {
 		return nil, err
 	}
@@ -131,7 +135,7 @@ func (r *EntityAlignmentBusinessRepo) LoadTargetLabels(
 		return nil, err
 	}
 	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
-		SELECT target_set_id, label, description
+		SELECT target_set_id, label
 		FROM %s
 		WHERE target_set_id = $1
 		ORDER BY label`, fullTableName(table)), targetSetID)
@@ -142,11 +146,9 @@ func (r *EntityAlignmentBusinessRepo) LoadTargetLabels(
 	targets := make([]TargetDefinition, 0)
 	for rows.Next() {
 		var target TargetDefinition
-		var description sql.NullString
-		if err := rows.Scan(&target.TargetSetID, &target.Label, &description); err != nil {
+		if err := rows.Scan(&target.TargetSetID, &target.Label); err != nil {
 			return nil, fmt.Errorf("scan alignment target: %w", err)
 		}
-		target.Description = description.String
 		targets = append(targets, target)
 	}
 	if err := rows.Err(); err != nil {
@@ -165,24 +167,85 @@ func (r *EntityAlignmentBusinessRepo) UpsertTargets(
 		return err
 	}
 	valueRows := make([]string, 0, len(targets))
-	args := make([]any, 0, len(targets)*4)
+	args := make([]any, 0, len(targets)*3)
 	argIndex := 1
 	now := time.Now().UTC()
 	for _, target := range targets {
-		valueRows = append(valueRows, rowPlaceholders(argIndex, 4))
-		args = append(args, targetSetID, target.Label, nullableStringValue(target.Description), now)
-		argIndex += 4
+		valueRows = append(valueRows, rowPlaceholders(argIndex, 3))
+		args = append(args, targetSetID, target.Label, now)
+		argIndex += 3
 	}
 	query := fmt.Sprintf(`
-		INSERT INTO %s (target_set_id, label, description, updated_at)
+		INSERT INTO %s (target_set_id, label, updated_at)
 		VALUES %s
 		ON CONFLICT (target_set_id, label) DO UPDATE
-		SET description = EXCLUDED.description,
-		    updated_at = EXCLUDED.updated_at`, fullTableName(table), strings.Join(valueRows, ", "))
+		SET updated_at = EXCLUDED.updated_at`, fullTableName(table), strings.Join(valueRows, ", "))
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
 		return fmt.Errorf("upsert alignment targets: %w", err)
 	}
 	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) RecallTopKTargets(
+	ctx context.Context,
+	targetSetID string,
+	rawValue string,
+	topK int,
+) ([]string, error) {
+	if topK <= 0 {
+		topK = DefaultFuzzyTopK
+	}
+	table := qualifiedName{Schema: defaultSchema, Name: targetTableName}
+	if err := r.ensureTargetsTable(ctx, table); err != nil {
+		return nil, err
+	}
+	if err := r.ensureTargetRecallIndex(ctx, table); err != nil {
+		return nil, err
+	}
+	labels, err := r.recallTopKTargets(ctx, table, targetSetID, rawValue, topK, true)
+	if err != nil {
+		return nil, err
+	}
+	if len(labels) >= topK {
+		return labels, nil
+	}
+	return r.recallTopKTargets(ctx, table, targetSetID, rawValue, topK, false)
+}
+
+func (r *EntityAlignmentBusinessRepo) recallTopKTargets(
+	ctx context.Context,
+	table qualifiedName,
+	targetSetID string,
+	rawValue string,
+	topK int,
+	useThreshold bool,
+) ([]string, error) {
+	where := "target_set_id = $1"
+	if useThreshold {
+		where += " AND label % $2"
+	}
+	rows, err := r.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT label
+		FROM %s
+		WHERE %s
+		ORDER BY similarity(label, $2) DESC, label ASC
+		LIMIT $3`, fullTableName(table), where), targetSetID, rawValue, topK)
+	if err != nil {
+		return nil, fmt.Errorf("recall top-k targets: %w", err)
+	}
+	defer rows.Close()
+	labels := make([]string, 0, topK)
+	for rows.Next() {
+		var label string
+		if err := rows.Scan(&label); err != nil {
+			return nil, fmt.Errorf("scan recalled target: %w", err)
+		}
+		labels = append(labels, label)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate recalled targets: %w", err)
+	}
+	return labels, nil
 }
 
 func (r *EntityAlignmentBusinessRepo) DeleteTarget(
@@ -337,8 +400,8 @@ func (r *EntityAlignmentBusinessRepo) ReviewTargetCandidates(
 		switch action.Resolution {
 		case "add_as_label":
 			if _, err := tx.ExecContext(ctx, fmt.Sprintf(
-				`INSERT INTO %s (target_set_id, label, description, created_at, updated_at)
-				 VALUES ($1, $2, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+				`INSERT INTO %s (target_set_id, label, created_at, updated_at)
+				 VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 				 ON CONFLICT (target_set_id, label) DO UPDATE SET updated_at = CURRENT_TIMESTAMP`,
 				fullTableName(targetTable),
 			), targetSetID, action.Label); err != nil {
@@ -1025,16 +1088,39 @@ func (r *EntityAlignmentBusinessRepo) ensureTargetsTable(
 	name qualifiedName,
 ) error {
 	createSQL := fmt.Sprintf(`
-		CREATE TABLE IF NOT EXISTS %s (
-			target_set_id TEXT NOT NULL,
-			label TEXT NOT NULL,
-			description TEXT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (target_set_id, label)
-		)`, fullTableName(name))
+			CREATE TABLE IF NOT EXISTS %s (
+				target_set_id TEXT NOT NULL,
+				label TEXT NOT NULL,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (target_set_id, label)
+			)`, fullTableName(name))
 	if _, err := r.db.ExecContext(ctx, createSQL); err != nil {
 		return fmt.Errorf("create targets table: %w", err)
+	}
+	if _, err := r.db.ExecContext(ctx, fmt.Sprintf(
+		`ALTER TABLE %s DROP COLUMN IF EXISTS description`,
+		fullTableName(name),
+	)); err != nil {
+		return fmt.Errorf("drop targets description column: %w", err)
+	}
+	return nil
+}
+
+func (r *EntityAlignmentBusinessRepo) ensureTargetRecallIndex(
+	ctx context.Context,
+	name qualifiedName,
+) error {
+	if _, err := r.db.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm`); err != nil {
+		return fmt.Errorf("create pg_trgm extension: %w", err)
+	}
+	query := fmt.Sprintf(
+		`CREATE INDEX IF NOT EXISTS %s ON %s USING gin (label gin_trgm_ops)`,
+		quoteIdent(targetTrgmIndexName),
+		fullTableName(name),
+	)
+	if _, err := r.db.ExecContext(ctx, query); err != nil {
+		return fmt.Errorf("create targets trigram index: %w", err)
 	}
 	return nil
 }
@@ -1382,13 +1468,6 @@ func nullableString(v sql.NullString) *string {
 		return nil
 	}
 	return &v.String
-}
-
-func nullableStringValue(v string) any {
-	if strings.TrimSpace(v) == "" {
-		return nil
-	}
-	return v
 }
 
 func generateCandidateID() string {

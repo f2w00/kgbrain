@@ -102,7 +102,7 @@ func (c *openaiClient) generateWithOpts(ctx context.Context, msgs []*schema.Mess
 		c.maxConcurrency,
 	)
 	if err != nil {
-		return "", fmt.Errorf("acquire llm resource slot: %w", err)
+		return "", fmt.Errorf("acquire model resource slot: %w", err)
 	}
 	defer release()
 

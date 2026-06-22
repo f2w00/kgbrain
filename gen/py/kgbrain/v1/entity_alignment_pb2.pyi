@@ -40,7 +40,7 @@ ENTITY_ALIGNMENT_JOB_STATUS_SUCCEEDED: EntityAlignmentJobStatus
 ENTITY_ALIGNMENT_JOB_STATUS_FAILED: EntityAlignmentJobStatus
 
 class StartEntityAlignmentRequest(_message.Message):
-    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "fields", "key_field", "start_id", "end_id", "only_waiting_target_review")
+    __slots__ = ("llm_resource_id", "database_resource_id", "source_table", "output_table", "fields", "key_field", "start_id", "end_id", "only_waiting_target_review", "fuzzy_top_k")
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     SOURCE_TABLE_FIELD_NUMBER: _ClassVar[int]
@@ -50,6 +50,7 @@ class StartEntityAlignmentRequest(_message.Message):
     START_ID_FIELD_NUMBER: _ClassVar[int]
     END_ID_FIELD_NUMBER: _ClassVar[int]
     ONLY_WAITING_TARGET_REVIEW_FIELD_NUMBER: _ClassVar[int]
+    FUZZY_TOP_K_FIELD_NUMBER: _ClassVar[int]
     llm_resource_id: str
     database_resource_id: str
     source_table: str
@@ -59,7 +60,8 @@ class StartEntityAlignmentRequest(_message.Message):
     start_id: int
     end_id: int
     only_waiting_target_review: bool
-    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ..., key_field: _Optional[str] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., only_waiting_target_review: bool = ...) -> None: ...
+    fuzzy_top_k: int
+    def __init__(self, llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., fields: _Optional[_Iterable[_Union[EntityAlignmentField, _Mapping]]] = ..., key_field: _Optional[str] = ..., start_id: _Optional[int] = ..., end_id: _Optional[int] = ..., only_waiting_target_review: bool = ..., fuzzy_top_k: _Optional[int] = ...) -> None: ...
 
 class EntityAlignmentField(_message.Message):
     __slots__ = ("name", "target_set_id", "batch_size", "batch_concurrency")
@@ -81,31 +83,21 @@ class ListAlignmentTargetsRequest(_message.Message):
     target_set_id: str
     def __init__(self, database_resource_id: _Optional[str] = ..., target_set_id: _Optional[str] = ...) -> None: ...
 
-class AlignmentTarget(_message.Message):
-    __slots__ = ("target_set_id", "label", "description")
-    TARGET_SET_ID_FIELD_NUMBER: _ClassVar[int]
-    LABEL_FIELD_NUMBER: _ClassVar[int]
-    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
-    target_set_id: str
-    label: str
-    description: str
-    def __init__(self, target_set_id: _Optional[str] = ..., label: _Optional[str] = ..., description: _Optional[str] = ...) -> None: ...
-
 class ListAlignmentTargetsResponse(_message.Message):
-    __slots__ = ("targets",)
-    TARGETS_FIELD_NUMBER: _ClassVar[int]
-    targets: _containers.RepeatedCompositeFieldContainer[AlignmentTarget]
-    def __init__(self, targets: _Optional[_Iterable[_Union[AlignmentTarget, _Mapping]]] = ...) -> None: ...
+    __slots__ = ("labels",)
+    LABELS_FIELD_NUMBER: _ClassVar[int]
+    labels: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, labels: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class UpsertAlignmentTargetsRequest(_message.Message):
-    __slots__ = ("database_resource_id", "target_set_id", "targets")
+    __slots__ = ("database_resource_id", "target_set_id", "labels")
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     TARGET_SET_ID_FIELD_NUMBER: _ClassVar[int]
-    TARGETS_FIELD_NUMBER: _ClassVar[int]
+    LABELS_FIELD_NUMBER: _ClassVar[int]
     database_resource_id: str
     target_set_id: str
-    targets: _containers.RepeatedCompositeFieldContainer[AlignmentTarget]
-    def __init__(self, database_resource_id: _Optional[str] = ..., target_set_id: _Optional[str] = ..., targets: _Optional[_Iterable[_Union[AlignmentTarget, _Mapping]]] = ...) -> None: ...
+    labels: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, database_resource_id: _Optional[str] = ..., target_set_id: _Optional[str] = ..., labels: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class UpsertAlignmentTargetsResponse(_message.Message):
     __slots__ = ()
@@ -208,7 +200,7 @@ class GetEntityAlignmentJobRequest(_message.Message):
     def __init__(self, job_id: _Optional[str] = ...) -> None: ...
 
 class GetEntityAlignmentJobResponse(_message.Message):
-    __slots__ = ("job_id", "llm_resource_id", "database_resource_id", "source_table", "output_table", "status", "error_message", "created_at_unix", "started_at_unix", "finished_at_unix")
+    __slots__ = ("job_id", "llm_resource_id", "database_resource_id", "source_table", "output_table", "status", "error_message", "created_at_unix", "started_at_unix", "finished_at_unix", "fuzzy_top_k")
     JOB_ID_FIELD_NUMBER: _ClassVar[int]
     LLM_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
     DATABASE_RESOURCE_ID_FIELD_NUMBER: _ClassVar[int]
@@ -219,6 +211,7 @@ class GetEntityAlignmentJobResponse(_message.Message):
     CREATED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
     STARTED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
     FINISHED_AT_UNIX_FIELD_NUMBER: _ClassVar[int]
+    FUZZY_TOP_K_FIELD_NUMBER: _ClassVar[int]
     job_id: str
     llm_resource_id: str
     database_resource_id: str
@@ -229,4 +222,5 @@ class GetEntityAlignmentJobResponse(_message.Message):
     created_at_unix: int
     started_at_unix: int
     finished_at_unix: int
-    def __init__(self, job_id: _Optional[str] = ..., llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., status: _Optional[_Union[EntityAlignmentJobStatus, str]] = ..., error_message: _Optional[str] = ..., created_at_unix: _Optional[int] = ..., started_at_unix: _Optional[int] = ..., finished_at_unix: _Optional[int] = ...) -> None: ...
+    fuzzy_top_k: int
+    def __init__(self, job_id: _Optional[str] = ..., llm_resource_id: _Optional[str] = ..., database_resource_id: _Optional[str] = ..., source_table: _Optional[str] = ..., output_table: _Optional[str] = ..., status: _Optional[_Union[EntityAlignmentJobStatus, str]] = ..., error_message: _Optional[str] = ..., created_at_unix: _Optional[int] = ..., started_at_unix: _Optional[int] = ..., finished_at_unix: _Optional[int] = ..., fuzzy_top_k: _Optional[int] = ...) -> None: ...

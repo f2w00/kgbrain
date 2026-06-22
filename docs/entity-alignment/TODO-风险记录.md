@@ -36,6 +36,26 @@
 - 标准值集合增量更新后，旧 mapping 仍然会被复用。
 - 如果某个标准 label 的语义发生变化，需要人工修改或删除对应 mapping。
 
+## P1: 当前召回策略为 pg_trgm 模糊召回 + LLM 判定
+
+- 当前不再将完整 `alignment_targets` 放入每次 LLM prompt。
+- 对每个缺失 mapping 的 `raw_value`，先在业务 PostgreSQL 内使用 `pg_trgm` 从
+  `alignment_targets.label` 召回 topK 候选，再交给 LLM 做最终
+  `matched/unknown_to_null/needs_candidate` 判定。
+- `fuzzy_top_k` 默认值为 10，可在启动实体对齐任务时调整。
+- 业务库会确保存在 `pg_trgm` 扩展和 `alignment_targets.label` 的 GIN trigram
+  索引：`alignment_targets_label_trgm_idx`。
+- 该方案是字符级模糊匹配，不是语义召回；字符不重叠但语义相近的值仍可能漏召回。
+- 召回结果不会单独落库；最终可复用结果仍写入 `entity_alignment_mapping`。
+- 召回为空时直接生成 `needs_candidate`，进入候选审核流程。
+
+### pg_trgm 运维注意事项
+
+- `CREATE EXTENSION IF NOT EXISTS pg_trgm` 需要业务库账号具备创建扩展权限。
+- 生产环境更推荐由 DBA 或初始化脚本预先安装 `pg_trgm`，应用侧只做幂等检查和建索引。
+- 如果后续发现大小写、空格、标点、全半角影响召回效果，可引入
+  `normalized_label` 字段和对应 trigram 索引。
+
 ## P2: 行级 waiting_target_review 状态的反向更新
 
 - 当候选值被审核（add_as_label/map_to_existing/reject_as_null）后，之前标记为 waiting_target_review 的行需要等待下一次对齐任务。
@@ -50,9 +70,15 @@
 
 ## P3: 菩萨像→佛像 类型的语义推断
 
-- 当前阶段不做向量检索 + LLM rerank 的复杂语义推断。
+- 当前阶段不做 embedding 向量召回 + LLM rerank 的复杂语义推断。
 - 明确的映射（唐朝→唐）由 LLM 处理；跨概念映射（菩萨像→佛像）推迟到后续阶段。
 - 用户需理解当前阶段的适用范围：只做标准化对齐，不做语义推断。
+
+## P3: 标准值集合过大时引入 embedding 召回
+
+- 当 `alignment_targets` 中某个 `target_set_id` 下 label 数量达到几千或更多时，不应把完整标准表放入 LLM prompt。
+- 后续优先考虑 embedding 方案：对标准值 label 生成向量，按 raw_value 向量召回 topK labels，再交给 LLM 做最终确认。
+- 该方案当前暂不实现；实现前需补充 target embedding 存储、索引、更新策略和召回参数设计。
 
 ## 待办事项
 
@@ -71,7 +97,10 @@
 | P1 | 实现 output 写入过滤：needs_candidate 输出 null | 已完成 |
 | P1 | 实现 processrecord 写入时判断 waiting_target_review | 已完成 |
 | P1 | 实现 ReviewTargetCandidates 审核并回写 target/mapping | 已完成 |
+| P1 | 实现 pg_trgm 模糊召回 topK，再由 LLM 在候选内判定 | 已完成 |
 | P2 | 添加 target_set_id 到 mapping 表 | 已完成 |
 | P2 | 实现重新对齐时只处理 waiting_target_review 行 | 待开始 |
+| P2 | 评估是否增加 normalized_label 以提升模糊召回质量 | 待开始 |
 | P3 | 重写第一轮设计文档（已完成） | 已完成 |
 | P3 | LLM prompt 优化：降低误判 needs_candidate 的比例 | 待开始 |
+| P3 | 设计 embedding 召回方案：标准值向量化、topK 召回、LLM rerank | 后续可选 |

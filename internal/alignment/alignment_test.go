@@ -15,19 +15,6 @@ func TestNormalizeTargets(t *testing.T) {
 	}
 }
 
-func TestChunkStrings(t *testing.T) {
-	got := ChunkStrings([]string{"a", "b", "c"}, 2)
-	if len(got) != 2 {
-		t.Fatalf("unexpected chunks: %#v", got)
-	}
-	if len(got[0]) != 2 || got[0][0] != "a" || got[0][1] != "b" {
-		t.Fatalf("unexpected first chunk: %#v", got)
-	}
-	if len(got[1]) != 1 || got[1][0] != "c" {
-		t.Fatalf("unexpected second chunk: %#v", got)
-	}
-}
-
 func TestPrepareFieldUsesExplicitTargetSetID(t *testing.T) {
 	batchSize := 100
 	field, err := PrepareField(
@@ -63,29 +50,40 @@ func TestPrepareFieldDefaultsTargetSetIDToName(t *testing.T) {
 	}
 }
 
-func TestValidateGeneratedMappingsAcceptsNeedsCandidate(t *testing.T) {
+func TestValidateGeneratedMappingAcceptsNeedsCandidate(t *testing.T) {
 	field := PreparedField{Name: "dynasty", Targets: []string{"唐", "宋"}}
-	got, err := ValidateGeneratedMappings(field, []string{"辽"}, []llmMappingRecord{{
+	got, err := ValidateGeneratedMapping(field, "辽", llmMappingRecord{
 		RawValue: "辽",
 		Status:   MappingStatusNeedsCandidate,
-	}})
+	})
 	if err != nil {
-		t.Fatalf("validate mappings: %v", err)
+		t.Fatalf("validate mapping: %v", err)
 	}
-	if len(got) != 1 || got[0].Status != MappingStatusNeedsCandidate || got[0].AlignedValue != nil {
+	if got.Status != MappingStatusNeedsCandidate || got.AlignedValue != nil {
 		t.Fatalf("unexpected mapping: %#v", got)
 	}
 }
 
-func TestValidateGeneratedMappingsRejectsFallbackOriginal(t *testing.T) {
+func TestValidateGeneratedMappingRejectsFallbackOriginal(t *testing.T) {
 	field := PreparedField{Name: "dynasty", Targets: []string{"唐", "宋"}}
 	aligned := "辽"
-	_, err := ValidateGeneratedMappings(field, []string{"辽"}, []llmMappingRecord{{
+	_, err := ValidateGeneratedMapping(field, "辽", llmMappingRecord{
 		RawValue:     "辽",
 		Status:       "fallback_original",
 		AlignedValue: &aligned,
-	}})
+	})
 	if err == nil {
 		t.Fatal("expected fallback_original to be rejected")
+	}
+}
+
+func TestValidateGeneratedMappingRejectsUnexpectedRawValue(t *testing.T) {
+	field := PreparedField{Name: "dynasty", Targets: []string{"唐", "宋"}}
+	_, err := ValidateGeneratedMapping(field, "辽", llmMappingRecord{
+		RawValue: "辽朝",
+		Status:   MappingStatusNeedsCandidate,
+	})
+	if err == nil {
+		t.Fatal("expected unexpected raw_value to be rejected")
 	}
 }

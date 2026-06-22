@@ -17,6 +17,13 @@ service ResourceService {
   // 删除 LLM 资源配置。
   rpc DeleteLLMResource(DeleteLLMResourceRequest) returns (DeleteLLMResourceResponse);
 
+  // 创建或更新 Embedding 资源配置。
+  rpc SetEmbeddingResource(SetEmbeddingResourceRequest) returns (SetEmbeddingResourceResponse);
+  // 查询 Embedding 资源配置。
+  rpc GetEmbeddingResource(GetEmbeddingResourceRequest) returns (GetEmbeddingResourceResponse);
+  // 删除 Embedding 资源配置。
+  rpc DeleteEmbeddingResource(DeleteEmbeddingResourceRequest) returns (DeleteEmbeddingResourceResponse);
+
   // 创建或更新数据库资源配置。
   rpc SetDatabaseResource(SetDatabaseResourceRequest) returns (SetDatabaseResourceResponse);
   // 查询数据库资源配置。
@@ -77,6 +84,58 @@ message DeleteLLMResourceResponse {
   string status = 2;
 }
 
+// 创建或更新 Embedding 资源的请求。
+message SetEmbeddingResourceRequest {
+  // 资源唯一标识，用户自定义。
+  string resource_id = 1;
+  // 资源名称，便于辨识。
+  string name = 2;
+  // Embedding 连接配置。
+  EmbeddingResourceConfig config = 3;
+}
+
+// 创建或更新 Embedding 资源的响应。
+message SetEmbeddingResourceResponse {
+  // 资源唯一标识。
+  string resource_id = 1;
+  // 操作状态描述。
+  string status = 2;
+}
+
+// 查询 Embedding 资源的请求。
+message GetEmbeddingResourceRequest {
+  // 资源唯一标识。
+  string resource_id = 1;
+}
+
+// 查询 Embedding 资源的响应。
+message GetEmbeddingResourceResponse {
+  // 资源唯一标识。
+  string resource_id = 1;
+  // 资源名称。
+  string name = 2;
+  // Embedding 连接配置。
+  EmbeddingResourceConfig config = 3;
+  // 创建时间（Unix 时间戳，秒）。
+  int64 created_at_unix = 4;
+  // 更新时间（Unix 时间戳，秒）。
+  int64 updated_at_unix = 5;
+}
+
+// 删除 Embedding 资源的请求。
+message DeleteEmbeddingResourceRequest {
+  // 资源唯一标识。
+  string resource_id = 1;
+}
+
+// 删除 Embedding 资源的响应。
+message DeleteEmbeddingResourceResponse {
+  // 资源唯一标识。
+  string resource_id = 1;
+  // 操作状态描述。
+  string status = 2;
+}
+
 // LLM 服务连接配置。
 message LLMResourceConfig {
   // LLM API 的 Base URL。
@@ -91,6 +150,20 @@ message LLMResourceConfig {
   optional double temperature = 5;
   // 最大并发请求数，为空则使用默认值。
   optional int32 max_concurrency = 6;
+}
+
+// Embedding 服务连接配置。
+message EmbeddingResourceConfig {
+  // Embedding API 的 Base URL。
+  string base_url = 1;
+  // API 密钥。
+  string api_key = 2;
+  // 模型名称，如 text-embedding-3-small、bge-m3 等。
+  string model = 3;
+  // HTTP 请求超时时间（秒）。
+  int32 timeout_seconds = 4;
+  // 最大并发请求数，为空则使用默认值。
+  optional int32 max_concurrency = 5;
 }
 
 // 创建或更新数据库资源的请求。

@@ -37,6 +37,7 @@ func TestEntityAlignmentRepoJobLifecycle(t *testing.T) {
 		KeyField:                "id",
 		StartID:                 &startID,
 		EndID:                   &endID,
+		FuzzyTopK:               15,
 		CreatedAt:               "2026-06-09T00:00:00Z",
 	}
 	if err := repo.CreateJob(job); err != nil {
@@ -61,6 +62,9 @@ func TestEntityAlignmentRepoJobLifecycle(t *testing.T) {
 	}
 	if !got.OnlyWaitingTargetReview {
 		t.Fatalf("expected only waiting target review flag to be persisted")
+	}
+	if got.FuzzyTopK != 15 {
+		t.Fatalf("unexpected fuzzy top k: %d", got.FuzzyTopK)
 	}
 
 	if err := repo.MarkRunning("ea_job_1"); err != nil {
@@ -131,5 +135,8 @@ func TestEntityAlignmentRepoJobLifecycleWithNilRange(t *testing.T) {
 	}
 	if len(got.Fields) != 1 || got.Fields[0].Name != "dynasty" {
 		t.Fatalf("unexpected job fields: %#v", got)
+	}
+	if got.FuzzyTopK != DefaultFuzzyTopK {
+		t.Fatalf("unexpected default fuzzy top k: %d", got.FuzzyTopK)
 	}
 }

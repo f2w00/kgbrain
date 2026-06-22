@@ -27,6 +27,15 @@ class ResourceService(Protocol):
     async def delete_l_l_m_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
+    async def set_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def get_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
+    async def delete_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+
     async def set_database_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.SetDatabaseResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.SetDatabaseResourceResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
 
@@ -71,6 +80,36 @@ class ResourceServiceASGIApplication(ConnectASGIApplication[ResourceService]):
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=svc.delete_l_l_m_resource,
+                ),
+                "/kgbrain.v1.ResourceService/SetEmbeddingResource": Endpoint.unary(
+                    method=MethodInfo(
+                        name="SetEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.set_embedding_resource,
+                ),
+                "/kgbrain.v1.ResourceService/GetEmbeddingResource": Endpoint.unary(
+                    method=MethodInfo(
+                        name="GetEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.get_embedding_resource,
+                ),
+                "/kgbrain.v1.ResourceService/DeleteEmbeddingResource": Endpoint.unary(
+                    method=MethodInfo(
+                        name="DeleteEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=svc.delete_embedding_resource,
                 ),
                 "/kgbrain.v1.ResourceService/SetDatabaseResource": Endpoint.unary(
                     method=MethodInfo(
@@ -176,6 +215,66 @@ class ResourceServiceClient(ConnectClient):
             timeout_ms=timeout_ms,
         )
 
+    async def set_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="SetEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def get_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="GetEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    async def delete_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse:
+        return await self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DeleteEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
     async def set_database_resource(
         self,
         request: kgbrain_dot_v1_dot_resource__pb2.SetDatabaseResourceRequest,
@@ -247,6 +346,12 @@ class ResourceServiceSync(Protocol):
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def delete_l_l_m_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def set_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def get_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
+    def delete_embedding_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse:
+        raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def set_database_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.SetDatabaseResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.SetDatabaseResourceResponse:
         raise ConnectError(Code.UNIMPLEMENTED, "Not implemented")
     def get_database_resource(self, request: kgbrain_dot_v1_dot_resource__pb2.GetDatabaseResourceRequest, ctx: RequestContext) -> kgbrain_dot_v1_dot_resource__pb2.GetDatabaseResourceResponse:
@@ -288,6 +393,36 @@ class ResourceServiceWSGIApplication(ConnectWSGIApplication):
                         idempotency_level=IdempotencyLevel.UNKNOWN,
                     ),
                     function=service.delete_l_l_m_resource,
+                ),
+                "/kgbrain.v1.ResourceService/SetEmbeddingResource": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="SetEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.set_embedding_resource,
+                ),
+                "/kgbrain.v1.ResourceService/GetEmbeddingResource": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="GetEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.get_embedding_resource,
+                ),
+                "/kgbrain.v1.ResourceService/DeleteEmbeddingResource": EndpointSync.unary(
+                    method=MethodInfo(
+                        name="DeleteEmbeddingResource",
+                        service_name="kgbrain.v1.ResourceService",
+                        input=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+                        output=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse,
+                        idempotency_level=IdempotencyLevel.UNKNOWN,
+                    ),
+                    function=service.delete_embedding_resource,
                 ),
                 "/kgbrain.v1.ResourceService/SetDatabaseResource": EndpointSync.unary(
                     method=MethodInfo(
@@ -387,6 +522,66 @@ class ResourceServiceClientSync(ConnectClientSync):
                 service_name="kgbrain.v1.ResourceService",
                 input=kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceRequest,
                 output=kgbrain_dot_v1_dot_resource__pb2.DeleteLLMResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def set_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="SetEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.SetEmbeddingResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def get_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="GetEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.GetEmbeddingResourceResponse,
+                idempotency_level=IdempotencyLevel.UNKNOWN,
+            ),
+            headers=headers,
+            timeout_ms=timeout_ms,
+        )
+
+    def delete_embedding_resource(
+        self,
+        request: kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+        *,
+        headers: Headers | Mapping[str, str] | None = None,
+        timeout_ms: int | None = None,
+    ) -> kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse:
+        return self.execute_unary(
+            request=request,
+            method=MethodInfo(
+                name="DeleteEmbeddingResource",
+                service_name="kgbrain.v1.ResourceService",
+                input=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceRequest,
+                output=kgbrain_dot_v1_dot_resource__pb2.DeleteEmbeddingResourceResponse,
                 idempotency_level=IdempotencyLevel.UNKNOWN,
             ),
             headers=headers,

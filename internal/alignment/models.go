@@ -12,6 +12,8 @@ const (
 	StatusFailed = "failed"
 	// ProcessTypeEntityAlignment 表示实体对齐处理类型。
 	ProcessTypeEntityAlignment = "entity_alignment"
+	// DefaultFuzzyTopK 控制每个 raw_value 默认召回的候选 target 数量。
+	DefaultFuzzyTopK = 10
 )
 
 // Job 记录一次实体对齐异步任务的基础状态。
@@ -26,6 +28,7 @@ type Job struct {
 	StartID                 *int64
 	EndID                   *int64
 	OnlyWaitingTargetReview bool
+	FuzzyTopK               int
 	Fields                  []FieldConfig
 	CreatedAt               string
 	StartedAt               string
@@ -68,7 +71,6 @@ type MappingRecord struct {
 type TargetDefinition struct {
 	TargetSetID string
 	Label       string
-	Description string
 }
 
 type TargetCandidate struct {

@@ -63,7 +63,8 @@ def wait_until(done, interval_seconds: int = 2):
 ## 一、资源管理（resource）
 
 资源是其他任务的前置依赖。`enrichextract` 和 `entity-alignment` 都通过资源 ID
-引用 LLM 和数据库连接配置。
+引用 LLM、Embedding 和数据库连接配置。当前实体对齐默认使用 `pg_trgm` 模糊召回，
+不依赖 embedding 资源；embedding 资源可供后续向量召回或其他业务使用。
 
 ### 1.1 创建或更新 LLM 资源
 
@@ -119,7 +120,59 @@ with ResourceServiceClientSync(BASE_URL) as client:
     print("timeout_seconds:", resp.config.timeout_seconds)
 ```
 
-### 1.3 创建或更新数据库资源
+### 1.3 创建或更新 Embedding 资源
+
+```python
+from kgbrain.v1.resource_pb2 import EmbeddingResourceConfig
+from kgbrain.v1.resource_pb2 import SetEmbeddingResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with ResourceServiceClientSync(BASE_URL) as client:
+
+    resp = client.set_embedding_resource(
+        SetEmbeddingResourceRequest(
+            resource_id="bge_m3",
+            name="BGE M3 Embedding",
+            config=EmbeddingResourceConfig(
+                base_url="http://localhost:11434/v1",
+                api_key="dummy",
+                model="bge-m3",
+                timeout_seconds=60,
+                max_concurrency=16,
+            ),
+        )
+    )
+
+    print(resp.resource_id, resp.status)
+```
+
+### 1.4 查询 Embedding 资源
+
+```python
+from kgbrain.v1.resource_pb2 import GetEmbeddingResourceRequest
+from kgbrain.v1.resource_connect import ResourceServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with ResourceServiceClientSync(BASE_URL) as client:
+
+    resp = client.get_embedding_resource(
+        GetEmbeddingResourceRequest(resource_id="bge_m3")
+    )
+
+    print("resource_id:", resp.resource_id)
+    print("name:", resp.name)
+    print("base_url:", resp.config.base_url)
+    print("model:", resp.config.model)
+```
+
+### 1.5 创建或更新数据库资源
 
 ```python
 from kgbrain.v1.resource_pb2 import DATABASE_TYPE_POSTGRES
@@ -155,7 +208,7 @@ with ResourceServiceClientSync(BASE_URL) as client:
     print(resp.resource_id, resp.status)
 ```
 
-### 1.4 查询数据库资源
+### 1.6 查询数据库资源
 
 ```python
 from kgbrain.v1.resource_pb2 import GetDatabaseResourceRequest
@@ -178,10 +231,11 @@ with ResourceServiceClientSync(BASE_URL) as client:
     print("user:", resp.config.postgres.user)
 ```
 
-### 1.5 删除资源
+### 1.7 删除资源
 
 ```python
 from kgbrain.v1.resource_pb2 import DeleteDatabaseResourceRequest
+from kgbrain.v1.resource_pb2 import DeleteEmbeddingResourceRequest
 from kgbrain.v1.resource_pb2 import DeleteLLMResourceRequest
 from kgbrain.v1.resource_connect import ResourceServiceClientSync
 
@@ -195,6 +249,11 @@ with ResourceServiceClientSync(BASE_URL) as client:
         DeleteLLMResourceRequest(resource_id="qwen_local")
     )
     print("delete llm:", llm_resp.resource_id, llm_resp.status)
+
+    embedding_resp = client.delete_embedding_resource(
+        DeleteEmbeddingResourceRequest(resource_id="bge_m3")
+    )
+    print("delete embedding:", embedding_resp.resource_id, embedding_resp.status)
 
     db_resp = client.delete_database_resource(
         DeleteDatabaseResourceRequest(resource_id="museum_pg")
@@ -375,7 +434,65 @@ with EnrichExtractServiceClientSync(BASE_URL) as client:
 
 假设源表里有 `city_name`、`museum_level` 这类自由填写字段，希望对齐为固定标准值。
 
-### 3.2 启动任务并轮询状态
+### 3.2 管理标准值集合
+
+在启动实体对齐任务前，通常需要先准备 `alignment_targets` 中的标准值集合。
+
+```python
+from kgbrain.v1.entity_alignment_pb2 import (
+    DeleteAlignmentTargetRequest,
+    ListAlignmentTargetsRequest,
+    UpsertAlignmentTargetsRequest,
+)
+from kgbrain.v1.entity_alignment_connect import EntityAlignmentServiceClientSync
+
+
+BASE_URL = "http://localhost:8848"
+
+
+with EntityAlignmentServiceClientSync(BASE_URL) as client:
+
+    # 1. 新增或更新 city_name 标准值集合。
+    client.upsert_alignment_targets(
+        UpsertAlignmentTargetsRequest(
+            database_resource_id="museum_pg",
+            target_set_id="city_name",
+            labels=[
+                "北京市",
+                "上海市",
+                "广州市",
+                "西安市",
+            ],
+        )
+    )
+
+    # 2. 查询当前标准值集合。
+    list_resp = client.list_alignment_targets(
+        ListAlignmentTargetsRequest(
+            database_resource_id="museum_pg",
+            target_set_id="city_name",
+        )
+    )
+    for label in list_resp.labels:
+        print(label)
+
+    # 3. 删除某个标准值。
+    client.delete_alignment_target(
+        DeleteAlignmentTargetRequest(
+            database_resource_id="museum_pg",
+            target_set_id="city_name",
+            label="广州市",
+        )
+    )
+```
+
+说明：
+
+- `target_set_id` 是标准值集合的逻辑名称，例如 `city_name`、`museum_level`
+- `label` 是最终允许写入 `output_table` 的标准输出值
+- `labels` 使用字符串数组表示当前标准值集合
+
+### 3.3 启动任务并轮询状态
 
 ```python
 import time
@@ -404,16 +521,17 @@ with EntityAlignmentServiceClientSync(BASE_URL) as client:
             key_field="id",
             start_id=1,
             end_id=50000,
+            fuzzy_top_k=10,
             fields=[
                 EntityAlignmentField(
                     name="city_name",
                     target_set_id="city_name",
-                    batch_size=200,
+                    batch_size=20,
                 ),
                 EntityAlignmentField(
                     name="museum_level",
                     target_set_id="museum_level",
-                    batch_size=100,
+                    batch_size=20,
                 ),
             ],
         )
@@ -444,16 +562,22 @@ with EntityAlignmentServiceClientSync(BASE_URL) as client:
         time.sleep(2)
 ```
 
-### 3.3 使用说明
+### 3.4 使用说明
 
 - `fields` 是核心配置；标准目标值不再直接写在请求里，而是通过
   `target_set_id` 关联业务库中的 `alignment_targets`
 - 服务固定复用已有 mapping；LLM 只处理缺失 mapping 的原始值
-- `batch_size` 决定一次送给 LLM 的源值数量
-- `batch_concurrency` 当前已禁用；服务端按 batch 串行处理，传入该字段也会被忽略
+- 对缺失 mapping 的 `raw_value`，服务先用业务库 PostgreSQL 的 `pg_trgm`
+  从 `alignment_targets.label` 召回 topK 候选，再让 LLM 在候选内做最终判定
+- `fuzzy_top_k` 控制召回候选数量，默认 10；召回为空时直接进入 `needs_candidate`
+- LLM 当前固定每次只处理一个缺失的 `raw_value`
+- `batch_size` 决定生成 mapping 后批量写入数据库的记录数
+- `batch_concurrency` 当前已禁用；服务端按单值串行调用 LLM，传入该字段也会被忽略
 - `output_table` 需要提前准备好可写结构
+- 业务库账号需要能使用 `pg_trgm`；生产环境建议预先执行
+  `CREATE EXTENSION IF NOT EXISTS pg_trgm`
 
-### 3.4 审核候选值并仅重跑等待审核记录
+### 3.5 审核候选值并仅重跑等待审核记录
 
 当某些原始值被判定为 `needs_candidate` 时，系统会把对应行标记为
 `waiting_target_review`。推荐处理闭环如下：
@@ -584,6 +708,7 @@ print(resp)
 | 服务 | 方法 | 用途 |
 |------|------|------|
 | `ResourceService` | `SetLLMResource` / `GetLLMResource` / `DeleteLLMResource` | 管理 LLM 资源 |
+| `ResourceService` | `SetEmbeddingResource` / `GetEmbeddingResource` / `DeleteEmbeddingResource` | 管理 Embedding 资源 |
 | `ResourceService` | `SetDatabaseResource` / `GetDatabaseResource` / `DeleteDatabaseResource` | 管理数据库资源 |
 | `EnrichExtractService` | `StartEnrichExtract` / `GetEnrichExtractJob` | 结构化抽取与补全 |
 | `EntityAlignmentService` | `StartEntityAlignment` / `GetEntityAlignmentJob` | 实体值对齐 |

@@ -108,6 +108,86 @@ func (h *ResourceHandler) DeleteLLMResource(
 	}), nil
 }
 
+func (h *ResourceHandler) SetEmbeddingResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.SetEmbeddingResourceRequest],
+) (*connectrpc.Response[kgbrainv1.SetEmbeddingResourceResponse], error) {
+	_ = ctx
+	msg := req.Msg
+	if msg.GetConfig() == nil {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, fmt.Errorf("config is required"))
+	}
+
+	var maxConcurrency *int
+	if msg.GetConfig().MaxConcurrency != nil {
+		v := int(msg.GetConfig().GetMaxConcurrency())
+		maxConcurrency = &v
+	}
+
+	result, err := h.svc.SetEmbedding(&EmbeddingResource{
+		ID:             msg.GetResourceId(),
+		Name:           msg.GetName(),
+		BaseURL:        msg.GetConfig().GetBaseUrl(),
+		APIKey:         msg.GetConfig().GetApiKey(),
+		Model:          msg.GetConfig().GetModel(),
+		TimeoutSeconds: int(msg.GetConfig().GetTimeoutSeconds()),
+		MaxConcurrency: maxConcurrency,
+	})
+	if err != nil {
+		return nil, connectrpc.NewError(connectrpc.CodeInvalidArgument, err)
+	}
+
+	return connectrpc.NewResponse(&kgbrainv1.SetEmbeddingResourceResponse{
+		ResourceId: result.ResourceID,
+		Status:     result.Status,
+	}), nil
+}
+
+func (h *ResourceHandler) GetEmbeddingResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.GetEmbeddingResourceRequest],
+) (*connectrpc.Response[kgbrainv1.GetEmbeddingResourceResponse], error) {
+	_ = ctx
+	result, err := h.svc.GetEmbedding(req.Msg.GetResourceId())
+	if err != nil {
+		return nil, resourceError(err)
+	}
+
+	cfg := &kgbrainv1.EmbeddingResourceConfig{
+		BaseUrl:        result.BaseURL,
+		ApiKey:         result.APIKey,
+		Model:          result.Model,
+		TimeoutSeconds: int32(result.TimeoutSeconds),
+	}
+	if result.MaxConcurrency != nil {
+		v := int32(*result.MaxConcurrency)
+		cfg.MaxConcurrency = &v
+	}
+
+	return connectrpc.NewResponse(&kgbrainv1.GetEmbeddingResourceResponse{
+		ResourceId:    result.ID,
+		Name:          result.Name,
+		Config:        cfg,
+		CreatedAtUnix: parseUnix(result.CreatedAt),
+		UpdatedAtUnix: parseUnix(result.UpdatedAt),
+	}), nil
+}
+
+func (h *ResourceHandler) DeleteEmbeddingResource(
+	ctx context.Context,
+	req *connectrpc.Request[kgbrainv1.DeleteEmbeddingResourceRequest],
+) (*connectrpc.Response[kgbrainv1.DeleteEmbeddingResourceResponse], error) {
+	_ = ctx
+	result, err := h.svc.DeleteEmbedding(req.Msg.GetResourceId())
+	if err != nil {
+		return nil, resourceError(err)
+	}
+	return connectrpc.NewResponse(&kgbrainv1.DeleteEmbeddingResourceResponse{
+		ResourceId: result.ResourceID,
+		Status:     result.Status,
+	}), nil
+}
+
 func (h *ResourceHandler) SetDatabaseResource(
 	ctx context.Context,
 	req *connectrpc.Request[kgbrainv1.SetDatabaseResourceRequest],

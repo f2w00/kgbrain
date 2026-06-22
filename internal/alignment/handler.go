@@ -45,6 +45,7 @@ func (h *EntityAlignmentHandler) StartEntityAlignment(
 		StartID:                 msg.StartId,
 		EndID:                   msg.EndId,
 		OnlyWaitingTargetReview: msg.GetOnlyWaitingTargetReview(),
+		FuzzyTopK:               optionalInt(msg.FuzzyTopK),
 		Fields:                  fields,
 	})
 	if err != nil {
@@ -67,33 +68,19 @@ func (h *EntityAlignmentHandler) ListAlignmentTargets(
 	if err != nil {
 		return nil, entityAlignmentError(err)
 	}
-	targets := make([]*kgbrainv1.AlignmentTarget, 0, len(result.Targets))
-	for _, target := range result.Targets {
-		targets = append(targets, &kgbrainv1.AlignmentTarget{
-			TargetSetId: target.TargetSetID,
-			Label:       target.Label,
-			Description: target.Description,
-		})
-	}
-	return connectrpc.NewResponse(&kgbrainv1.ListAlignmentTargetsResponse{Targets: targets}), nil
+	return connectrpc.NewResponse(&kgbrainv1.ListAlignmentTargetsResponse{
+		Labels: result.Labels,
+	}), nil
 }
 
 func (h *EntityAlignmentHandler) UpsertAlignmentTargets(
 	ctx context.Context,
 	req *connectrpc.Request[kgbrainv1.UpsertAlignmentTargetsRequest],
 ) (*connectrpc.Response[kgbrainv1.UpsertAlignmentTargetsResponse], error) {
-	targets := make([]TargetDefinition, 0, len(req.Msg.GetTargets()))
-	for _, target := range req.Msg.GetTargets() {
-		targets = append(targets, TargetDefinition{
-			TargetSetID: req.Msg.GetTargetSetId(),
-			Label:       target.GetLabel(),
-			Description: target.GetDescription(),
-		})
-	}
 	if err := h.svc.UpsertTargets(ctx, UpsertTargetsRequest{
 		DatabaseResourceID: req.Msg.GetDatabaseResourceId(),
 		TargetSetID:        req.Msg.GetTargetSetId(),
-		Targets:            targets,
+		Labels:             req.Msg.GetLabels(),
 	}); err != nil {
 		return nil, entityAlignmentError(err)
 	}
@@ -190,6 +177,7 @@ func (h *EntityAlignmentHandler) GetEntityAlignmentJob(
 		CreatedAtUnix:      parseEntityAlignmentUnix(job.CreatedAt),
 		StartedAtUnix:      parseEntityAlignmentUnix(job.StartedAt),
 		FinishedAtUnix:     parseEntityAlignmentUnix(job.FinishedAt),
+		FuzzyTopK:          int32(job.FuzzyTopK),
 	}), nil
 }
 

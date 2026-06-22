@@ -46,6 +46,15 @@ const (
 	// ResourceServiceDeleteLLMResourceProcedure is the fully-qualified name of the ResourceService's
 	// DeleteLLMResource RPC.
 	ResourceServiceDeleteLLMResourceProcedure = "/kgbrain.v1.ResourceService/DeleteLLMResource"
+	// ResourceServiceSetEmbeddingResourceProcedure is the fully-qualified name of the ResourceService's
+	// SetEmbeddingResource RPC.
+	ResourceServiceSetEmbeddingResourceProcedure = "/kgbrain.v1.ResourceService/SetEmbeddingResource"
+	// ResourceServiceGetEmbeddingResourceProcedure is the fully-qualified name of the ResourceService's
+	// GetEmbeddingResource RPC.
+	ResourceServiceGetEmbeddingResourceProcedure = "/kgbrain.v1.ResourceService/GetEmbeddingResource"
+	// ResourceServiceDeleteEmbeddingResourceProcedure is the fully-qualified name of the
+	// ResourceService's DeleteEmbeddingResource RPC.
+	ResourceServiceDeleteEmbeddingResourceProcedure = "/kgbrain.v1.ResourceService/DeleteEmbeddingResource"
 	// ResourceServiceSetDatabaseResourceProcedure is the fully-qualified name of the ResourceService's
 	// SetDatabaseResource RPC.
 	ResourceServiceSetDatabaseResourceProcedure = "/kgbrain.v1.ResourceService/SetDatabaseResource"
@@ -65,6 +74,12 @@ type ResourceServiceClient interface {
 	GetLLMResource(context.Context, *connect.Request[v1.GetLLMResourceRequest]) (*connect.Response[v1.GetLLMResourceResponse], error)
 	// 删除 LLM 资源配置。
 	DeleteLLMResource(context.Context, *connect.Request[v1.DeleteLLMResourceRequest]) (*connect.Response[v1.DeleteLLMResourceResponse], error)
+	// 创建或更新 Embedding 资源配置。
+	SetEmbeddingResource(context.Context, *connect.Request[v1.SetEmbeddingResourceRequest]) (*connect.Response[v1.SetEmbeddingResourceResponse], error)
+	// 查询 Embedding 资源配置。
+	GetEmbeddingResource(context.Context, *connect.Request[v1.GetEmbeddingResourceRequest]) (*connect.Response[v1.GetEmbeddingResourceResponse], error)
+	// 删除 Embedding 资源配置。
+	DeleteEmbeddingResource(context.Context, *connect.Request[v1.DeleteEmbeddingResourceRequest]) (*connect.Response[v1.DeleteEmbeddingResourceResponse], error)
 	// 创建或更新数据库资源配置。
 	SetDatabaseResource(context.Context, *connect.Request[v1.SetDatabaseResourceRequest]) (*connect.Response[v1.SetDatabaseResourceResponse], error)
 	// 查询数据库资源配置。
@@ -102,6 +117,24 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("DeleteLLMResource")),
 			connect.WithClientOptions(opts...),
 		),
+		setEmbeddingResource: connect.NewClient[v1.SetEmbeddingResourceRequest, v1.SetEmbeddingResourceResponse](
+			httpClient,
+			baseURL+ResourceServiceSetEmbeddingResourceProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("SetEmbeddingResource")),
+			connect.WithClientOptions(opts...),
+		),
+		getEmbeddingResource: connect.NewClient[v1.GetEmbeddingResourceRequest, v1.GetEmbeddingResourceResponse](
+			httpClient,
+			baseURL+ResourceServiceGetEmbeddingResourceProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("GetEmbeddingResource")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteEmbeddingResource: connect.NewClient[v1.DeleteEmbeddingResourceRequest, v1.DeleteEmbeddingResourceResponse](
+			httpClient,
+			baseURL+ResourceServiceDeleteEmbeddingResourceProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("DeleteEmbeddingResource")),
+			connect.WithClientOptions(opts...),
+		),
 		setDatabaseResource: connect.NewClient[v1.SetDatabaseResourceRequest, v1.SetDatabaseResourceResponse](
 			httpClient,
 			baseURL+ResourceServiceSetDatabaseResourceProcedure,
@@ -125,12 +158,15 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 
 // resourceServiceClient implements ResourceServiceClient.
 type resourceServiceClient struct {
-	setLLMResource         *connect.Client[v1.SetLLMResourceRequest, v1.SetLLMResourceResponse]
-	getLLMResource         *connect.Client[v1.GetLLMResourceRequest, v1.GetLLMResourceResponse]
-	deleteLLMResource      *connect.Client[v1.DeleteLLMResourceRequest, v1.DeleteLLMResourceResponse]
-	setDatabaseResource    *connect.Client[v1.SetDatabaseResourceRequest, v1.SetDatabaseResourceResponse]
-	getDatabaseResource    *connect.Client[v1.GetDatabaseResourceRequest, v1.GetDatabaseResourceResponse]
-	deleteDatabaseResource *connect.Client[v1.DeleteDatabaseResourceRequest, v1.DeleteDatabaseResourceResponse]
+	setLLMResource          *connect.Client[v1.SetLLMResourceRequest, v1.SetLLMResourceResponse]
+	getLLMResource          *connect.Client[v1.GetLLMResourceRequest, v1.GetLLMResourceResponse]
+	deleteLLMResource       *connect.Client[v1.DeleteLLMResourceRequest, v1.DeleteLLMResourceResponse]
+	setEmbeddingResource    *connect.Client[v1.SetEmbeddingResourceRequest, v1.SetEmbeddingResourceResponse]
+	getEmbeddingResource    *connect.Client[v1.GetEmbeddingResourceRequest, v1.GetEmbeddingResourceResponse]
+	deleteEmbeddingResource *connect.Client[v1.DeleteEmbeddingResourceRequest, v1.DeleteEmbeddingResourceResponse]
+	setDatabaseResource     *connect.Client[v1.SetDatabaseResourceRequest, v1.SetDatabaseResourceResponse]
+	getDatabaseResource     *connect.Client[v1.GetDatabaseResourceRequest, v1.GetDatabaseResourceResponse]
+	deleteDatabaseResource  *connect.Client[v1.DeleteDatabaseResourceRequest, v1.DeleteDatabaseResourceResponse]
 }
 
 // SetLLMResource calls kgbrain.v1.ResourceService.SetLLMResource.
@@ -146,6 +182,21 @@ func (c *resourceServiceClient) GetLLMResource(ctx context.Context, req *connect
 // DeleteLLMResource calls kgbrain.v1.ResourceService.DeleteLLMResource.
 func (c *resourceServiceClient) DeleteLLMResource(ctx context.Context, req *connect.Request[v1.DeleteLLMResourceRequest]) (*connect.Response[v1.DeleteLLMResourceResponse], error) {
 	return c.deleteLLMResource.CallUnary(ctx, req)
+}
+
+// SetEmbeddingResource calls kgbrain.v1.ResourceService.SetEmbeddingResource.
+func (c *resourceServiceClient) SetEmbeddingResource(ctx context.Context, req *connect.Request[v1.SetEmbeddingResourceRequest]) (*connect.Response[v1.SetEmbeddingResourceResponse], error) {
+	return c.setEmbeddingResource.CallUnary(ctx, req)
+}
+
+// GetEmbeddingResource calls kgbrain.v1.ResourceService.GetEmbeddingResource.
+func (c *resourceServiceClient) GetEmbeddingResource(ctx context.Context, req *connect.Request[v1.GetEmbeddingResourceRequest]) (*connect.Response[v1.GetEmbeddingResourceResponse], error) {
+	return c.getEmbeddingResource.CallUnary(ctx, req)
+}
+
+// DeleteEmbeddingResource calls kgbrain.v1.ResourceService.DeleteEmbeddingResource.
+func (c *resourceServiceClient) DeleteEmbeddingResource(ctx context.Context, req *connect.Request[v1.DeleteEmbeddingResourceRequest]) (*connect.Response[v1.DeleteEmbeddingResourceResponse], error) {
+	return c.deleteEmbeddingResource.CallUnary(ctx, req)
 }
 
 // SetDatabaseResource calls kgbrain.v1.ResourceService.SetDatabaseResource.
@@ -171,6 +222,12 @@ type ResourceServiceHandler interface {
 	GetLLMResource(context.Context, *connect.Request[v1.GetLLMResourceRequest]) (*connect.Response[v1.GetLLMResourceResponse], error)
 	// 删除 LLM 资源配置。
 	DeleteLLMResource(context.Context, *connect.Request[v1.DeleteLLMResourceRequest]) (*connect.Response[v1.DeleteLLMResourceResponse], error)
+	// 创建或更新 Embedding 资源配置。
+	SetEmbeddingResource(context.Context, *connect.Request[v1.SetEmbeddingResourceRequest]) (*connect.Response[v1.SetEmbeddingResourceResponse], error)
+	// 查询 Embedding 资源配置。
+	GetEmbeddingResource(context.Context, *connect.Request[v1.GetEmbeddingResourceRequest]) (*connect.Response[v1.GetEmbeddingResourceResponse], error)
+	// 删除 Embedding 资源配置。
+	DeleteEmbeddingResource(context.Context, *connect.Request[v1.DeleteEmbeddingResourceRequest]) (*connect.Response[v1.DeleteEmbeddingResourceResponse], error)
 	// 创建或更新数据库资源配置。
 	SetDatabaseResource(context.Context, *connect.Request[v1.SetDatabaseResourceRequest]) (*connect.Response[v1.SetDatabaseResourceResponse], error)
 	// 查询数据库资源配置。
@@ -204,6 +261,24 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("DeleteLLMResource")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceSetEmbeddingResourceHandler := connect.NewUnaryHandler(
+		ResourceServiceSetEmbeddingResourceProcedure,
+		svc.SetEmbeddingResource,
+		connect.WithSchema(resourceServiceMethods.ByName("SetEmbeddingResource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceGetEmbeddingResourceHandler := connect.NewUnaryHandler(
+		ResourceServiceGetEmbeddingResourceProcedure,
+		svc.GetEmbeddingResource,
+		connect.WithSchema(resourceServiceMethods.ByName("GetEmbeddingResource")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceDeleteEmbeddingResourceHandler := connect.NewUnaryHandler(
+		ResourceServiceDeleteEmbeddingResourceProcedure,
+		svc.DeleteEmbeddingResource,
+		connect.WithSchema(resourceServiceMethods.ByName("DeleteEmbeddingResource")),
+		connect.WithHandlerOptions(opts...),
+	)
 	resourceServiceSetDatabaseResourceHandler := connect.NewUnaryHandler(
 		ResourceServiceSetDatabaseResourceProcedure,
 		svc.SetDatabaseResource,
@@ -230,6 +305,12 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceGetLLMResourceHandler.ServeHTTP(w, r)
 		case ResourceServiceDeleteLLMResourceProcedure:
 			resourceServiceDeleteLLMResourceHandler.ServeHTTP(w, r)
+		case ResourceServiceSetEmbeddingResourceProcedure:
+			resourceServiceSetEmbeddingResourceHandler.ServeHTTP(w, r)
+		case ResourceServiceGetEmbeddingResourceProcedure:
+			resourceServiceGetEmbeddingResourceHandler.ServeHTTP(w, r)
+		case ResourceServiceDeleteEmbeddingResourceProcedure:
+			resourceServiceDeleteEmbeddingResourceHandler.ServeHTTP(w, r)
 		case ResourceServiceSetDatabaseResourceProcedure:
 			resourceServiceSetDatabaseResourceHandler.ServeHTTP(w, r)
 		case ResourceServiceGetDatabaseResourceProcedure:
@@ -255,6 +336,18 @@ func (UnimplementedResourceServiceHandler) GetLLMResource(context.Context, *conn
 
 func (UnimplementedResourceServiceHandler) DeleteLLMResource(context.Context, *connect.Request[v1.DeleteLLMResourceRequest]) (*connect.Response[v1.DeleteLLMResourceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.ResourceService.DeleteLLMResource is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) SetEmbeddingResource(context.Context, *connect.Request[v1.SetEmbeddingResourceRequest]) (*connect.Response[v1.SetEmbeddingResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.ResourceService.SetEmbeddingResource is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) GetEmbeddingResource(context.Context, *connect.Request[v1.GetEmbeddingResourceRequest]) (*connect.Response[v1.GetEmbeddingResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.ResourceService.GetEmbeddingResource is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) DeleteEmbeddingResource(context.Context, *connect.Request[v1.DeleteEmbeddingResourceRequest]) (*connect.Response[v1.DeleteEmbeddingResourceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("kgbrain.v1.ResourceService.DeleteEmbeddingResource is not implemented"))
 }
 
 func (UnimplementedResourceServiceHandler) SetDatabaseResource(context.Context, *connect.Request[v1.SetDatabaseResourceRequest]) (*connect.Response[v1.SetDatabaseResourceResponse], error) {

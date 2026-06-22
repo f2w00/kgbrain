@@ -21,19 +21,63 @@ type LLMResource struct {
 }
 
 func (r *LLMResource) Validate() error {
-	if strings.TrimSpace(r.ID) == "" {
+	if err := validateModelResource(
+		r.ID,
+		r.BaseURL,
+		r.APIKey,
+		r.Model,
+		r.MaxConcurrency,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+type EmbeddingResource struct {
+	ID             string
+	Name           string
+	BaseURL        string
+	APIKey         string
+	Model          string
+	TimeoutSeconds int
+	MaxConcurrency *int
+	CreatedAt      string
+	UpdatedAt      string
+}
+
+func (r *EmbeddingResource) Validate() error {
+	if err := validateModelResource(
+		r.ID,
+		r.BaseURL,
+		r.APIKey,
+		r.Model,
+		r.MaxConcurrency,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateModelResource(
+	id string,
+	baseURL string,
+	apiKey string,
+	model string,
+	maxConcurrency *int,
+) error {
+	if strings.TrimSpace(id) == "" {
 		return errors.New("resource id is required")
 	}
-	if strings.TrimSpace(r.BaseURL) == "" {
+	if strings.TrimSpace(baseURL) == "" {
 		return errors.New("base_url is required")
 	}
-	if strings.TrimSpace(r.APIKey) == "" {
+	if strings.TrimSpace(apiKey) == "" {
 		return errors.New("api_key is required")
 	}
-	if strings.TrimSpace(r.Model) == "" {
+	if strings.TrimSpace(model) == "" {
 		return errors.New("model is required")
 	}
-	if r.MaxConcurrency != nil && *r.MaxConcurrency <= 0 {
+	if maxConcurrency != nil && *maxConcurrency <= 0 {
 		return errors.New("max_concurrency must be greater than 0")
 	}
 	return nil

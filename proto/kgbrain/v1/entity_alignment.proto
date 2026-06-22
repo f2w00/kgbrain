@@ -47,6 +47,8 @@ message StartEntityAlignmentRequest {
   optional int64 end_id = 9;
   // 仅处理上次实体对齐后仍等待 target 审核的记录。
   optional bool only_waiting_target_review = 10;
+  // 模糊召回候选目标值数量；为空时使用服务默认值。
+  optional int32 fuzzy_top_k = 11;
 }
 
 // 单个字段的对齐配置。
@@ -55,9 +57,9 @@ message EntityAlignmentField {
   string name = 1;
   // 标准集 ID；未传时默认使用 name。
   optional string target_set_id = 2;
-  // 批处理大小，每批递交给 LLM 的源值数量。
+  // 批量写入 mapping/candidate 表的记录数；LLM 固定每次处理一个源值。
   optional int32 batch_size = 3;
-  // 已禁用：当前服务端按 batch 串行处理，该字段会被忽略。
+  // 已禁用：LLM 当前固定单值串行处理，该字段会被忽略。
   optional int32 batch_concurrency = 4 [deprecated = true];
 }
 
@@ -66,20 +68,18 @@ message ListAlignmentTargetsRequest {
   string target_set_id = 2;
 }
 
-message AlignmentTarget {
-  string target_set_id = 1;
-  string label = 2;
-  string description = 3;
-}
-
 message ListAlignmentTargetsResponse {
-  repeated AlignmentTarget targets = 1;
+  reserved 1;
+  reserved "targets";
+  repeated string labels = 2;
 }
 
 message UpsertAlignmentTargetsRequest {
   string database_resource_id = 1;
   string target_set_id = 2;
-  repeated AlignmentTarget targets = 3;
+  reserved 3;
+  reserved "targets";
+  repeated string labels = 4;
 }
 
 message UpsertAlignmentTargetsResponse {}
@@ -180,6 +180,8 @@ message GetEntityAlignmentJobResponse {
   int64 started_at_unix = 9;
   // 任务完成时间（Unix 时间戳，秒）。
   int64 finished_at_unix = 10;
+  // 模糊召回候选目标值数量。
+  int32 fuzzy_top_k = 11;
 }
 
 // 实体对齐任务的生命周期状态。

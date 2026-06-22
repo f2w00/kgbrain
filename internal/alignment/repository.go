@@ -27,6 +27,7 @@ func NewEntityAlignmentRepo(db *sql.DB) (*EntityAlignmentRepo, error) {
 		key_field            TEXT NOT NULL,
 		start_id             INTEGER,
 		end_id               INTEGER,
+		fuzzy_top_k          INTEGER NOT NULL DEFAULT 10,
 		fields_json          TEXT NOT NULL DEFAULT '[]',
 		created_at           TEXT NOT NULL,
 		started_at           TEXT,
@@ -42,6 +43,14 @@ func NewEntityAlignmentRepo(db *sql.DB) (*EntityAlignmentRepo, error) {
 		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
 	}
 	if err := ensureColumn(db, "entity_alignment_jobs", "end_id", "INTEGER"); err != nil {
+		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
+	}
+	if err := ensureColumn(
+		db,
+		"entity_alignment_jobs",
+		"fuzzy_top_k",
+		"INTEGER NOT NULL DEFAULT 10",
+	); err != nil {
 		return nil, fmt.Errorf("migrate entity_alignment_jobs table: %w", err)
 	}
 	if err := ensureColumn(
@@ -76,13 +85,14 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		key_field,
 		start_id,
 		end_id,
+		fuzzy_top_k,
 		fields_json,
 		created_at,
 		started_at,
 		finished_at,
 		error_message
 	)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		job.JobID,
 		job.LLMResourceID,
 		job.DatabaseResourceID,
@@ -94,6 +104,7 @@ func (r *EntityAlignmentRepo) CreateJob(job *Job) error {
 		job.KeyField,
 		nullableInt64(job.StartID),
 		nullableInt64(job.EndID),
+		effectiveFuzzyTopK(job.FuzzyTopK),
 		string(fieldsJSON),
 		job.CreatedAt,
 		nullable(job.StartedAt),
@@ -123,6 +134,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 		key_field,
 		start_id,
 		end_id,
+		fuzzy_top_k,
 		fields_json,
 		created_at,
 		started_at,
@@ -141,6 +153,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 			&job.KeyField,
 			&startID,
 			&endID,
+			&job.FuzzyTopK,
 			&fieldsJSON,
 			&job.CreatedAt,
 			&startedAt,
@@ -160,6 +173,7 @@ func (r *EntityAlignmentRepo) GetJob(jobID string) (*Job, error) {
 	if endID.Valid {
 		job.EndID = &endID.Int64
 	}
+	job.FuzzyTopK = effectiveFuzzyTopK(job.FuzzyTopK)
 	if err := json.Unmarshal([]byte(fieldsJSON), &job.Fields); err != nil {
 		return nil, fmt.Errorf("unmarshal entity alignment fields: %w", err)
 	}

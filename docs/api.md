@@ -1,5 +1,9 @@
 # JSON-RPC API 文档
 
+> 说明：本文档记录旧 JSON-RPC 接口。当前 `ResourceService`、`EnrichExtractService`
+> 和 `EntityAlignmentService` 使用 Connect RPC，权威定义以 `proto/kgbrain/v1/*.proto`
+> 为准，调用示例见 `docs/python-client-examples.md`。
+
 > 权威接口定义见 `docs/openrpc.yaml` (OpenRPC 1.4.x 规范)
 
 协议: **JSON-RPC 2.0**  

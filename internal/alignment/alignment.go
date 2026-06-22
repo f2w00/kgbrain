@@ -1,4 +1,4 @@
-// alignment.go 提供实体对齐核心流程：字段预处理、LLM 批处理、映射校验、提示词构造。
+// alignment.go 提供实体对齐核心流程：字段预处理、LLM 单值映射、结果校验、提示词构造。
 package alignment
 
 import (
@@ -21,7 +21,7 @@ const (
 	MappingStatusNeedsCandidate = "needs_candidate"
 )
 
-// MaxBatchSize 限制单批送给 LLM 的最大原始值数量。
+// MaxBatchSize 限制单次批量写入 mapping/candidate 表的最大记录数。
 const MaxBatchSize = 50
 
 // PrepareField 对字段配置执行目标集注入、目标值规范化和批大小裁剪。
@@ -79,17 +79,36 @@ func NormalizeTargets(targets []string) []string {
 	return result
 }
 
-// ChunkStrings 将原始值切成固定大小的批次。
-func ChunkStrings(values []string, size int) [][]string {
-	if size <= 0 {
-		size = 1
+func PrepareRecalledField(field PreparedField, targets []string) (PreparedField, error) {
+	recalledTargets := normalizeRecalledTargets(targets)
+	if len(recalledTargets) == 0 {
+		return PreparedField{}, fmt.Errorf("field %q recalled target set is empty", field.Name)
 	}
-	chunks := make([][]string, 0, (len(values)+size-1)/size)
-	for start := 0; start < len(values); start += size {
-		end := min(start+size, len(values))
-		chunks = append(chunks, values[start:end])
+	targetsJSONBytes, err := json.Marshal(recalledTargets)
+	if err != nil {
+		return PreparedField{}, fmt.Errorf("marshal recalled targets for field %q: %w", field.Name, err)
 	}
-	return chunks
+	field.Targets = recalledTargets
+	field.TargetsJSON = string(targetsJSONBytes)
+	field.TargetHash = hash.Key(recalledTargets...)
+	return field, nil
+}
+
+func normalizeRecalledTargets(targets []string) []string {
+	uniq := make(map[string]struct{}, len(targets))
+	result := make([]string, 0, len(targets))
+	for _, target := range targets {
+		normalized := strings.TrimSpace(target)
+		if normalized == "" {
+			continue
+		}
+		if _, ok := uniq[normalized]; ok {
+			continue
+		}
+		uniq[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
 }
 
 // MissingRawValues 计算仍需调用 LLM 的原始值集合。
@@ -104,160 +123,131 @@ func MissingRawValues(rawValues []string, existing map[string]MappingRecord) []s
 	return missing
 }
 
-// GenerateMappingsBatch 调用 LLM 生成单批 mapping 并进行严格校验。
-func GenerateMappingsBatch(
+// GenerateMapping 调用 LLM 生成单个 raw_value 的 mapping 并进行严格校验。
+func GenerateMapping(
 	ctx context.Context,
 	llmClient LLMClient,
 	field PreparedField,
-	rawValues []string,
-) ([]MappingRecord, error) {
-	prompt, err := BuildAlignmentPrompt(field, rawValues)
+	rawValue string,
+) (MappingRecord, error) {
+	prompt, err := BuildAlignmentPrompt(field, rawValue)
 	if err != nil {
-		return nil, err
+		return MappingRecord{}, err
 	}
 	resp, err := llmClient.Generate(ctx, prompt)
 	if err != nil {
-		return nil, fmt.Errorf("llm generate for field %q: %w", field.Name, err)
+		return MappingRecord{}, fmt.Errorf("llm generate for field %q: %w", field.Name, err)
 	}
 	content := extract.JSON(resp)
 	if content == "" {
-		return nil, fmt.Errorf("llm returned no json for field %q", field.Name)
+		return MappingRecord{}, fmt.Errorf("llm returned no json for field %q", field.Name)
 	}
-	var generated []llmMappingRecord
+	var generated llmMappingRecord
 	if err := json.Unmarshal([]byte(content), &generated); err != nil {
-		return nil, fmt.Errorf("parse llm output for field %q: %w", field.Name, err)
+		return MappingRecord{}, fmt.Errorf("parse llm output for field %q: %w", field.Name, err)
 	}
-	return ValidateGeneratedMappings(field, rawValues, generated)
+	return ValidateGeneratedMapping(field, rawValue, generated)
 }
 
-// ValidateGeneratedMappings 校验 LLM 返回的映射结果是否完整、合法且可复用。
+// ValidateGeneratedMapping 校验 LLM 返回的单条映射结果是否合法且可复用。
 //
 // 校验项：
-//  1. 结果数量必须与输入 rawValues 一致（无遗漏、无多余）
-//  2. 每个 raw_value 必须属于输入集合（防止 LLM 编造）
-//  3. 每个 raw_value 只能出现一次（防止重复）
-//  4. 根据 status 分别校验：
+//  1. raw_value 必须与输入值一致（防止 LLM 编造或改写）
+//  2. 根据 status 分别校验：
 //     - matched: aligned_value 不能为空且必须属于 field.Targets
 //     - unknown_to_null: aligned_value 必须为 null
 //     - needs_candidate: aligned_value 必须为 null
 //     - 其他 status 一律拒绝
-//  5. 最终去重计数必须覆盖全部输入（兜底校验）
-func ValidateGeneratedMappings(
+func ValidateGeneratedMapping(
 	field PreparedField,
-	rawValues []string,
-	generated []llmMappingRecord,
-) ([]MappingRecord, error) {
-	if len(generated) != len(rawValues) {
-		return nil, fmt.Errorf("llm result count mismatch for field %q", field.Name)
+	rawValue string,
+	generated llmMappingRecord,
+) (MappingRecord, error) {
+	if generated.RawValue != rawValue {
+		return MappingRecord{}, fmt.Errorf(
+			"llm returned unexpected raw_value %q for field %q",
+			generated.RawValue,
+			field.Name,
+		)
 	}
 	allowedTargets := make(map[string]struct{}, len(field.Targets))
 	for _, target := range field.Targets {
 		allowedTargets[target] = struct{}{}
 	}
-	seen := make(map[string]struct{}, len(rawValues))
-	expected := make(map[string]struct{}, len(rawValues))
-	for _, rawValue := range rawValues {
-		expected[rawValue] = struct{}{}
-	}
-	result := make([]MappingRecord, 0, len(generated))
-	for _, item := range generated {
-		if _, ok := expected[item.RawValue]; !ok {
-			return nil, fmt.Errorf(
-				"llm returned unexpected raw_value %q for field %q",
-				item.RawValue,
+	record := MappingRecord{RawValue: generated.RawValue, Status: generated.Status}
+	switch generated.Status {
+	case MappingStatusMatched:
+		if generated.AlignedValue == nil {
+			return MappingRecord{}, fmt.Errorf(
+				"matched result missing aligned_value for field %q",
 				field.Name,
 			)
 		}
-		if _, ok := seen[item.RawValue]; ok {
-			return nil, fmt.Errorf(
-				"llm returned duplicate raw_value %q for field %q",
-				item.RawValue,
+		if _, ok := allowedTargets[*generated.AlignedValue]; !ok {
+			return MappingRecord{}, fmt.Errorf(
+				"matched result has invalid aligned_value %q for field %q",
+				*generated.AlignedValue,
 				field.Name,
 			)
 		}
-		seen[item.RawValue] = struct{}{}
-		record := MappingRecord{RawValue: item.RawValue, Status: item.Status}
-		switch item.Status {
-		case MappingStatusMatched:
-			if item.AlignedValue == nil {
-				return nil, fmt.Errorf(
-					"matched result missing aligned_value for field %q",
-					field.Name,
-				)
-			}
-			if _, ok := allowedTargets[*item.AlignedValue]; !ok {
-				return nil, fmt.Errorf(
-					"matched result has invalid aligned_value %q for field %q",
-					*item.AlignedValue,
-					field.Name,
-				)
-			}
-			record.AlignedValue = item.AlignedValue
-		case MappingStatusUnknownToNull:
-			if item.AlignedValue != nil {
-				return nil, fmt.Errorf(
-					"unknown_to_null result must have null aligned_value for field %q",
-					field.Name,
-				)
-			}
-		case MappingStatusNeedsCandidate:
-			if item.AlignedValue != nil {
-				return nil, fmt.Errorf(
-					"needs_candidate result must have null aligned_value for field %q",
-					field.Name,
-				)
-			}
-		default:
-			return nil, fmt.Errorf(
-				"llm returned invalid status %q for field %q",
-				item.Status,
+		record.AlignedValue = generated.AlignedValue
+	case MappingStatusUnknownToNull:
+		if generated.AlignedValue != nil {
+			return MappingRecord{}, fmt.Errorf(
+				"unknown_to_null result must have null aligned_value for field %q",
 				field.Name,
 			)
 		}
-		result = append(result, record)
+	case MappingStatusNeedsCandidate:
+		if generated.AlignedValue != nil {
+			return MappingRecord{}, fmt.Errorf(
+				"needs_candidate result must have null aligned_value for field %q",
+				field.Name,
+			)
+		}
+	default:
+		return MappingRecord{}, fmt.Errorf(
+			"llm returned invalid status %q for field %q",
+			generated.Status,
+			field.Name,
+		)
 	}
-	if len(seen) != len(expected) {
-		return nil, fmt.Errorf("llm result coverage mismatch for field %q", field.Name)
-	}
-	return result, nil
+	return record, nil
 }
 
-// BuildAlignmentPrompt 构造实体对齐批处理提示词。
-func BuildAlignmentPrompt(field PreparedField, rawValues []string) (string, error) {
-	valuesJSON, err := json.Marshal(rawValues)
+// BuildAlignmentPrompt 构造单个原始值的实体对齐提示词。
+func BuildAlignmentPrompt(field PreparedField, rawValue string) (string, error) {
+	valueJSON, err := json.Marshal(rawValue)
 	if err != nil {
-		return "", fmt.Errorf("marshal raw values for field %q: %w", field.Name, err)
+		return "", fmt.Errorf("marshal raw value for field %q: %w", field.Name, err)
 	}
 	targetsJSON, err := json.Marshal(field.Targets)
 	if err != nil {
 		return "", fmt.Errorf("marshal targets for field %q: %w", field.Name, err)
 	}
 	return fmt.Sprintf(`你是一个实体对齐助手。
-请将字段原始值映射为目标实体，并且只输出 JSON 数组。
+请将字段原始值映射为目标实体，并且只输出一个 JSON 对象。
 
 字段名: %s
-目标实体: %s
+候选目标实体: %s
 原始值: %s
 
-输出数组中每个元素必须包含:
+输出对象必须包含:
 - raw_value: 原始值
 - status: matched / unknown_to_null / needs_candidate 之一
 - aligned_value: matched 时必须是目标实体中的一个值；unknown_to_null 时必须为 null；needs_candidate 时必须为 null
 
 规则:
-- 必须覆盖每个 raw_value，不能缺失，不能新增，不能重复
-- matched 的 aligned_value 必须严格属于 targets
+- 顶层必须是 JSON 对象，不能输出 JSON 数组
+- raw_value 必须严格等于输入原始值，不能改写
+- matched 的 aligned_value 必须严格属于候选目标实体
 - 无意义、未知、空泛描述用 unknown_to_null
 - 无法明确匹配到单个目标实体但原始值有意义时用 needs_candidate
 - 同时指向多个目标实体时不要强行匹配，使用 needs_candidate
-- 只输出 JSON 数组，不要输出解释
+- 候选目标实体中没有明确匹配项时使用 needs_candidate
+- 不要基于候选目标实体之外的值自行推断
+- 只输出 JSON 对象，不要输出解释、markdown 或代码块
 
 示例:
-[
-  {"raw_value":"唐朝","status":"matched","aligned_value":"唐"},
-  {"raw_value":"不详","status":"unknown_to_null","aligned_value":null},
-  {"raw_value":"明清","status":"needs_candidate","aligned_value":null}
-]
-
-/nothink`, field.Name, string(targetsJSON), string(valuesJSON)), nil
+{"raw_value":"唐朝","status":"matched","aligned_value":"唐"}`, field.Name, string(targetsJSON), string(valueJSON)), nil
 }
